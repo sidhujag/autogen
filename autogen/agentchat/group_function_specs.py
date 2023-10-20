@@ -78,6 +78,25 @@ leave_group_spec = {
     },
 }
 
+discover_agents_spec = {
+    "name": "discover_agents",
+    "description": "Allows agents to discover other agents based on specific queries related to features, tools, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "A natural language query describing the desired features, tools, or functionalities of the agent being searched for. This can be left empty if not sure."
+            },
+            "category": {
+                "type": "string",
+                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
+            }
+        },
+        "required": []
+    }
+}
 # Aggregate all function specs into a list for easier import
 group_function_specs = [
     send_message_spec,
@@ -85,5 +104,6 @@ group_function_specs = [
     invite_to_group_spec,
     create_group_spec,
     delete_group_spec,
-    leave_group_spec
+    leave_group_spec,
+    discover_agents_spec
 ]

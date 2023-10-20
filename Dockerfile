@@ -10,7 +10,7 @@ RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER autogen-dev
 
 # Pull repo
-RUN cd /home/autogen-dev && git clone https://github.com/microsoft/autogen.git
+RUN cd /home/autogen-dev && git clone https://github.com/sidhujag/autogen.git
 WORKDIR /home/autogen-dev/autogen
 
 # Install autogen (Note: extra components can be installed if needed)

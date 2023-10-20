@@ -29,7 +29,8 @@ AGENT_SYSTEM_MESSAGE = """ Solve your problem step-by-step. You should leverage 
 If you are working in a group for a task, make sure to send a message to the group manager to preserve global context and allow the group manager can delegate to the next agent if needed.
 You may message across groups and users to effectively solve or delegate tasks but be sure to always respond those that tasked you after you are done.
 You can invite agents to join, and they may join if they see value in joining. 
-You may also form a new group by giving a new name for a new group manager to make efficient use of context to seperate concerns during your investigation to solve the problem in a step-by-step way."""
+You may also form a new group by giving a new name for a new group manager to make efficient use of context to seperate concerns during your investigation to solve the problem in a step-by-step way.
+Within a group you will know what agents exist and who the group manager is, but you are still encouraged to discover other agents to find which ones would be useful to help."""
 AGENT_REGISTRY = List[Agent]
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
@@ -133,7 +134,8 @@ class ConversableAgent(Agent):
             "invite_to_group": self.invite_to_group,
             "create_group": self.create_group,
             "delete_group": self.delete_group,
-            "leave_group": self.leave_group
+            "leave_group": self.leave_group,
+            "discover_agents": self.discover_agents
         })
         self._default_auto_reply = default_auto_reply
         self._reply_func_list = []
@@ -1077,6 +1079,9 @@ class ConversableAgent(Agent):
         if type(group_manager) is not GroupChatManager:
             return "Could not leave group: group_name is not a group manager"
         return group_manager.leave_group_helper(self, goodbye_message)
+
+    def discover_agents(self, query: str = None, category: str = None, **args):
+        return None
 
     def generate_init_message(self, **context) -> Union[str, Dict]:
         """Generate the initial message for the agent.
