@@ -7,8 +7,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-GROUP_MANAGER_SYSTEM_MESSAGE = """ As a group manager you should keep sending messages to relevant agents in your group until you are completely satisfied of your answer and result or are waiting on responses from other agents. 
-Note: As soon as you stop sending messages through send_message, the group will stop communicating until a human or another agent else sends a message back to you."""
+GROUP_MANAGER_SYSTEM_MESSAGE = """ As a group manager you should keep sending messages to relevant agents in your group until you are completely satisfied of your answer and result or are waiting on results from other agents. 
+As you work step-by-step, when agents complete their tasks you should delegate to the next agent based on your internal plan until all tasks in your group are done at which point you can let the agent that tasked you know of your result by sending them a message.
+Note: As soon as you stop sending messages through send_message, the group will stop communicating until a human or another agent else sends a message to you.
+"""
 @dataclass
 class GroupChat:
     """A group chat class that contains the following data fields:
