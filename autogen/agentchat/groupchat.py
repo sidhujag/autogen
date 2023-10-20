@@ -23,6 +23,7 @@ class GroupChat:
     """
 
     agents: List[Agent]
+    invitees: List[str]
     messages: List[Dict]
     max_round: int = 10
     admin_name: str = "Admin"
@@ -133,6 +134,48 @@ class GroupChatManager(ConversableAgent):
         self.register_reply(Agent, GroupChatManager.run_chat, config=groupchat, reset_config=GroupChat.reset)
         # self._random = random.Random(seed)
 
+    def is_agent_in_group(self, agent: ConversableAgent) -> bool:
+        return self.groupchat.agents(agent) is not None
+
+    def join_group_helper(self, agent: ConversableAgent, welcome_message: str) -> str:
+        if agent.name not in self.groupchat.invitees:
+            return "Could not join group: Not invited"
+        if self.is_agent_in_group(agent) is True:
+            return "Could not join group: Already in the group"
+        del self.groupchat.invitees[agent.name]
+        other_roles = f"The following other agents are in the group: {self.groupchat._participant_roles()}"
+        self.groupchat.agents.append(agent)
+        # send discovery of other agents to the new agent
+        self.send(other_roles, agent, request_reply=False, silent=True)
+        if welcome_message:
+            agent.send(welcome_message, self, request_reply=False, silent=True)
+        return ""
+
+    def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None, **args):
+        if self.is_agent_in_group(agent) is False:
+            return "Could not join group: Not in the group"
+        del self.groupchat.agents[agent.name]
+        if goodbye_message:
+            agent.send(goodbye_message, self, request_reply=False, silent=True)
+        return ""
+
+    def delete_group_helper(self, **args):
+        if len(self.groupchat.agents) > 0:
+            return "Could not delete group: Group is not empty"
+        return ""
+
+    def invite_to_group_helper(self, inviter: ConversableAgent, invited: ConversableAgent, invite_message: str) -> str:
+        if invited.name in self.groupchat.invitees:
+            return "Could not invite to group: Already invited"
+        if self.is_agent_in_group(invited.name) is True:
+            return "Could not invite to group: Already in the group"
+        if self.is_agent_in_group(inviter.name) is False:
+            return "Cannot invite others to this group: You are not in the group"
+        self.groupchat.invitees.append(invited.name)
+        if invite_message:
+            inviter.send(invite_message, invited, request_reply=False, silent=True)
+        return ""
+    
     def run_chat(
         self,
         messages: Optional[List[Dict]] = None,
@@ -144,36 +187,9 @@ class GroupChatManager(ConversableAgent):
             messages = self._oai_messages[sender]
         message = messages[-1]
         speaker = sender
-        groupchat = config
-        for i in range(groupchat.max_round):
-            # set the name to speaker's name if the role is not function
-            if message["role"] != "function":
-                message["name"] = speaker.name
-            groupchat.messages.append(message)
-            # broadcast the message to all agents except the speaker
-            for agent in groupchat.agents:
-                if agent != speaker:
-                    self.send(message, agent, request_reply=False, silent=True)
-            if i == groupchat.max_round - 1:
-                # the last round
-                break
-            try:
-                # select the next speaker
-                speaker = groupchat.select_speaker(speaker, self)
-                # let the speaker speak
-                reply = speaker.generate_reply(sender=self)
-            except KeyboardInterrupt:
-                # let the admin agent speak if interrupted
-                if groupchat.admin_name in groupchat.agent_names:
-                    # admin agent is one of the participants
-                    speaker = groupchat.agent_by_name(groupchat.admin_name)
-                    reply = speaker.generate_reply(sender=self)
-                else:
-                    # admin agent is not found in the participants
-                    raise
-            if reply is None:
-                break
-            # The speaker sends the message without requesting a reply
-            speaker.send(reply, self, request_reply=False)
-            message = self.last_message(speaker)
+        config.messages.append(message)
+        # broadcast the message to all agents except the speaker
+        for agent in config.agents:
+            if agent != speaker:
+                self.send(message, agent, request_reply=False, silent=True)
         return True, None

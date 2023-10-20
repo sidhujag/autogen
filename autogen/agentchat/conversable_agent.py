@@ -6,6 +6,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from autogen import oai
 from .agent import Agent
+from .groupchat import GroupChatManager, GroupChat
 from autogen.code_utils import (
     DEFAULT_MODEL,
     UNKNOWN,
@@ -24,7 +25,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-
+AGENT_REGISTRY = List[Agent]
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
 
@@ -127,6 +128,7 @@ class ConversableAgent(Agent):
         self.register_reply([Agent, None], ConversableAgent.generate_code_execution_reply)
         self.register_reply([Agent, None], ConversableAgent.generate_function_call_reply)
         self.register_reply([Agent, None], ConversableAgent.check_termination_and_human_reply)
+        AGENT_REGISTRY.append(self)
 
     def register_reply(
         self,
@@ -1001,6 +1003,57 @@ class ConversableAgent(Agent):
             "role": "function",
             "content": str(content),
         }
+
+    def is_agent_in_group(self, agent: "ConversableAgent") -> bool:
+        return False
+
+    def get_agent(self, agent_name: str) -> "ConversableAgent":
+        return AGENT_REGISTRY[agent_name] if agent_name in AGENT_REGISTRY else None
+
+    def send_message(self, message: str, to_agent_name: str, group_name: str = None, group_message: str = None, **args):
+        to_agent = self.get_agent(to_agent_name)
+        self.send(message, to_agent, silent=True)
+        if group_name is not None and group_message is not None:
+            group_manager = self.get_agent(group_name)
+            if group_manager is None:
+                return "Could not send message to group: Doesn't exists"
+            if group_manager.is_agent_in_group(self) is True:
+                self.send(group_message, group_manager, silent=True)
+     
+    def join_group(self, group_name: str, hello_message: str = None, **args):
+        group_manager = self.get_agent(group_name)
+        if group_manager is None:
+            return "Could not join group: Doesn't exists"
+        return group_manager.join_group_helper(self, hello_message)
+   
+    def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None, **args):
+        group_manager = self.get_agent(group_name)
+        if group_manager is None:
+            return "Could not invite to group: Doesn't exists"
+        agent = self.get_agent(agent_name)
+        return group_manager.invite_to_group_helper(self, agent, invite_message)
+
+    def create_group(self, group_name: str, system_message: str = None, **args):
+        group_manager = self.get_agent(group_name)
+        if group_manager is not None:
+            return "Could not create group: Already exists"
+        groupchat = GroupChat(
+            agents=[], messages=[]
+        )
+        AGENT_REGISTRY[group_name] = GroupChatManager(groupchat=groupchat, name=group_name, system_message=system_message)
+
+    def delete_group(self, group_name: str, **args):
+        group_manager = self.get_agent(group_name)
+        if group_manager is None:
+            return "Could not delete group: Doesn't exists"
+        group_manager.delete_group_helper()
+        del AGENT_REGISTRY[group_name]
+
+    def leave_group(self, group_name: str, goodbye_message: str = None, **args):
+        group_manager = self.get_agent(group_name)
+        if group_manager is None:
+            return "Could not leave group: Doesn't exists"
+        return group_manager.leave_group_helper(self, goodbye_message)
 
     def generate_init_message(self, **context) -> Union[str, Dict]:
         """Generate the initial message for the agent.
