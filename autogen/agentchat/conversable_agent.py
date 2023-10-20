@@ -25,7 +25,7 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
+AGENT_SYSTEM_MESSAGE = """ Solve your problem step-by-step. You should leverage the functions at your disposal. If you message across groups to get work done, make sure to get back to the original group upon your conclusion to keep the groups running, as they depend on messages being received to keep conversation going until the overall query from the user is resolved. You can invite agents to join, and they may join if they see value in joining. You may also form a new group to make efficient use of context to seperate concerns during your investigation to solve the problem in a step-by-step way."""
 AGENT_REGISTRY = List[Agent]
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
@@ -104,7 +104,7 @@ class ConversableAgent(Agent):
         super().__init__(name)
         # a dictionary of conversations, default value is list
         self._oai_messages = defaultdict(list)
-        self._oai_system_message = [{"content": system_message, "role": "system"}]
+        self._oai_system_message = [{"content": system_message + AGENT_SYSTEM_MESSAGE, "role": "system"}]
         self._is_termination_msg = (
             is_termination_msg if is_termination_msg is not None else (lambda x: x.get("content") == "TERMINATE")
         )
@@ -1022,18 +1022,29 @@ class ConversableAgent(Agent):
 
     def send_message(self, message: str, recipient: str, request_reply: bool = False, **args):
         to_agent = self.get_agent(recipient)
+        if to_agent == self:
+            return "Could not send message: Trying to send to self"
+        if type(to_agent) is GroupChatManager:
+            # group manager should get a response so he can delegate further
+            request_reply = True
+            if to_agent.is_agent_in_group(self) is False:
+                return "Could not send message: Trying to send to a group that you are not in"
         self.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
      
     def join_group(self, group_name: str, hello_message: str = None, **args):
         group_manager = self.get_agent(group_name)
+        if type(group_manager) is not GroupChatManager:
+            return "Could not send message: group_name is not a group manager"
         if group_manager is None:
-            return "Could not join group: Doesn't exists"
+            return "Could not send messagep: Doesn't exists"
         return group_manager.join_group_helper(self, hello_message)
    
     def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None, **args):
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not invite to group: Doesn't exists"
+        if type(group_manager) is not GroupChatManager:
+            return "Could not invite to group: group_name is not a group manager"
         agent = self.get_agent(agent_name)
         return group_manager.invite_to_group_helper(self, agent, invite_message)
 
@@ -1050,6 +1061,8 @@ class ConversableAgent(Agent):
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not delete group: Doesn't exists"
+        if type(group_manager) is not GroupChatManager:
+            return "Could not delete group: group_name is not a group manager"
         group_manager.delete_group_helper()
         del AGENT_REGISTRY[group_name]
 
@@ -1057,6 +1070,8 @@ class ConversableAgent(Agent):
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not leave group: Doesn't exists"
+        if type(group_manager) is not GroupChatManager:
+            return "Could not leave group: group_name is not a group manager"
         return group_manager.leave_group_helper(self, goodbye_message)
 
     def generate_init_message(self, **context) -> Union[str, Dict]:

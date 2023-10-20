@@ -7,7 +7,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
+GROUP_MANAGER_SYSTEM_MESSAGE = """ As a group manager you should keep sending messages to relevant agents in your group until you are completely satisfied of your answer and result or are waiting on responses from other agents. 
+Note: As soon as you stop sending messages through send_message, the group will stop communicating until a human or another agent else sends a message back to you."""
 @dataclass
 class GroupChat:
     """A group chat class that contains the following data fields:
@@ -128,7 +129,7 @@ class GroupChatManager(ConversableAgent):
             name=name,
             max_consecutive_auto_reply=max_consecutive_auto_reply,
             human_input_mode=human_input_mode,
-            system_message=system_message,
+            system_message=system_message + GROUP_MANAGER_SYSTEM_MESSAGE,
             **kwargs,
         )
         self.register_reply(Agent, GroupChatManager.run_chat, config=groupchat, reset_config=GroupChat.reset)
@@ -143,19 +144,24 @@ class GroupChatManager(ConversableAgent):
         if self.is_agent_in_group(agent) is True:
             return "Could not join group: Already in the group"
         del self.groupchat.invitees[agent.name]
+        other_roles = f"The following other agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
         self.groupchat.agents.append(agent)
+        # send discovery of other agents to the new agent
+        self.send(other_roles, agent, request_reply=False, silent=True)
         if welcome_message:
             agent.send(welcome_message, self, request_reply=False, silent=True)
-        self.update_system_message(self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}")
+        new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
+        self.update_system_message(new_system_message)
         return ""
 
     def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None, **args):
         if self.is_agent_in_group(agent) is False:
-            return "Could not join group: Not in the group"
+            return "Could not leave group: Not in the group"
         del self.groupchat.agents[agent.name]
         if goodbye_message:
             agent.send(goodbye_message, self, request_reply=False, silent=True)
-        self.update_system_message(self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}")
+        new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
+        self.update_system_message(new_system_message)
         return ""
 
     def delete_group_helper(self, **args):

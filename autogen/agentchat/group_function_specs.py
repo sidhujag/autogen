@@ -1,13 +1,13 @@
 
 send_message_spec = {
     "name": "send_message",
-    "description": "Send a message to an individual agent or to all agents in a group via the group manager. When sent to a group manager, the message is recorded in the history of all agents in the group to maintain an accurate message representation.",
+    "description": "Send a message to an individual agent or to all agents in a group via the group manager.",
     "parameters": {
         "type": "object",
         "properties": {
             "message": {"type": "string", "description": "The content of the message."},
-            "recipient": {"type": "string", "description": "The name of the recipient agent or group manager."},
-            "request_reply": {"type": "boolean", "description": "Flag to request a reply from the recipient. If set to True when sending to a group manager, it allows the manager to send a message to a group agent regarding the assigned task. Defaults to False."}
+            "recipient": {"type": "string", "description": "The name of the recipient agent or a group manager of any group you are in."},
+            "request_reply": {"type": "boolean", "description": "Flag to request a reply from the recipient. Defaults to False."}
         },
         "required": ["message", "recipient"]
     }
