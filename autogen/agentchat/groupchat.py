@@ -116,7 +116,7 @@ class GroupChatManager(ConversableAgent):
     def __init__(
         self,
         groupchat: GroupChat,
-        name: Optional[str] = "chat_manager",
+        name: Optional[str] = "group_manager",
         # unlimited consecutive auto reply by default
         max_consecutive_auto_reply: Optional[int] = sys.maxsize,
         human_input_mode: Optional[str] = "NEVER",
@@ -143,12 +143,10 @@ class GroupChatManager(ConversableAgent):
         if self.is_agent_in_group(agent) is True:
             return "Could not join group: Already in the group"
         del self.groupchat.invitees[agent.name]
-        other_roles = f"The following other agents are in the group: {self.groupchat._participant_roles()}"
         self.groupchat.agents.append(agent)
-        # send discovery of other agents to the new agent
-        self.send(other_roles, agent, request_reply=False, silent=True)
         if welcome_message:
             agent.send(welcome_message, self, request_reply=False, silent=True)
+        self.update_system_message(self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}")
         return ""
 
     def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None, **args):
@@ -157,6 +155,7 @@ class GroupChatManager(ConversableAgent):
         del self.groupchat.agents[agent.name]
         if goodbye_message:
             agent.send(goodbye_message, self, request_reply=False, silent=True)
+        self.update_system_message(self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}")
         return ""
 
     def delete_group_helper(self, **args):

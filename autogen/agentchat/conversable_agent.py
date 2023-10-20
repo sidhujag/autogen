@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from autogen import oai
 from .agent import Agent
 from .groupchat import GroupChatManager, GroupChat
+from group_function_specs import group_function_specs
 from autogen.code_utils import (
     DEFAULT_MODEL,
     UNKNOWN,
@@ -43,6 +44,7 @@ class ConversableAgent(Agent):
 
     DEFAULT_CONFIG = {
         "model": DEFAULT_MODEL,
+        "functions": group_function_specs
     }
     MAX_CONSECUTIVE_AUTO_REPLY = 100  # maximum number of consecutive auto replies (subject to future change)
 
@@ -121,6 +123,14 @@ class ConversableAgent(Agent):
         self._consecutive_auto_reply_counter = defaultdict(int)
         self._max_consecutive_auto_reply_dict = defaultdict(self.max_consecutive_auto_reply)
         self._function_map = {} if function_map is None else function_map
+        self.register_function(function_map={
+            "send_message": self.send_message,
+            "join_group": self.join_group,
+            "invite_to_group": self.invite_to_group,
+            "create_group": self.create_group,
+            "delete_group": self.delete_group,
+            "leave_group": self.leave_group
+        })
         self._default_auto_reply = default_auto_reply
         self._reply_func_list = []
         self.reply_at_receive = defaultdict(bool)
@@ -1010,15 +1020,9 @@ class ConversableAgent(Agent):
     def get_agent(self, agent_name: str) -> "ConversableAgent":
         return AGENT_REGISTRY[agent_name] if agent_name in AGENT_REGISTRY else None
 
-    def send_message(self, message: str, to_agent_name: str, group_name: str = None, group_message: str = None, **args):
-        to_agent = self.get_agent(to_agent_name)
-        self.send(message, to_agent, silent=True)
-        if group_name is not None and group_message is not None:
-            group_manager = self.get_agent(group_name)
-            if group_manager is None:
-                return "Could not send message to group: Doesn't exists"
-            if group_manager.is_agent_in_group(self) is True:
-                self.send(group_message, group_manager, silent=True)
+    def send_message(self, message: str, recipient: str, request_reply: bool = False, **args):
+        to_agent = self.get_agent(recipient)
+        self.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
      
     def join_group(self, group_name: str, hello_message: str = None, **args):
         group_manager = self.get_agent(group_name)
