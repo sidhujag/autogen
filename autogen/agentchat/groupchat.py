@@ -154,9 +154,9 @@ class GroupChatManager(ConversableAgent):
             agent.send(welcome_message, self, request_reply=False, silent=True)
         new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
         self.update_system_message(new_system_message)
-        return ""
+        return "Group joined!"
 
-    def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None, **args):
+    def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None, **args) -> str:
         if self.is_agent_in_group(agent) is False:
             return "Could not leave group: Not in the group"
         del self.groupchat.agents[agent.name]
@@ -164,9 +164,9 @@ class GroupChatManager(ConversableAgent):
             agent.send(goodbye_message, self, request_reply=False, silent=True)
         new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
         self.update_system_message(new_system_message)
-        return ""
+        return "Group exited!"
 
-    def delete_group_helper(self, **args):
+    def delete_group_helper(self, **args) -> str:
         if len(self.groupchat.agents) > 0:
             return "Could not delete group: Group is not empty"
         return ""
@@ -181,7 +181,7 @@ class GroupChatManager(ConversableAgent):
         self.groupchat.invitees.append(invited.name)
         if invite_message:
             inviter.send(invite_message, invited, request_reply=False, silent=True)
-        return ""
+        return "Invite sent!"
     
     def run_chat(
         self,

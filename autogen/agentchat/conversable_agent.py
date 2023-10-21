@@ -1026,7 +1026,7 @@ class ConversableAgent(Agent):
     def get_agent(self, agent_name: str) -> "ConversableAgent":
         return AGENT_REGISTRY[agent_name] if agent_name in AGENT_REGISTRY else None
 
-    def send_message(self, message: str, recipient: str, request_reply: bool = False, **args):
+    def send_message(self, message: str, recipient: str, request_reply: bool = False, **args) -> str:
         to_agent = self.get_agent(recipient)
         if to_agent == self:
             return "Could not send message: Trying to send to self"
@@ -1036,8 +1036,9 @@ class ConversableAgent(Agent):
             if to_agent.is_agent_in_group(self) is False:
                 return "Could not send message: Trying to send to a group that you are not in"
         self.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
+        return "Sent message!"
      
-    def join_group(self, group_name: str, hello_message: str = None, **args):
+    def join_group(self, group_name: str, hello_message: str = None, **args) -> str:
         group_manager = self.get_agent(group_name)
         if type(group_manager) is not GroupChatManager:
             return "Could not send message: group_name is not a group manager"
@@ -1045,7 +1046,7 @@ class ConversableAgent(Agent):
             return "Could not send message: Doesn't exists"
         return group_manager.join_group_helper(self, hello_message)
    
-    def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None, **args):
+    def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None, **args) -> str:
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not invite to group: Doesn't exists"
@@ -1054,7 +1055,7 @@ class ConversableAgent(Agent):
         agent = self.get_agent(agent_name)
         return group_manager.invite_to_group_helper(self, agent, invite_message)
 
-    def create_group(self, group_name: str, system_message: str = None, **args):
+    def create_group(self, group_name: str, system_message: str = None, **args) -> str:
         group_manager = self.get_agent(group_name)
         if group_manager is not None:
             return "Could not create group: Already exists"
@@ -1062,17 +1063,21 @@ class ConversableAgent(Agent):
             agents=[], messages=[]
         )
         AGENT_REGISTRY[group_name] = GroupChatManager(groupchat=groupchat, name=group_name, system_message=system_message)
+        return "Group created!"
 
-    def delete_group(self, group_name: str, **args):
+    def delete_group(self, group_name: str, **args) -> str:
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not delete group: Doesn't exists"
         if type(group_manager) is not GroupChatManager:
             return "Could not delete group: group_name is not a group manager"
-        group_manager.delete_group_helper()
+        del_group_error = group_manager.delete_group_helper()
+        if del_group_error != "":
+            return del_group_error
         del AGENT_REGISTRY[group_name]
+        return "Group deleted!"
 
-    def leave_group(self, group_name: str, goodbye_message: str = None, **args):
+    def leave_group(self, group_name: str, goodbye_message: str = None, **args) -> str:
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not leave group: Doesn't exists"
@@ -1080,8 +1085,8 @@ class ConversableAgent(Agent):
             return "Could not leave group: group_name is not a group manager"
         return group_manager.leave_group_helper(self, goodbye_message)
 
-    def discover_agents(self, query: str = None, category: str = None, **args):
-        return None
+    def discover_agents(self, query: str = None, category: str = None, **args) -> str:
+        return "Not implemented"
 
     def generate_init_message(self, **context) -> Union[str, Dict]:
         """Generate the initial message for the agent.
