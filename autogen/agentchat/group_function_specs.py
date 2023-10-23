@@ -78,7 +78,7 @@ discover_agents_spec = {
             },
             "category": {
                 "type": "string",
-                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "description": "A category to filter agents based on predefined categories.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             }
         },
@@ -91,22 +91,30 @@ create_or_update_agent = {
     "parameters": {
         "type": "object",
         "properties": {
-            "query": {
+            "name": {
                 "type": "string",
-                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure."
+                "description": "The agent name, must be unique to all agents."
+            },
+            "description": {
+                "type": "string",
+                "description": "A description of the features, functions, or functionalities of the agent."
+            },
+            "function_names": {
+                "type": "string",
+                "description": "JSON schema of function names encoded as an array. For example: { \"required\": [ \"function1\", \"function2\"]}",
             },
             "category": {
                 "type": "string",
-                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "description": "A category to sort agent based on predefined categories. Set this if creating a new agent.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             }
         },
-        "required": []
+        "required": ["name"]
     }
 },
 discover_functions = {
     "name": "discover_functions",
-    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. An agent can add the returned function(s) via add_functions so they can subsequently be called.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -116,30 +124,64 @@ discover_functions = {
             },
             "category": {
                 "type": "string",
-                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "description": "A category to filter agents based on predefined categories.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             }
         },
         "required": []
     }
 },
-create_function = {
-    "name": "create_function",
-    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+add_functions = {
+    "name": "add_functions",
+    "description": "Allows agents to add specific function ability to themselves, usually you would discover functions prior to adding.",
     "parameters": {
         "type": "object",
         "properties": {
-            "query": {
+            "function_names": {
                 "type": "string",
-                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure."
+                "description": "JSON schema of function names encoded as an array. For example: { \"required\": [ \"function1\", \"function2\"]}",
+            },
+        },
+        "required": []
+    }
+},
+define_function = {
+    "name": "define_function",
+    "description": "Define a function to add to the context of the conversation. Necessary Python packages must be declared. Once defined, the assistant may decide to use this function, respond with a normal message.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "The name of the function to define.",
+            },
+            "description": {
+                "type": "string",
+                "description": "A short description of the function.",
+            },
+            "arguments": {
+                "type": "string",
+                "description": "JSON schema of arguments encoded as a string. For example: { \"url\": { \"type\": \"string\", \"description\": \"The URL\", }}",
+            },
+            "packages": {
+                "type": "string",
+                "description": "A list of package names imported by the function, and that need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError.",
+            },
+            "code": {
+                "type": "string",
+                "description": "The implementation in Python. Do not include the function declaration.",
             },
             "category": {
                 "type": "string",
-                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "description": "A category to filter functions based on predefined categories.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
-            }
+            },
+           "required": {
+                "type": "string",
+                "description": "JSON schema of required arguments encoded as an array. For example: { \"required\": [ \"argument1\", \"argument2\"]}",
+            },
         },
-        "required": []
+        "required": ["name", "description", "arguments", "packages", "code", "category"],
     }
 }
 # Aggregate all function specs into a list for easier import
@@ -152,5 +194,5 @@ group_function_specs = [
     discover_agents_spec,
     create_or_update_agent,
     discover_functions,
-    create_function
+    define_function
 ]

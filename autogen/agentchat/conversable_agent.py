@@ -138,7 +138,8 @@ class ConversableAgent(Agent):
             "discover_agents": self.discover_agents,
             "create_or_update_agent": self.create_or_update_agent,
             "discover_functions": self.discover_functions,
-            "create_function": self.create_function
+            "add_functions": self.add_functions,
+            "define_function": self.define_function
         })
 
         self._default_auto_reply = default_auto_reply
@@ -1090,15 +1091,54 @@ class ConversableAgent(Agent):
     def discover_agents(self, query: str = None, category: str = None, **args) -> str:
         return "Not implemented"
 
-    def create_or_update_agent(self, name: str, system_message: str, functions: List[str], **args) -> str:
+    def create_or_update_agent(self, name: str, system_message: str, function_names: str, category: str = None, **args) -> str:
+        json_fns = json.loads(function_names)
         return "Not implemented"
 
     def discover_functions(self, query: str = None, category: str = None, **args) -> str:
+        # return just the function descriptions and argument list
         return "Not implemented"
 
-    def create_function(self, name: str, category: str, code: str, description: dict, **args) -> str:
+    def add_functions(self, function_names: str, **args) -> str:
+        json_fns = json.loads(function_names)
+        # lookup function by name
+        # get function config and add it to llm_config
+        # register the function handler to the agent
         return "Not implemented"
     
+    def execute_func(self, name, packages, code, **args):
+        pip_install = f"""print("Installing package: {packages}")\nsubprocess.run(["pip", "-qq", "install", "{packages}"])""" if packages else ''
+        str = f"""
+        import subprocess
+        {pip_install}
+        print("Result of {name} function execution:")
+        {code}
+        args={args}
+        result={name}(**args)
+        if result is not None: print(result)
+        """
+        print(f"execute_code:\n{str}")
+        result = execute_code(str)[1]
+        print(f"Result: {result}")
+        return result
+
+    def define_function(self, name, description, arguments, packages, code, required, category):
+        json_args = json.loads(arguments)
+        json_reqs = json.loads(required)
+        function_config = {
+            "name": name,
+            "description": description,
+            "parameters": { "type": "object", "properties": json_args },
+            "required": json_reqs,
+        }
+        self.llm_config["functions"] = self.llm_config["functions"] + [function_config]
+        self.register_function(
+            function_map={
+                name: lambda **args: self.execute_func(name, packages, code, **args)
+            }
+        )
+        return f"A function has been added to the context of this conversation.\nDescription: {description}"
+
     def generate_init_message(self, **context) -> Union[str, Dict]:
         """Generate the initial message for the agent.
 
