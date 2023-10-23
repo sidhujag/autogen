@@ -53,25 +53,13 @@ create_group_spec = {
     },
 }
 
-delete_group_spec = {
-    "name": "delete_group",
-    "description": "Delete an existing group.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "group_name": {"type": "string", "description": "The name of the group to delete."}
-        },
-        "required": ["group_name"],
-    },
-}
-
 leave_group_spec = {
     "name": "leave_group",
     "description": "Leave a specified group.",
     "parameters": {
         "type": "object",
         "properties": {
-            "group_name": {"type": "string", "description": "The name of the group to leave."},
+            "group_name": {"type": "string", "description": "The name of the group to leave. If you are the last agent to leave, the group gets deleted automatically."},
             "goodbye_message": {"type": "string", "description": "A farewell message, if any."}
         },
         "required": ["group_name"],
@@ -80,13 +68,70 @@ leave_group_spec = {
 
 discover_agents_spec = {
     "name": "discover_agents",
-    "description": "Allows agents to discover other agents based on specific queries related to features, tools, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
     "parameters": {
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "A natural language query describing the desired features, tools, or functionalities of the agent being searched for. This can be left empty if not sure."
+                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure."
+            },
+            "category": {
+                "type": "string",
+                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
+            }
+        },
+        "required": []
+    }
+},
+create_or_update_agent = {
+    "name": "create_or_update_agent",
+    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure."
+            },
+            "category": {
+                "type": "string",
+                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
+            }
+        },
+        "required": []
+    }
+},
+discover_functions = {
+    "name": "discover_functions",
+    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure."
+            },
+            "category": {
+                "type": "string",
+                "description": "A category to filter agents based on predefined categories like 'information_retrieval', 'communication', 'data_processing', 'sensory_perception', and 'programming'.",
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
+            }
+        },
+        "required": []
+    }
+},
+create_function = {
+    "name": "create_function",
+    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure."
             },
             "category": {
                 "type": "string",
@@ -103,7 +148,9 @@ group_function_specs = [
     join_group_spec,
     invite_to_group_spec,
     create_group_spec,
-    delete_group_spec,
     leave_group_spec,
-    discover_agents_spec
+    discover_agents_spec,
+    create_or_update_agent,
+    discover_functions,
+    create_function
 ]

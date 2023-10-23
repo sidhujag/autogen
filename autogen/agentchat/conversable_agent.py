@@ -30,7 +30,8 @@ If you are working in a group for a task, make sure to send a message to the gro
 You may message across groups and users to effectively solve or delegate tasks but be sure to always respond those that tasked you after you are done.
 You can invite agents to join, and they may join if they see value in joining. 
 You may also form a new group by giving a new name for a new group manager to make efficient use of context to seperate concerns during your investigation to solve the problem in a step-by-step way.
-Within a group you will know what agents exist and who the group manager is, but you are still encouraged to discover other agents to find which ones would be useful to help."""
+Within a group you will know what agents exist and who the group manager is, but you are still encouraged to discover other agents to find which ones would be useful to help.
+Maximize effectiveness through organization within groups based on robustness and efficiency."""
 AGENT_REGISTRY = List[Agent]
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
@@ -133,10 +134,13 @@ class ConversableAgent(Agent):
             "join_group": self.join_group,
             "invite_to_group": self.invite_to_group,
             "create_group": self.create_group,
-            "delete_group": self.delete_group,
             "leave_group": self.leave_group,
-            "discover_agents": self.discover_agents
+            "discover_agents": self.discover_agents,
+            "create_or_update_agent": self.create_or_update_agent,
+            "discover_functions": self.discover_functions,
+            "create_function": self.create_function
         })
+
         self._default_auto_reply = default_auto_reply
         self._reply_func_list = []
         self.reply_at_receive = defaultdict(bool)
@@ -1065,16 +1069,11 @@ class ConversableAgent(Agent):
         AGENT_REGISTRY[group_name] = GroupChatManager(groupchat=groupchat, name=group_name, system_message=system_message)
         return "Group created!"
 
-    def delete_group(self, group_name: str, **args) -> str:
-        group_manager = self.get_agent(group_name)
-        if group_manager is None:
-            return "Could not delete group: Doesn't exists"
-        if type(group_manager) is not GroupChatManager:
-            return "Could not delete group: group_name is not a group manager"
+    def delete_group(self, group_manager: "GroupChatManager", **args) -> str:
         del_group_error = group_manager.delete_group_helper()
         if del_group_error != "":
             return del_group_error
-        del AGENT_REGISTRY[group_name]
+        del AGENT_REGISTRY[group_manager.name]
         return "Group deleted!"
 
     def leave_group(self, group_name: str, goodbye_message: str = None, **args) -> str:
@@ -1083,11 +1082,23 @@ class ConversableAgent(Agent):
             return "Could not leave group: Doesn't exists"
         if type(group_manager) is not GroupChatManager:
             return "Could not leave group: group_name is not a group manager"
-        return group_manager.leave_group_helper(self, goodbye_message)
+        result = group_manager.leave_group_helper(self, goodbye_message)
+        if len(group_manager.groupchat.agents) == 0:
+            return self.delete_group(group_manager)
+        return result
 
     def discover_agents(self, query: str = None, category: str = None, **args) -> str:
         return "Not implemented"
 
+    def create_or_update_agent(self, name: str, system_message: str, functions: List[str], **args) -> str:
+        return "Not implemented"
+
+    def discover_functions(self, query: str = None, category: str = None, **args) -> str:
+        return "Not implemented"
+
+    def create_function(self, name: str, category: str, code: str, description: dict, **args) -> str:
+        return "Not implemented"
+    
     def generate_init_message(self, **context) -> Union[str, Dict]:
         """Generate the initial message for the agent.
 
