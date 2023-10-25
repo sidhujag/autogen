@@ -9,12 +9,13 @@ import time
 from hashlib import md5
 import logging
 from autogen import oai
+from autogen.agentchat.conversable_agent import ConversableAgent
 
 try:
     import docker
 except ImportError:
     docker = None
-
+AGENT_REGISTRY = List[ConversableAgent]
 DEFAULT_MODEL = "gpt-4"
 FAST_MODEL = "gpt-3.5-turbo"
 # Regular expression for finding a code block

@@ -3,6 +3,9 @@ from collections import defaultdict
 import copy
 import json
 import logging
+import requests
+
+from pydantic import BaseModel
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from autogen import oai
 from .agent import Agent
@@ -10,11 +13,43 @@ from .groupchat import GroupChatManager, GroupChat
 from group_function_specs import group_function_specs
 from autogen.code_utils import (
     DEFAULT_MODEL,
+    AGENT_REGISTRY,
     UNKNOWN,
     execute_code,
     extract_code,
     infer_lang,
 )
+class GetAgentModel(BaseModel):
+    name: str
+
+class DiscoverAgentModel(BaseModel):
+    query: str = None
+    category: str
+
+class DiscoverFunctionsModel(BaseModel):
+    query: str = None
+    category: str
+
+class GetFunctionsModel(BaseModel):
+    functions: List[str]
+
+class UpsertAgentModel(BaseModel):
+    name: str
+    system_message: str = None
+    function_names: List[str] = None
+    category: str = None
+    agents: List[Dict] = None
+    invitees: List[str] = None
+    
+class AddFunctionModel(BaseModel):
+    name: str
+    description: str
+    arguments: str
+    required: str
+    category: str
+    packages: str = None
+    code: str = None
+    class_name: str = None
 
 try:
     from termcolor import colored
@@ -25,14 +60,13 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-AGENT_SYSTEM_MESSAGE = """ Solve your problem step-by-step. You should leverage the functions at your disposal. 
+AGENT_SYSTEM_MESSAGE = """ Solve your problem step-by-step. You should leverage the functions at your disposal. You will auto-organize yourself via groups and discover/create agents (and within that discover/create functions) that give you new abilities. Every agent should provide unique value to a group. You may also keep yourself solo if you wish but you will be harder to discover.
 If you are working in a group for a task, make sure to send a message to the group manager to preserve global context and allow the group manager can delegate to the next agent if needed.
 You may message across groups and users to effectively solve or delegate tasks but be sure to always respond those that tasked you after you are done.
 You can invite agents to join, and they may join if they see value in joining. 
 You may also form a new group by giving a new name for a new group manager to make efficient use of context to seperate concerns during your investigation to solve the problem in a step-by-step way.
 Within a group you will know what agents exist and who the group manager is, but you are still encouraged to discover other agents to find which ones would be useful to help.
-Maximize effectiveness through organization within groups based on robustness and efficiency."""
-AGENT_REGISTRY = List[Agent]
+Maximize effectiveness through organization within groups based on robustness and efficiency. Create solid relationships with other agents which may be synergistic to your own offering. To talk or connect to the user use a UserProxyAgent. Be curious and discover your surroundings with the given functions and through communications with other agents."""
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
 
@@ -57,6 +91,7 @@ class ConversableAgent(Agent):
     def __init__(
         self,
         name: str,
+        description: str,
         system_message: Optional[str] = "You are a helpful AI Assistant.",
         is_termination_msg: Optional[Callable[[Dict], bool]] = None,
         max_consecutive_auto_reply: Optional[int] = None,
@@ -107,7 +142,7 @@ class ConversableAgent(Agent):
                 To disable llm-based auto reply, set to False.
             default_auto_reply (str or dict or None): default auto reply when no code execution or llm-based reply is generated.
         """
-        super().__init__(name)
+        super().__init__(name, description)
         # a dictionary of conversations, default value is list
         self._oai_messages = defaultdict(list)
         self._oai_system_message = [{"content": system_message + AGENT_SYSTEM_MESSAGE, "role": "system"}]
@@ -1027,11 +1062,8 @@ class ConversableAgent(Agent):
 
     def is_agent_in_group(self, agent: "ConversableAgent") -> bool:
         return False
-
-    def get_agent(self, agent_name: str) -> "ConversableAgent":
-        return AGENT_REGISTRY[agent_name] if agent_name in AGENT_REGISTRY else None
-
-    def send_message(self, message: str, recipient: str, request_reply: bool = False, **args) -> str:
+    
+    def send_message(self, message: str, recipient: str, request_reply: bool = False) -> str:
         to_agent = self.get_agent(recipient)
         if to_agent == self:
             return "Could not send message: Trying to send to self"
@@ -1043,101 +1075,359 @@ class ConversableAgent(Agent):
         self.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
         return "Sent message!"
      
-    def join_group(self, group_name: str, hello_message: str = None, **args) -> str:
+    def join_group(self, group_name: str, hello_message: str = None) -> str:
         group_manager = self.get_agent(group_name)
-        if type(group_manager) is not GroupChatManager:
+        if not isinstance(group_manager, GroupChatManager):
             return "Could not send message: group_name is not a group manager"
         if group_manager is None:
             return "Could not send message: Doesn't exists"
-        return group_manager.join_group_helper(self, hello_message)
+        result = group_manager.join_group_helper(self, hello_message)
+        agent_model = UpsertAgentModel(
+            name=group_name,
+            agents=group_manager.groupchat.agents
+        )
+        try:
+            response = requests.post(
+                url='http://fastapi_service/upsert_agent',
+                json=agent_model.dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error joining group: {e}"
+        if response.status_code != 200:
+            return f"Error joining group: {response.text}"
+
+        return result
    
-    def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None, **args) -> str:
+    def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None) -> str:
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not invite to group: Doesn't exists"
-        if type(group_manager) is not GroupChatManager:
+        if not isinstance(group_manager, GroupChatManager):
             return "Could not invite to group: group_name is not a group manager"
         agent = self.get_agent(agent_name)
-        return group_manager.invite_to_group_helper(self, agent, invite_message)
+        result = group_manager.invite_to_group_helper(self, agent, invite_message)
+        # if agents list is empty it should delete the agent
+        agent_model = UpsertAgentModel(
+            name=group_name,
+            invitees=group_manager.groupchat.invitees
+        )
+        try:
+            response = requests.post(
+                url='http://fastapi_service/upsert_agent',
+                json=agent_model.dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error inviting to group: {e}"
+        if response.status_code != 200:
+            return f"Error inviting to group: {response.text}"
 
-    def create_group(self, group_name: str, system_message: str = None, **args) -> str:
+        return result
+
+    def create_group(self, group_name: str, group_description: str, system_message: str = None) -> str:
         group_manager = self.get_agent(group_name)
         if group_manager is not None:
             return "Could not create group: Already exists"
-        groupchat = GroupChat(
-            agents=[], messages=[]
+
+        agent_model = UpsertAgentModel(
+            name=group_name,
+            description=group_description,
+            system_message=system_message,
+            category="groups",
+            agents=[],
+            invitees=[]
         )
-        AGENT_REGISTRY[group_name] = GroupChatManager(groupchat=groupchat, name=group_name, system_message=system_message)
+        try:
+            response = requests.post(
+                url='http://fastapi_service/upsert_agent',
+                json=agent_model.dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error creating group: {e}"
+        if response.status_code != 200:
+            return f"Error creating group: {response.text}"
+
+        # update agent registry based on upserted agent info from backend
+        if self.get_agent(group_name, True) is None:
+            return "Error creating group: Could fetch group after upserting to backend"
+
         return "Group created!"
 
-    def delete_group(self, group_manager: "GroupChatManager", **args) -> str:
+    def delete_group(self, group_manager: "GroupChatManager") -> str:
         del_group_error = group_manager.delete_group_helper()
         if del_group_error != "":
             return del_group_error
-        del AGENT_REGISTRY[group_manager.name]
+        AGENT_REGISTRY.pop(group_manager.name, None)
         return "Group deleted!"
 
-    def leave_group(self, group_name: str, goodbye_message: str = None, **args) -> str:
+    def leave_group(self, group_name: str, goodbye_message: str = None) -> str:
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not leave group: Doesn't exists"
-        if type(group_manager) is not GroupChatManager:
+        if not isinstance(group_manager, GroupChatManager):
             return "Could not leave group: group_name is not a group manager"
         result = group_manager.leave_group_helper(self, goodbye_message)
         if len(group_manager.groupchat.agents) == 0:
-            return self.delete_group(group_manager)
+            result = self.delete_group(group_manager)
+        
+        # if agents list is empty it should delete the agent
+        agent_model = UpsertAgentModel(
+            name=group_name,
+            agents=group_manager.groupchat.agents
+        )
+        try:
+            response = requests.post(
+                url='http://fastapi_service/upsert_agent',
+                json=agent_model.dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error leaving group: {e}"
+        if response.status_code != 200:
+            return f"Error leaving group: {response.text}"
+
         return result
 
-    def discover_agents(self, query: str = None, category: str = None, **args) -> str:
-        return "Not implemented"
 
-    def create_or_update_agent(self, name: str, system_message: str, function_names: str, category: str = None, **args) -> str:
-        json_fns = json.loads(function_names)
-        return "Not implemented"
+    def get_agent(self, agent_name: str, update: bool = False) -> "ConversableAgent":
+        agent = AGENT_REGISTRY.get(agent_name)
+        if agent is None or update is True:
+            # Assume the FastAPI endpoint is /get_agent and it returns agent details
+            try:
+                response = requests.post(
+                    url='http://fastapi_service/get_agent',
+                    json=GetAgentModel(agent_name).dict()
+                )
+                response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+            except requests.HTTPError as e:
+                return f"Error getting agent: {e}"
+            if response.status_code == 200:
+                agent_data = response.json()
+                # Check for required keys before accessing them
+                keys = ['description', 'system_message', 'functions']
+                if all(key in agent_data for key in keys):
+                    # Assuming agent_data contains 'system_message', 'description', 'functions'
+                    if 'agents' in agent_data:
+                        agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in agent_data['agents']]
+                        if agent is None:
+                            groupchat = GroupChat(
+                                agents=agents_list,
+                                invitees=agent_data['invitees'],
+                                messages=[]
+                            )
+                            agent = GroupChatManager(
+                                groupchat=groupchat,
+                                name=agent_name,
+                                description=agent_data['description'],
+                                system_message=agent_data['system_message']
+                            )
+                        else:
+                            agent.description = agent_data['description']
+                            agent.system_message = agent_data['system_message']
+                            agent.groupchat.agents = agents_list
+                            agent.groupchat.invitees = agent_data['invitees']
+                    else:
+                        if agent is None:
+                            agent = ConversableAgent(
+                                name=agent_name,
+                                description=agent_data['description'],
+                                system_message=agent_data['system_message']
+                            )
+                        else:
+                            agent.description = agent_data['description']
+                            agent.system_message = agent_data['system_message']
+                    for fn in agent_data['functions']:
+                        agent.define_function_internal(fn['name'], fn['description'], fn['arguments'], fn['required'], fn['packages'], fn['code'], fn['class_name'])
+                else:
+                    missing_keys = [key for key in keys if key not in agent_data]
+                    return f"Error: Missing keys in agent_data: {', '.join(missing_keys)}"
+                AGENT_REGISTRY[agent_name] = agent
+        return agent
 
-    def discover_functions(self, query: str = None, category: str = None, **args) -> str:
-        # return just the function descriptions and argument list
-        return "Not implemented"
+    def discover_agents(self, category: str, query: str = None) -> str:
+        # Assume the FastAPI endpoint is /discover_agents
+        try:
+            response = requests.post(
+                url='http://fastapi_service/discover_agents',
+                json=DiscoverAgentModel(query, category).dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error discovering agent: {e}"
+        if response.status_code == 200:
+            return response.json()  # Assuming it returns agent names and descriptions
+        return "Error: Unable to discover agents"
 
-    def add_functions(self, function_names: str, **args) -> str:
-        json_fns = json.loads(function_names)
-        # lookup function by name
-        # get function config and add it to llm_config
-        # register the function handler to the agent
-        return "Not implemented"
-    
-    def execute_func(self, name, packages, code, **args):
-        pip_install = f"""print("Installing package: {packages}")\nsubprocess.run(["pip", "-qq", "install", "{packages}"])""" if packages else ''
-        str = f"""
-        import subprocess
-        {pip_install}
-        print("Result of {name} function execution:")
-        {code}
-        args={args}
-        result={name}(**args)
-        if result is not None: print(result)
-        """
-        print(f"execute_code:\n{str}")
-        result = execute_code(str)[1]
+    def create_or_update_agent(self, agent_name: str, agent_description: str, system_message: str, function_names: str, category: str = None) -> str: 
+        try:
+            json_fns = json.loads(function_names)
+        except json.JSONDecodeError as e:
+            return f"Error parsing JSON function names when trying to create or update agent: {e}"
+        agent_model = UpsertAgentModel(
+            name=agent_name,
+            description=agent_description,
+            system_message=system_message,
+            function_names=json_fns,
+            category=category
+        )
+        try:
+            response = requests.post(
+                url='http://fastapi_service/upsert_agent',
+                json=agent_model.dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error creating or updating agent: {e}"
+        if response.status_code != 200:
+            return f"Error creating or updating agent: {response.text}"
+        
+        # update agent registry based on upserted agent info from backend
+        if self.get_agent(agent_name, True) is None:
+            return "Error creating or updating agent: Could not fetch agent after upserting to backend"
+
+        return "Agent created or updated successfully"
+
+    def discover_functions(self, category: str, query: str = None) -> str:
+        # Assume the FastAPI endpoint is /discover_functions
+        try:
+            response = requests.post(
+                url='http://fastapi_service/discover_functions',
+                json=DiscoverFunctionsModel(query, category).dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error discovering agent: {e}"
+        if response.status_code == 200:
+            return response.json()
+        return "Error: Unable to discover functions"
+
+    def add_functions(self, function_names: str) -> str:
+        try:
+            json_fns = json.loads(function_names)
+        except json.JSONDecodeError as e:
+            return f"Error parsing JSON when trying to add function: {e}"
+        agent_model = UpsertAgentModel(
+            name=self.name,
+            function_names=json_fns,
+        )
+        try:
+            response = requests.post(
+                url='http://fastapi_service/upsert_agent',
+                json=agent_model.dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error adding functions: {e}"
+        if response.status_code != 200:
+            return f"Error adding functions: {response.text}"
+        
+        # update agent registry based on upserted agent info from backend
+        if self.get_agent(self.name, True) is None:
+            return "Error adding functions: Could fetch agent after upserting to backend"
+
+        return "Functions added successfully"
+
+    def execute_func(self, name: str, packages: List[str], code: str, **args):
+        package_install_cmd = ' '.join(f'"{pkg}"' for pkg in packages)
+        pip_install = f'import subprocess\nsubprocess.run(["pip", "-qq", "install", {package_install_cmd}])' if packages else ''
+        str_code = f"""
+    {pip_install}
+    print("Result of {name} function execution:")
+    {code}
+    args={args}
+    result={name}(**args)
+    if result is not None: print(result)
+    """
+        print(f"execute_code:\n{str_code}")
+        result = execute_code(str_code)[1]
         print(f"Result: {result}")
         return result
 
-    def define_function(self, name, description, arguments, packages, code, required, category):
-        json_args = json.loads(arguments)
-        json_reqs = json.loads(required)
+    def define_function_internal(
+        self, 
+        name: str, 
+        description: str, 
+        json_args: Dict[str, Union[str, Dict]], 
+        json_reqs: List[str], 
+        packages: Optional[List[str]], 
+        code: str, 
+        class_name: Optional[str] = None
+        ) -> str:
         function_config = {
             "name": name,
             "description": description,
-            "parameters": { "type": "object", "properties": json_args },
+            "parameters": {"type": "object", "properties": json_args},
             "required": json_reqs,
         }
-        self.llm_config["functions"] = self.llm_config["functions"] + [function_config]
-        self.register_function(
-            function_map={
-                name: lambda **args: self.execute_func(name, packages, code, **args)
-            }
+
+        # Check if a function with the same name already exists
+        existing_function_index = next((index for (index, d) in enumerate(self.llm_config["functions"]) if d["name"] == name), None)
+
+        # If it does, update that entry; if not, append a new entry
+        if existing_function_index is not None:
+            self.llm_config["functions"][existing_function_index] = function_config
+        else:
+            self.llm_config["functions"].append(function_config)
+
+        if class_name:
+            # Assuming class_name refers to a class with a method named `name`
+            self.register_function(
+                function_map={
+                    name: lambda **args: getattr(globals()[class_name](), name)(**args)
+                }
+            )
+        else:
+            self.register_function(
+                function_map={
+                    name: lambda **args: self.execute_func(name, packages, code, **args)
+                }
+            )
+        return f"A function has been added to the context of this agent.\nDescription: {description}"
+
+    def define_function(
+        self,
+        name: str,
+        description: str,
+        arguments: str,
+        required_arguments: str,
+        packages: str,
+        code: str,
+        category: str
+    ) -> str:
+        try:
+            json_args = json.loads(arguments)
+            json_reqs = json.loads(required_arguments)
+            package_list = json.loads(packages)
+        except json.JSONDecodeError as e:
+            return f"Error parsing JSON when defining function: {e}"
+
+        result = self.define_function_internal(name, description, json_args, json_reqs, package_list, code, category)
+        
+        func_model = AddFunctionModel(
+            name=name,
+            description=description,
+            required=json_reqs,
+            arguments=json_args,
+            packages=package_list,
+            code=code,
+            category=category
         )
-        return f"A function has been added to the context of this conversation.\nDescription: {description}"
+        
+        try:
+            response = requests.post(
+                url='http://fastapi_service/add_function',
+                json=func_model.dict()
+            )
+            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+        except requests.HTTPError as e:
+            return f"Error adding function: {e}"
+
+        add_result = self.add_functions(json.dumps([name]))
+        if add_result != "Functions added successfully":
+            return add_result
+        return result
 
     def generate_init_message(self, **context) -> Union[str, Dict]:
         """Generate the initial message for the agent.
