@@ -1084,7 +1084,8 @@ class ConversableAgent(Agent):
         result = group_manager.join_group_helper(self, hello_message)
         agent_model = UpsertAgentModel(
             name=group_name,
-            agents=group_manager.groupchat.agents
+            agents=group_manager.groupchat.agents,
+            invitees=group_manager.groupchat.invitees
         )
         try:
             response = requests.post(
