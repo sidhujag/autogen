@@ -16,26 +16,13 @@ Every message sent in a group gets copied to every agent in the group. This mean
 class GroupChat:
     """A group chat class that contains the following data fields:
     - agents: a list of participating agents.
-    - messages: a list of messages in the group chat.
-    - max_round: the maximum number of rounds.
-    - admin_name: the name of the admin agent if there is one. Default is "Admin".
-        KeyBoardInterrupt will make the admin agent take over.
-    - func_call_filter: whether to enforce function call filter. Default is True.
-        When set to True and when a message is a function call suggestion,
-        the next speaker will be chosen from an agent which contains the corresponding function name
-        in its `function_map`.
+    - invitees: a list of invited agents to join group.
     """
 
     agents: List[Dict]
     invitees: List[str]
-    messages: List[Dict]
-    max_round: int = 10
-    admin_name: str = "Admin"
-    func_call_filter: bool = True
-
     def reset(self):
         """Reset the group chat."""
-        self.messages.clear()
         self.agents.clear()
         self.invitees.clear()
 
@@ -136,9 +123,8 @@ class GroupChatManager(ConversableAgent):
             messages = self._oai_messages[sender]
         message = messages[-1]
         speaker = sender
-        config.messages.append(message)
         # broadcast the message to all agents except the speaker
         for agent in config.agents:
             if agent != speaker:
                 self.send(message, agent, request_reply=False, silent=True)
-        return True, None
+        return False, None
