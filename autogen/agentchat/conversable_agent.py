@@ -184,7 +184,7 @@ class ConversableAgent(Agent):
         self.register_reply([Agent, None], ConversableAgent.generate_code_execution_reply)
         self.register_reply([Agent, None], ConversableAgent.generate_function_call_reply)
         self.register_reply([Agent, None], ConversableAgent.check_termination_and_human_reply)
-        AGENT_REGISTRY.append(self)
+        self.get_agent(self.name, True)
 
     def register_reply(
         self,
