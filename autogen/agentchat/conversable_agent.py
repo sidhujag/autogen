@@ -23,11 +23,11 @@ class GetAgentModel(BaseModel):
     name: str
 
 class DiscoverAgentModel(BaseModel):
-    query: str = None
+    query: Optional[str] = None
     category: str
 
 class DiscoverFunctionsModel(BaseModel):
-    query: str = None
+    query: Optional[str] = None
     category: str
 
 class GetFunctionsModel(BaseModel):
@@ -35,21 +35,21 @@ class GetFunctionsModel(BaseModel):
 
 class UpsertAgentModel(BaseModel):
     name: str
-    system_message: str = None
-    function_names: List[str] = None
-    category: str = None
-    agents: List[Dict] = None
-    invitees: List[str] = None
+    system_message: Optional[str] = None
+    function_names: Optional[List[str]] = None
+    category: Optional[str] = None
+    agents: Optional[List[Dict]] = None
+    invitees: Optional[List[str]] = None
     
 class AddFunctionModel(BaseModel):
     name: str
     description: str
-    arguments: str
-    required: str
+    arguments: Dict[str, Union[str, Dict]] 
+    required: List[str]
     category: str
-    packages: str = None
-    code: str = None
-    class_name: str = None
+    packages: Optional[List[str]] = None
+    code: Optional[str] = None
+    class_name: Optional[str] = None
 
 try:
     from termcolor import colored

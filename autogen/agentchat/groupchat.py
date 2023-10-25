@@ -33,14 +33,11 @@ class GroupChat:
     admin_name: str = "Admin"
     func_call_filter: bool = True
 
-    @property
-    def agent_names(self) -> List[str]:
-        """Return the names of the agents in the group chat."""
-        return [agent['name'] for agent in self.agents]
-
     def reset(self):
         """Reset the group chat."""
         self.messages.clear()
+        self.agents.clear()
+        self.invitees.clear()
 
     def _participant_roles(self):
         return "\n".join([f"{agent['name']}: {agent['description']}" for agent in self.agents])
