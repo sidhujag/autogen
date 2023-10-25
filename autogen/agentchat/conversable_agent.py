@@ -36,10 +36,10 @@ class GetFunctionsModel(BaseModel):
 class UpsertAgentModel(BaseModel):
     name: str
     system_message: Optional[str] = None
-    function_names: Optional[List[str]] = None
+    function_names: Optional[List[str]] = None # cumulative
     category: Optional[str] = None
-    agents: Optional[List[Dict]] = None
-    invitees: Optional[List[str]] = None
+    agents: Optional[List[Dict]] = None # non-cumulative
+    invitees: Optional[List[str]] = None # non-cumulative
     
 class AddFunctionModel(BaseModel):
     name: str
@@ -1108,7 +1108,6 @@ class ConversableAgent(Agent):
             return "Could not invite to group: group_name is not a group manager"
         agent = self.get_agent(agent_name)
         result = group_manager.invite_to_group_helper(self, agent, invite_message)
-        # if agents list is empty it should delete the agent
         agent_model = UpsertAgentModel(
             name=group_name,
             invitees=group_manager.groupchat.invitees
@@ -1266,6 +1265,7 @@ class ConversableAgent(Agent):
             json_fns = json.loads(function_names)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON function names when trying to create or update agent: {e}"
+        # function_names is cumulatively added
         agent_model = UpsertAgentModel(
             name=agent_name,
             description=agent_description,
@@ -1309,6 +1309,7 @@ class ConversableAgent(Agent):
             json_fns = json.loads(function_names)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when trying to add function: {e}"
+        # function_names is cumulatively added
         agent_model = UpsertAgentModel(
             name=self.name,
             function_names=json_fns,
