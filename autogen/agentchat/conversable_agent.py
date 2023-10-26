@@ -64,14 +64,11 @@ except ImportError:
 
 AGENT_REGISTRY = []
 logger = logging.getLogger(__name__)
-AGENT_SYSTEM_MESSAGE = """ Solve your problem step-by-step. You should leverage the functions at your disposal. You will auto-organize yourself via groups and discover/create agents (and within that discover/create functions) that give you new abilities. Every agent should provide unique value to a group. You may also keep yourself solo if you wish but you will be harder to discover.
-If you are working in a group for a task, make sure to send a message to the group manager to preserve global context and allow the group manager can delegate to the next agent if needed.
-You may message across groups and users to effectively solve or delegate tasks but be sure to always respond those that tasked you after you are done.
-You can invite agents to join, and they may join if they see value in joining. 
-You may also form a new group by giving a new name for a new group manager to make efficient use of context to seperate concerns during your investigation to solve the problem in a step-by-step way.
-Within a group you will know what agents exist and who the group manager is, but you are still encouraged to discover other agents to find which ones would be useful to help.
-Maximize effectiveness through organization within groups based on robustness and efficiency. Create solid relationships with other agents which may be synergistic to your own offering. To talk or connect to the user use a UserProxyAgent. Be curious and discover your surroundings with the given functions and through communications with other agents. Focus on forming hierarchical groups to minimize context window blow-up and maximize seperation of concerns. Delegate tasks to appropriate agents; give back responses when finished through hierarchy.
-Reply `TERMINATE` in the end when everything is done."""
+AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
+In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
+Invite agents to join groups if beneficial. Form new groups with distinct names and managers to efficiently manage context and address concerns during problem-solving.
+Within a group, be aware of existing agents and the manager, but continue discovering useful agents. Explore your surroundings to answer queries, like messaging the right agent, forming new groups, or adding functions to enhance your capabilities. Execute simple code within conversations when necessary, although specific coding agents handle complex tasks.
+Prioritize organization, robustness, and efficiency within groups. Build synergistic relationships with other agents. Communicate via a UserProxyAgent to interact with the user. Explore using provided functions and communication with other agents, forming hierarchical groups to manage context and delegate tasks efficiently. Respond with TERMINATE once all tasks are completed."""
 termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper()
 code_execution_config={"work_dir":"_output", "use_docker":"python:3"}
 class ConversableAgent(Agent):
