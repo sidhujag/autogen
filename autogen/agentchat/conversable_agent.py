@@ -72,7 +72,7 @@ You may message across groups and users to effectively solve or delegate tasks b
 You can invite agents to join, and they may join if they see value in joining. 
 You may also form a new group by giving a new name for a new group manager to make efficient use of context to seperate concerns during your investigation to solve the problem in a step-by-step way.
 Within a group you will know what agents exist and who the group manager is, but you are still encouraged to discover other agents to find which ones would be useful to help.
-Maximize effectiveness through organization within groups based on robustness and efficiency. Create solid relationships with other agents which may be synergistic to your own offering. To talk or connect to the user use a UserProxyAgent. Be curious and discover your surroundings with the given functions and through communications with other agents."""
+Maximize effectiveness through organization within groups based on robustness and efficiency. Create solid relationships with other agents which may be synergistic to your own offering. To talk or connect to the user use a UserProxyAgent. Be curious and discover your surroundings with the given functions and through communications with other agents. Focus on forming hierarchical groups to minimize context window blow-up and maximize seperation of concerns. Delegate tasks to appropriate agents; give back responses when finished through hierarchy."""
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
 
