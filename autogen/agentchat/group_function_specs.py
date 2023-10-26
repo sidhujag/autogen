@@ -84,8 +84,9 @@ discover_agents_spec = {
             }
         },
         "required": ["category"]
-    }
-},
+    },
+}
+
 create_or_update_agent = {
     "name": "create_or_update_agent",
     "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
@@ -111,8 +112,9 @@ create_or_update_agent = {
             }
         },
         "required": ["name"]
-    }
-},
+    },
+}
+
 discover_functions = {
     "name": "discover_functions",
     "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. An agent can add the returned function(s) via add_functions so they can subsequently be called. Function names and descriptions are returned.",
@@ -130,25 +132,27 @@ discover_functions = {
             }
         },
         "required": ["category"]
-    }
-},
+    },
+}
+
 add_functions = {
     "name": "add_functions",
-    "description": "Allows agents to add specific function ability to themselves, usually you would discover functions prior to adding.",
+    "description": "Allows agents to add specific function ability to themselves, usually you would discover functions prior to adding. Once added, the agent may decide to use this function.",
     "parameters": {
         "type": "object",
         "properties": {
             "function_names": {
                 "type": "string",
-                "description": "JSON schema of function names encoded as an array. For example: { \"required\": [ \"function1\", \"function2\"]}",
+                "description": "JSON schema of function names encoded as an array. For example: { \"functions\": [ \"function1\", \"function2\"]}",
             },
         },
         "required": []
-    }
-},
+    },
+}
+
 define_function = {
     "name": "define_function",
-    "description": "Define a function to add to the context of the conversation. Necessary Python packages must be declared. Once defined, the assistant may decide to use this function, respond with a normal message.",
+    "description": "Define a new function through python code to add to the context of the agent. Necessary Python packages must be declared. Once defined, the agent may decide to use this function, respond with a normal message.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -183,7 +187,7 @@ define_function = {
             },
         },
         "required": ["name", "description", "arguments", "code", "category"],
-    }
+    },
 }
 # Aggregate all function specs into a list for easier import
 group_function_specs = [

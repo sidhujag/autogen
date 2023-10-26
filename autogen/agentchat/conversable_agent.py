@@ -9,11 +9,10 @@ from pydantic import BaseModel
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from autogen import oai
 from .agent import Agent
-from .groupchat import GroupChatManager, GroupChat
-from group_function_specs import group_function_specs
+from .group_function_specs import group_function_specs
+AUTOGEN_BACKEND = "https://localhost:8001"
 from autogen.code_utils import (
     DEFAULT_MODEL,
-    AGENT_REGISTRY,
     UNKNOWN,
     execute_code,
     extract_code,
@@ -56,7 +55,6 @@ class AddFunctionModel(BaseModel):
     packages: Optional[List[str]] = None
     code: Optional[str] = None
     class_name: Optional[str] = None
-
 try:
     from termcolor import colored
 except ImportError:
@@ -64,7 +62,7 @@ except ImportError:
     def colored(x, *args, **kwargs):
         return x
 
-
+AGENT_REGISTRY = []
 logger = logging.getLogger(__name__)
 AGENT_SYSTEM_MESSAGE = """ Solve your problem step-by-step. You should leverage the functions at your disposal. You will auto-organize yourself via groups and discover/create agents (and within that discover/create functions) that give you new abilities. Every agent should provide unique value to a group. You may also keep yourself solo if you wish but you will be harder to discover.
 If you are working in a group for a task, make sure to send a message to the group manager to preserve global context and allow the group manager can delegate to the next agent if needed.
@@ -100,9 +98,9 @@ class ConversableAgent(Agent):
     def __init__(
         self,
         name: str,
-        description: str,
-        api_key: str,
-        user_id: str,
+        description: Optional[str] = "",
+        api_key: Optional[str] = "",
+        user_id: Optional[str] = "",
         system_message: Optional[str] = "You are a helpful AI Assistant.",
         is_termination_msg: Optional[Callable[[Dict], bool]] = termination_msg,
         max_consecutive_auto_reply: Optional[int] = None,
@@ -166,7 +164,8 @@ class ConversableAgent(Agent):
             self.llm_config = self.DEFAULT_CONFIG.copy()
             if isinstance(llm_config, dict):
                 self.llm_config.update(llm_config)
-
+        if api_key:
+            self.llm_config["api_key"] = self.api_key
         self._code_execution_config = {} if code_execution_config is None else code_execution_config
         self.human_input_mode = human_input_mode
         self._max_consecutive_auto_reply = (
@@ -195,8 +194,13 @@ class ConversableAgent(Agent):
         self.register_reply([Agent, None], ConversableAgent.generate_code_execution_reply)
         self.register_reply([Agent, None], ConversableAgent.generate_function_call_reply)
         self.register_reply([Agent, None], ConversableAgent.check_termination_and_human_reply)
-        AGENT_REGISTRY.append(self)
+        self.register_agent(self)
 
+    def register_agent(self, agent: "ConversableAgent"):
+        if not isinstance(agent, ConversableAgent):
+            raise ValueError("Only instances of ConversableAgent can be registered.")
+        AGENT_REGISTRY.append(agent)
+        
     def register_reply(
         self,
         trigger: Union[Type[Agent], str, Agent, Callable[[Agent], bool], List],
@@ -1075,10 +1079,11 @@ class ConversableAgent(Agent):
         return False
     
     def send_message(self, message: str, recipient: str, request_reply: bool = False) -> str:
+        from . import GroupChatManager
         to_agent = self.get_agent(recipient)
         if to_agent == self:
             return "Could not send message: Trying to send to self"
-        if type(to_agent) is GroupChatManager:
+        if isinstance(to_agent, GroupChatManager):
             # group manager should get a response so he can delegate further
             request_reply = True
             if to_agent.is_agent_in_group(self) is False:
@@ -1087,6 +1092,7 @@ class ConversableAgent(Agent):
         return "Sent message!"
      
     def join_group(self, group_name: str, hello_message: str = None) -> str:
+        from . import GroupChatManager
         group_manager = self.get_agent(group_name)
         if not isinstance(group_manager, GroupChatManager):
             return "Could not send message: group_name is not a group manager"
@@ -1102,7 +1108,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url='http://fastapi_service/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1114,6 +1120,7 @@ class ConversableAgent(Agent):
         return result
    
     def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None) -> str:
+        from . import GroupChatManager
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not invite to group: Doesn't exists"
@@ -1129,7 +1136,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url='http://fastapi_service/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1157,7 +1164,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url='http://fastapi_service/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1172,7 +1179,7 @@ class ConversableAgent(Agent):
 
         return "Group created!"
 
-    def delete_group(self, group_manager: "GroupChatManager") -> str:
+    def delete_group(self, group_manager) -> str:
         del_group_error = group_manager.delete_group_helper()
         if del_group_error != "":
             return del_group_error
@@ -1180,6 +1187,7 @@ class ConversableAgent(Agent):
         return "Group deleted!"
 
     def leave_group(self, group_name: str, goodbye_message: str = None) -> str:
+        from . import GroupChatManager
         group_manager = self.get_agent(group_name)
         if group_manager is None:
             return "Could not leave group: Doesn't exists"
@@ -1198,7 +1206,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url='http://fastapi_service/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1211,12 +1219,13 @@ class ConversableAgent(Agent):
 
 
     def get_agent(self, agent_name: str, update: bool = False) -> "ConversableAgent":
+        from . import GroupChatManager, GroupChat
         agent = AGENT_REGISTRY.get(agent_name)
         if agent is None or update is True:
             # Assume the FastAPI endpoint is /get_agent and it returns agent details
             try:
                 response = requests.post(
-                    url='http://fastapi_service/get_agent',
+                    url=f'http://{AUTOGEN_BACKEND}/get_agent',
                     json=GetAgentModel(agent_name).dict()
                 )
                 response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1272,8 +1281,11 @@ class ConversableAgent(Agent):
         # Assume the FastAPI endpoint is /discover_agents
         try:
             response = requests.post(
-                url='http://fastapi_service/discover_agents',
-                json=DiscoverAgentsModel(query, category, self.user_id, self.api_key).dict()
+                url=f'http://{AUTOGEN_BACKEND}/discover_agents',
+                json=DiscoverAgentsModel(query=query,
+                                         category=category,
+                                         user_id=self.user_id,
+                                         api_key=self.api_key).dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
         except requests.HTTPError as e:
@@ -1299,7 +1311,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url='http://fastapi_service/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1318,8 +1330,11 @@ class ConversableAgent(Agent):
         # Assume the FastAPI endpoint is /discover_functions
         try:
             response = requests.post(
-                url='http://fastapi_service/discover_functions',
-                json=DiscoverFunctionsModel(query, category, self.user_id, self.api_key).dict()
+                url=f'http://{AUTOGEN_BACKEND}/discover_functions',
+                json=DiscoverFunctionsModel(query=query,
+                                            category=category,
+                                            user_id=self.user_id,
+                                            api_key=self.api_key).dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
         except requests.HTTPError as e:
@@ -1342,7 +1357,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url='http://fastapi_service/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1452,7 +1467,7 @@ class ConversableAgent(Agent):
         
         try:
             response = requests.post(
-                url='http://fastapi_service/add_function',
+                url=f'http://{AUTOGEN_BACKEND}/add_function',
                 json=func_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)

@@ -55,11 +55,11 @@ Reply "TERMINATE" in the end when everything is done.
                 [ConversableAgent](conversable_agent#__init__).
         """
         super().__init__(
-            name,
-            system_message,
-            is_termination_msg,
-            max_consecutive_auto_reply,
-            human_input_mode,
+            name=name,
+            system_message=system_message,
+            is_termination_msg=is_termination_msg,
+            max_consecutive_auto_reply=max_consecutive_auto_reply,
+            human_input_mode=human_input_mode,
             code_execution_config=code_execution_config,
             llm_config=llm_config,
             **kwargs,

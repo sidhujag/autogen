@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 import sys
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union
 from .agent import Agent
-from .conversable_agent import ConversableAgent
 import logging
-
+from . import ConversableAgent
 logger = logging.getLogger(__name__)
 
 GROUP_MANAGER_SYSTEM_MESSAGE = """ As a group manager you should keep sending messages to relevant agents in your group until you are completely satisfied of your answer and result or are waiting on results from other agents. 
