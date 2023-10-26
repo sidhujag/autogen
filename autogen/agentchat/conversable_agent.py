@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from autogen import oai
 from .agent import Agent
 from .group_function_specs import group_function_specs
-AUTOGEN_BACKEND = "https://localhost:8001"
+AUTOGEN_BACKEND = "127.0.0.1:8001"
 from autogen.code_utils import (
     DEFAULT_MODEL,
     UNKNOWN,
@@ -62,7 +62,7 @@ except ImportError:
     def colored(x, *args, **kwargs):
         return x
 
-AGENT_REGISTRY = []
+AGENT_REGISTRY = {}
 logger = logging.getLogger(__name__)
 AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
 In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
@@ -196,7 +196,7 @@ class ConversableAgent(Agent):
     def register_agent(self, agent: "ConversableAgent"):
         if not isinstance(agent, ConversableAgent):
             raise ValueError("Only instances of ConversableAgent can be registered.")
-        AGENT_REGISTRY.append(agent)
+        AGENT_REGISTRY[agent.name] = agent
         
     def register_reply(
         self,
@@ -1088,18 +1088,18 @@ class ConversableAgent(Agent):
         self.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
         return "Sent message!"
      
-    def join_group(self, group_name: str, hello_message: str = None) -> str:
+    def join_group(self, group_manager_name: str, hello_message: str = None) -> str:
         from . import GroupChatManager
-        group_manager = self.get_agent(group_name)
+        group_manager = self.get_agent(group_manager_name)
         if not isinstance(group_manager, GroupChatManager):
-            return "Could not send message: group_name is not a group manager"
+            return "Could not send message: group_manager_name is not a group manager"
         if group_manager is None:
             return "Could not send message: Doesn't exists"
         result = group_manager.join_group_helper(self, hello_message)
         agent_model = UpsertAgentModel(
             user_id=self.user_id,
             api_key=self.api_key,
-            name=group_name,
+            name=group_manager_name,
             agents=group_manager.groupchat.agents,
             invitees=group_manager.groupchat.invitees
         )
@@ -1116,19 +1116,19 @@ class ConversableAgent(Agent):
 
         return result
    
-    def invite_to_group(self, agent_name: str, group_name: str, invite_message: str = None) -> str:
+    def invite_to_group(self, agent_name: str, group_manager_name: str, invite_message: str = None) -> str:
         from . import GroupChatManager
-        group_manager = self.get_agent(group_name)
+        group_manager = self.get_agent(group_manager_name)
         if group_manager is None:
             return "Could not invite to group: Doesn't exists"
         if not isinstance(group_manager, GroupChatManager):
-            return "Could not invite to group: group_name is not a group manager"
+            return "Could not invite to group: group_manager_name is not a group manager"
         agent = self.get_agent(agent_name)
         result = group_manager.invite_to_group_helper(self, agent, invite_message)
         agent_model = UpsertAgentModel(
             user_id=self.user_id,
             api_key=self.api_key,
-            name=group_name,
+            name=group_manager_name,
             invitees=group_manager.groupchat.invitees
         )
         try:
@@ -1144,15 +1144,15 @@ class ConversableAgent(Agent):
 
         return result
 
-    def create_group(self, group_name: str, group_description: str, system_message: str = None) -> str:
-        group_manager = self.get_agent(group_name)
+    def create_group(self, group_manager_name: str, group_description: str, system_message: str = None) -> str:
+        group_manager = self.get_agent(group_manager_name)
         if group_manager is not None:
             return "Could not create group: Already exists"
 
         agent_model = UpsertAgentModel(
             user_id=self.user_id,
             api_key=self.api_key,
-            name=group_name,
+            name=group_manager_name,
             description=group_description,
             system_message=system_message,
             category="groups",
@@ -1171,7 +1171,7 @@ class ConversableAgent(Agent):
             return f"Error creating group: {response.text}"
 
         # update agent registry based on upserted agent info from backend
-        if self.get_agent(group_name, True) is None:
+        if self.get_agent(group_manager_name, True) is None:
             return "Error creating group: Could fetch group after upserting to backend"
 
         return "Group created!"
@@ -1180,16 +1180,16 @@ class ConversableAgent(Agent):
         del_group_error = group_manager.delete_group_helper()
         if del_group_error != "":
             return del_group_error
-        AGENT_REGISTRY.pop(group_manager.name, None)
+        del AGENT_REGISTRY[group_manager.name]
         return "Group deleted!"
 
-    def leave_group(self, group_name: str, goodbye_message: str = None) -> str:
+    def leave_group(self, group_manager_name: str, goodbye_message: str = None) -> str:
         from . import GroupChatManager
-        group_manager = self.get_agent(group_name)
+        group_manager = self.get_agent(group_manager_name)
         if group_manager is None:
             return "Could not leave group: Doesn't exists"
         if not isinstance(group_manager, GroupChatManager):
-            return "Could not leave group: group_name is not a group manager"
+            return "Could not leave group: group_manager_name is not a group manager"
         result = group_manager.leave_group_helper(self, goodbye_message)
         if len(group_manager.groupchat.agents) == 0:
             result = self.delete_group(group_manager)
@@ -1198,7 +1198,7 @@ class ConversableAgent(Agent):
         agent_model = UpsertAgentModel(
             user_id=self.user_id,
             api_key=self.api_key,
-            name=group_name,
+            name=group_manager_name,
             agents=group_manager.groupchat.agents
         )
         try:
@@ -1217,7 +1217,7 @@ class ConversableAgent(Agent):
 
     def get_agent(self, agent_name: str, update: bool = False) -> "ConversableAgent":
         from . import GroupChatManager, GroupChat
-        agent = AGENT_REGISTRY.get(agent_name)
+        agent: ConversableAgent = AGENT_REGISTRY.get(agent_name)
         if agent is None or update is True:
             # Assume the FastAPI endpoint is /get_agent and it returns agent details
             try:
@@ -1245,6 +1245,8 @@ class ConversableAgent(Agent):
                                 messages=[]
                             )
                             agent = GroupChatManager(
+                                user_id=self.user_id,
+                                api_key=self.api_key,
                                 groupchat=groupchat,
                                 name=agent_name,
                                 description=agent_data['description'],
@@ -1255,9 +1257,13 @@ class ConversableAgent(Agent):
                             agent.system_message = agent_data['system_message']
                             agent.groupchat.agents = agents_list
                             agent.groupchat.invitees = agent_data['invitees']
+                            agent.user_id = self.user_id
+                            agent.api_key = self.api_key
                     else:
                         if agent is None:
                             agent = ConversableAgent(
+                                user_id=self.user_id,
+                                api_key=self.api_key,
                                 name=agent_name,
                                 description=agent_data['description'],
                                 system_message=agent_data['system_message']
@@ -1265,7 +1271,9 @@ class ConversableAgent(Agent):
                         else:
                             agent.description = agent_data['description']
                             agent.system_message = agent_data['system_message']
-                        agent.code_execution_config["work_dir"] = self.user_id
+                            agent.user_id = self.user_id
+                            agent.api_key = self.api_key
+                        agent._code_execution_config["work_dir"] = self.user_id
                     for fn in agent_data['functions']:
                         agent.define_function_internal(fn['name'], fn['description'], fn['arguments'], fn['code'], fn['required'], fn['packages'], fn['class_name'])
                 else:

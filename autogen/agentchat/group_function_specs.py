@@ -19,10 +19,10 @@ join_group_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "group_name": {"type": "string", "description": "The name of the group to join."},
+            "group_manager_name": {"type": "string", "description": "The name of the group manager who manages the group."},
             "hello_message": {"type": "string", "description": "A welcome message, if any. Maybe describe your skills and invite others to send you a message so you can solve a task for the group."}
         },
-        "required": ["group_name"],
+        "required": ["group_manager_name"],
     },
 }
 
@@ -33,10 +33,10 @@ invite_to_group_spec = {
         "type": "object",
         "properties": {
             "agent_name": {"type": "string", "description": "The name of the agent to invite."},
-            "group_name": {"type": "string", "description": "The name of the group."},
+            "group_manager_name": {"type": "string", "description": "The name of the group manager who manages the group."},
             "invite_message": {"type": "string", "description": "An invitation message, if any. The receiving agent does not have to join but usually will as he is invited for his specific skills."}
         },
-        "required": ["agent_name", "group_name"],
+        "required": ["agent_name", "group_manager_name"],
     },
 }
 
@@ -46,11 +46,11 @@ create_group_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "group_name": {"type": "string", "description": "The name of the new group."},
+            "group_manager_name": {"type": "string", "description": "The name of the new group manager who will manage the group."},
             "group_description": {"type": "string", "description": "Short description of the new group."},
             "system_message": {"type": "string", "description": "A system message for the new group, if any."}
         },
-        "required": ["group_name", "group_description"],
+        "required": ["group_manager_name", "group_description"],
     },
 }
 
@@ -60,10 +60,10 @@ leave_group_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "group_name": {"type": "string", "description": "The name of the group to leave. If you are the last agent to leave, the group gets deleted automatically."},
+            "group_manager_name": {"type": "string", "description": "The name of the group manager who manages the group. If you are the last agent to leave, the group gets deleted automatically."},
             "goodbye_message": {"type": "string", "description": "A farewell message, if any."}
         },
-        "required": ["group_name"],
+        "required": ["group_manager_name"],
     },
 }
 

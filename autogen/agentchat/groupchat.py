@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Union
 from .agent import Agent
 import logging
 from . import ConversableAgent
+from .conversable_agent import AGENT_REGISTRY
+
 logger = logging.getLogger(__name__)
 
 GROUP_MANAGER_SYSTEM_MESSAGE = """ As a group manager, continuously message relevant agents in your group until satisfied with the results or awaiting responses. Delegate tasks to agents sequentially based on your plan, informing the initiating agent once all tasks are complete. Communication halts if you stop messaging until a human or another agent messages you. Note: All messages in a group are shared with every agent, increasing context window requirements and inferencing costs with more communication and content."""
@@ -46,6 +48,7 @@ class GroupChatManager(ConversableAgent):
             system_message=system_message + GROUP_MANAGER_SYSTEM_MESSAGE,
             **kwargs,
         )
+        self.groupchat = groupchat
         self.register_reply(Agent, GroupChatManager.run_chat, config=groupchat, reset_config=GroupChat.reset)
         # self._random = random.Random(seed)
 
@@ -119,8 +122,9 @@ class GroupChatManager(ConversableAgent):
         message = messages[-1]
         speaker = sender
         # broadcast the message to all agents except the speaker
-        for agent in config.agents:
-            if agent != speaker:
+        for agentObj in config.agents:
+            agent = AGENT_REGISTRY.get(agentObj["name"])
+            if agent and agent != speaker:
                 self.send(message, agent, request_reply=False, silent=True)
         # this should be the first callback so let the rest of the callbacks run, at the end AI can reply if it gets there
         return False, None
