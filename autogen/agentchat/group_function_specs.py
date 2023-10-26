@@ -76,7 +76,7 @@ discover_agents_spec = {
             "category": {
                 "type": "string",
                 "description": "A category to filter agents based on predefined categories. To find group managers (group admins) use groups category (if not in group then subsequently can try to join these groups by getting an invite from someone in the group including group manager). ",
-                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "groups"]
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "groups"]
             },
             "query": {
                 "type": "string",
@@ -182,7 +182,7 @@ define_function = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             },
         },
-        "required": ["name", "description", "arguments", "packages", "code", "category"],
+        "required": ["name", "description", "arguments", "code", "category"],
     }
 }
 # Aggregate all function specs into a list for easier import

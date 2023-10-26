@@ -22,19 +22,23 @@ from autogen.code_utils import (
 class GetAgentModel(BaseModel):
     name: str
 
-class DiscoverAgentModel(BaseModel):
+class DiscoverAgentsModel(BaseModel):
     query: Optional[str] = None
     category: str
+    user_id: str
+    api_key: str
 
 class DiscoverFunctionsModel(BaseModel):
     query: Optional[str] = None
     category: str
-
-class GetFunctionsModel(BaseModel):
-    functions: List[str]
+    user_id: str
+    api_key: str
 
 class UpsertAgentModel(BaseModel):
     name: str
+    user_id: str
+    api_key: str
+    description: Optional[str] = None
     system_message: Optional[str] = None
     function_names: Optional[List[str]] = None # cumulative
     category: Optional[str] = None
@@ -43,6 +47,8 @@ class UpsertAgentModel(BaseModel):
     
 class AddFunctionModel(BaseModel):
     name: str
+    user_id: str
+    api_key: str
     description: str
     arguments: Dict[str, Union[str, Dict]] 
     required: List[str]
@@ -92,6 +98,8 @@ class ConversableAgent(Agent):
         self,
         name: str,
         description: str,
+        api_key: str,
+        user_id: str,
         system_message: Optional[str] = "You are a helpful AI Assistant.",
         is_termination_msg: Optional[Callable[[Dict], bool]] = None,
         max_consecutive_auto_reply: Optional[int] = None,
@@ -142,7 +150,7 @@ class ConversableAgent(Agent):
                 To disable llm-based auto reply, set to False.
             default_auto_reply (str or dict or None): default auto reply when no code execution or llm-based reply is generated.
         """
-        super().__init__(name, description)
+        super().__init__(name, description, api_key, user_id)
         # a dictionary of conversations, default value is list
         self._oai_messages = defaultdict(list)
         self._oai_system_message = [{"content": system_message + AGENT_SYSTEM_MESSAGE, "role": "system"}]
@@ -1083,6 +1091,8 @@ class ConversableAgent(Agent):
             return "Could not send message: Doesn't exists"
         result = group_manager.join_group_helper(self, hello_message)
         agent_model = UpsertAgentModel(
+            user_id=self.user_id,
+            api_key=self.api_key,
             name=group_name,
             agents=group_manager.groupchat.agents,
             invitees=group_manager.groupchat.invitees
@@ -1109,6 +1119,8 @@ class ConversableAgent(Agent):
         agent = self.get_agent(agent_name)
         result = group_manager.invite_to_group_helper(self, agent, invite_message)
         agent_model = UpsertAgentModel(
+            user_id=self.user_id,
+            api_key=self.api_key,
             name=group_name,
             invitees=group_manager.groupchat.invitees
         )
@@ -1131,6 +1143,8 @@ class ConversableAgent(Agent):
             return "Could not create group: Already exists"
 
         agent_model = UpsertAgentModel(
+            user_id=self.user_id,
+            api_key=self.api_key,
             name=group_name,
             description=group_description,
             system_message=system_message,
@@ -1174,6 +1188,8 @@ class ConversableAgent(Agent):
         
         # if agents list is empty it should delete the agent
         agent_model = UpsertAgentModel(
+            user_id=self.user_id,
+            api_key=self.api_key,
             name=group_name,
             agents=group_manager.groupchat.agents
         )
@@ -1205,11 +1221,13 @@ class ConversableAgent(Agent):
                 return f"Error getting agent: {e}"
             if response.status_code == 200:
                 agent_data = response.json()
+                if len(agent_data["name"]) == 0:
+                    return None
                 # Check for required keys before accessing them
                 keys = ['description', 'system_message', 'functions']
                 if all(key in agent_data for key in keys):
                     # Assuming agent_data contains 'system_message', 'description', 'functions'
-                    if 'agents' in agent_data:
+                    if 'agents' in agent_data and len(agent_data['agents']) > 0:
                         agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in agent_data['agents']]
                         if agent is None:
                             groupchat = GroupChat(
@@ -1239,7 +1257,7 @@ class ConversableAgent(Agent):
                             agent.description = agent_data['description']
                             agent.system_message = agent_data['system_message']
                     for fn in agent_data['functions']:
-                        agent.define_function_internal(fn['name'], fn['description'], fn['arguments'], fn['required'], fn['packages'], fn['code'], fn['class_name'])
+                        agent.define_function_internal(fn['name'], fn['description'], fn['arguments'], fn['code'], fn['required'], fn['packages'], fn['class_name'])
                 else:
                     missing_keys = [key for key in keys if key not in agent_data]
                     return f"Error: Missing keys in agent_data: {', '.join(missing_keys)}"
@@ -1251,7 +1269,7 @@ class ConversableAgent(Agent):
         try:
             response = requests.post(
                 url='http://fastapi_service/discover_agents',
-                json=DiscoverAgentModel(query, category).dict()
+                json=DiscoverAgentsModel(query, category, self.user_id, self.api_key).dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
         except requests.HTTPError as e:
@@ -1267,6 +1285,8 @@ class ConversableAgent(Agent):
             return f"Error parsing JSON function names when trying to create or update agent: {e}"
         # function_names is cumulatively added
         agent_model = UpsertAgentModel(
+            user_id=self.user_id,
+            api_key=self.api_key,
             name=agent_name,
             description=agent_description,
             system_message=system_message,
@@ -1295,7 +1315,7 @@ class ConversableAgent(Agent):
         try:
             response = requests.post(
                 url='http://fastapi_service/discover_functions',
-                json=DiscoverFunctionsModel(query, category).dict()
+                json=DiscoverFunctionsModel(query, category, self.user_id, self.api_key).dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
         except requests.HTTPError as e:
@@ -1311,6 +1331,8 @@ class ConversableAgent(Agent):
             return f"Error parsing JSON when trying to add function: {e}"
         # function_names is cumulatively added
         agent_model = UpsertAgentModel(
+            user_id=self.user_id,
+            api_key=self.api_key,
             name=self.name,
             function_names=json_fns,
         )
@@ -1331,9 +1353,9 @@ class ConversableAgent(Agent):
 
         return "Functions added successfully"
 
-    def execute_func(self, name: str, packages: List[str], code: str, **args):
+    def execute_func(self, name: str, code: str, packages: List[str], **args):
         package_install_cmd = ' '.join(f'"{pkg}"' for pkg in packages)
-        pip_install = f'import subprocess\nsubprocess.run(["pip", "-qq", "install", {package_install_cmd}])' if packages else ''
+        pip_install = f'import subprocess\nsubprocess.run(["pip", "-qq", "install", {package_install_cmd}])' if len(packages) > 0 else ''
         str_code = f"""
     {pip_install}
     print("Result of {name} function execution:")
@@ -1351,11 +1373,11 @@ class ConversableAgent(Agent):
         self, 
         name: str, 
         description: str, 
-        json_args: Dict[str, Union[str, Dict]], 
-        json_reqs: List[str], 
-        packages: Optional[List[str]], 
+        json_args: Dict[str, Union[str, Dict]],
         code: str, 
-        class_name: Optional[str] = None
+        json_reqs: List[str],
+        packages: List[str],
+        class_name: str = None
         ) -> str:
         function_config = {
             "name": name,
@@ -1383,7 +1405,7 @@ class ConversableAgent(Agent):
         else:
             self.register_function(
                 function_map={
-                    name: lambda **args: self.execute_func(name, packages, code, **args)
+                    name: lambda **args: self.execute_func(name, code, packages, **args)
                 }
             )
         return f"A function has been added to the context of this agent.\nDescription: {description}"
@@ -1392,27 +1414,34 @@ class ConversableAgent(Agent):
         self,
         name: str,
         description: str,
-        arguments: str,
-        required_arguments: str,
-        packages: str,
+        category: str,
         code: str,
-        category: str
+        arguments: str,
+        required_arguments: str = None,
+        packages: str = None
     ) -> str:
+        json_args = None
+        json_reqs = None
+        package_list = None
         try:
             json_args = json.loads(arguments)
-            json_reqs = json.loads(required_arguments)
-            package_list = json.loads(packages)
+            if required_arguments:
+                json_reqs = json.loads(required_arguments)
+            if packages:
+                package_list = json.loads(packages)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when defining function: {e}"
 
-        result = self.define_function_internal(name, description, json_args, json_reqs, package_list, code, category)
+        result = self.define_function_internal(name, description, json_args, code, json_reqs, package_list)
         
         func_model = AddFunctionModel(
+            user_id=self.user_id,
+            api_key=self.api_key,
             name=name,
             description=description,
-            required=json_reqs,
+            required=json_reqs if json_reqs else None,
             arguments=json_args,
-            packages=package_list,
+            packages=package_list if package_list else None,
             code=code,
             category=category
         )

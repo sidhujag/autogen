@@ -127,4 +127,5 @@ class GroupChatManager(ConversableAgent):
         for agent in config.agents:
             if agent != speaker:
                 self.send(message, agent, request_reply=False, silent=True)
+        # this should be the first callback so let the rest of the callbacks run, at the end AI can reply if it gets there
         return False, None
