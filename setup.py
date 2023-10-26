@@ -19,6 +19,10 @@ install_requires = [
     "termcolor",
     "flaml",
     "python-dotenv",
+    "fastapi",
+    "uvicorn",
+    "gunicorn"
+    
 ]
 
 
