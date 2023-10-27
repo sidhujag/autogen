@@ -57,6 +57,7 @@ setuptools.setup(
             "sympy",
             "tiktoken",
             "wolframalpha",
+            "qdrant_client[fastembed]",
         ],
         "blendsearch": ["flaml[blendsearch]"],
         "mathchat": ["sympy", "pydantic==1.10.9", "wolframalpha"],
