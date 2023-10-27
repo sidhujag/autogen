@@ -103,7 +103,7 @@ create_or_update_agent = {
             },
             "function_names": {
                 "type": "string",
-                "description": "JSON schema of function names encoded as an array. For example: { \"required\": [ \"function1\", \"function2\"]}",
+                "description": "JSON schema of function names encoded as an array. For example: [\"function1\", \"function2\"]",
             },
             "category": {
                 "type": "string",
@@ -143,7 +143,7 @@ add_functions = {
         "properties": {
             "function_names": {
                 "type": "string",
-                "description": "JSON schema of function names encoded as an array. For example: { \"functions\": [ \"function1\", \"function2\"]}",
+                "description": "JSON schema of function names encoded as an array. For example: [\"function1\", \"function2\"]",
             },
         },
         "required": []
@@ -170,11 +170,11 @@ define_function = {
             },
             "required_arguments": {
                 "type": "string",
-                "description": "JSON schema of required arguments encoded as an array. For example: { \"required\": [ \"argument1\", \"argument2\"]}",
+                "description": "JSON schema of required arguments encoded as an array. For example: [\"argument1\", \"argument2\"]",
             },
             "packages": {
                 "type": "string",
-                "description": "JSON schema of required packages names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError.",
+                "description": "JSON schema of required packages names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. For example: [\"package1\", \"package2\"]",
             },
             "code": {
                 "type": "string",
@@ -186,7 +186,7 @@ define_function = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             },
         },
-        "required": ["name", "description", "arguments", "code", "category"],
+        "required": ["name", "description", "code", "category"],
     },
 }
 # Aggregate all function specs into a list for easier import

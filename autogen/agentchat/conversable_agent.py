@@ -20,6 +20,7 @@ from autogen.code_utils import (
 )
 class GetAgentModel(BaseModel):
     name: str
+    user_id: str
 
 class DiscoverAgentsModel(BaseModel):
     query: Optional[str] = None
@@ -41,20 +42,21 @@ class UpsertAgentModel(BaseModel):
     system_message: Optional[str] = None
     function_names: Optional[List[str]] = None # cumulative
     category: Optional[str] = None
-    agents: Optional[List[Dict]] = None # non-cumulative
-    invitees: Optional[List[str]] = None # non-cumulative
+    agents: Optional[List[Dict]] = None
+    invitees: Optional[List[str]] = None
     
 class AddFunctionModel(BaseModel):
     name: str
     user_id: str
     api_key: str
     description: str
-    arguments: Dict[str, Union[str, Dict]] 
-    required: List[str]
+    arguments: Dict[str, Union[str, Dict]] = None
+    required: List[str] = None
     category: str
     packages: Optional[List[str]] = None
     code: Optional[str] = None
     class_name: Optional[str] = None
+
 try:
     from termcolor import colored
 except ImportError:
@@ -67,7 +69,8 @@ logger = logging.getLogger(__name__)
 AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
 In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
 Invite agents to join groups if beneficial. Form new groups with distinct names and managers to efficiently manage context and address concerns during problem-solving.
-Within a group, be aware of existing agents and the manager, but continue discovering useful agents. Explore your surroundings to answer queries, like messaging the right agent, forming new groups, or adding functions to enhance your capabilities. Execute simple code within conversations when necessary, although specific coding agents handle complex tasks.
+Within a group, be aware of existing agents and the manager, but continue discovering useful agents. Explore your surroundings to answer queries, like messaging the right agent, forming new groups, or adding functions to enhance your capabilities. Create and execute simple code within conversations when necessary, although specific coding agents handle complex tasks.
+There usually is an agent or function available for almost anything you want to do, but if not then define new functions for generic code that may be useful. Similarily, define new agents for generic roles that are missing.
 Prioritize organization, robustness, and efficiency within groups. Build synergistic relationships with other agents. Communicate via a UserProxyAgent to interact with the user. Explore using provided functions and communication with other agents, forming hierarchical groups to manage context and delegate tasks efficiently. Respond with TERMINATE once all tasks are completed."""
 termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper()
 code_execution_config={"work_dir":"_output", "use_docker":"python:3"}
@@ -155,14 +158,14 @@ class ConversableAgent(Agent):
         self._is_termination_msg = (
             is_termination_msg if is_termination_msg is not None else (lambda x: x.get("content") == "TERMINATE")
         )
-        if llm_config is False:
+        if llm_config is False and api_key == "":
             self.llm_config = False
         else:
             self.llm_config = self.DEFAULT_CONFIG.copy()
             if isinstance(llm_config, dict):
                 self.llm_config.update(llm_config)
-        if api_key:
             self.llm_config["api_key"] = self.api_key
+
         self._code_execution_config = {} if code_execution_config is None else code_execution_config
         self.human_input_mode = human_input_mode
         self._max_consecutive_auto_reply = (
@@ -576,6 +579,22 @@ class ConversableAgent(Agent):
         if clear_history:
             self.clear_history(recipient)
             recipient.clear_history(self)
+
+    def prepare_agents(
+        self,
+    ):
+        from . import GroupChatManager
+        for agent in AGENT_REGISTRY.values():
+            print(f'agent {agent.name}')
+            if isinstance(agent, GroupChatManager):
+                res = self.create_group(agent.name, agent.description, agent.system_message, True)
+                if res != "Group created!":
+                    print(f'Oops! group: {agent.name} was not created properly: {res}')
+            elif isinstance(agent, ConversableAgent):
+                res = self.create_or_update_agent(agent.name, agent.description, agent.system_message, "[]", "planning")
+                if res != "Agent created or updated successfully":
+                    print(f'Oops! agent: {agent.name} was not created properly: {res}')
+                
 
     def initiate_chat(
         self,
@@ -1105,7 +1124,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1133,7 +1152,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1144,24 +1163,22 @@ class ConversableAgent(Agent):
 
         return result
 
-    def create_group(self, group_manager_name: str, group_description: str, system_message: str = None) -> str:
+    def create_group(self, group_manager_name: str, group_description: str, system_message: str = None, force: bool = False) -> str:
         group_manager = self.get_agent(group_manager_name)
-        if group_manager is not None:
+        if group_manager is not None and force == False:
             return "Could not create group: Already exists"
-
         agent_model = UpsertAgentModel(
             user_id=self.user_id,
             api_key=self.api_key,
             name=group_manager_name,
             description=group_description,
             system_message=system_message,
-            category="groups",
-            agents=[],
-            invitees=[]
+            category="groups"
         )
+        print(f'create_group agent_model {agent_model.dict()}')
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1172,7 +1189,7 @@ class ConversableAgent(Agent):
 
         # update agent registry based on upserted agent info from backend
         if self.get_agent(group_manager_name, True) is None:
-            return "Error creating group: Could fetch group after upserting to backend"
+            return "Error creating group: Could not fetch group after upserting to backend"
 
         return "Group created!"
 
@@ -1203,7 +1220,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1222,14 +1239,15 @@ class ConversableAgent(Agent):
             # Assume the FastAPI endpoint is /get_agent and it returns agent details
             try:
                 response = requests.post(
-                    url=f'http://{AUTOGEN_BACKEND}/get_agent',
-                    json=GetAgentModel(agent_name).dict()
+                    url=f'http://{AUTOGEN_BACKEND}/get_agent/',
+                    json=GetAgentModel(name=agent_name,
+                                       user_id=self.user_id).dict()
                 )
                 response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
             except requests.HTTPError as e:
                 return f"Error getting agent: {e}"
             if response.status_code == 200:
-                agent_data = response.json()
+                agent_data = response.json()["response"]
                 if len(agent_data["name"]) == 0:
                     return None
                 # Check for required keys before accessing them
@@ -1237,6 +1255,7 @@ class ConversableAgent(Agent):
                 if all(key in agent_data for key in keys):
                     # Assuming agent_data contains 'system_message', 'description', 'functions'
                     if 'agents' in agent_data and len(agent_data['agents']) > 0:
+                        print(f'get_agent agent_data {agent_data["agents"]}')
                         agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in agent_data['agents']]
                         if agent is None:
                             groupchat = GroupChat(
@@ -1254,7 +1273,7 @@ class ConversableAgent(Agent):
                             )
                         else:
                             agent.description = agent_data['description']
-                            agent.system_message = agent_data['system_message']
+                            agent.update_system_message(agent_data['system_message'])
                             agent.groupchat.agents = agents_list
                             agent.groupchat.invitees = agent_data['invitees']
                             agent.user_id = self.user_id
@@ -1270,7 +1289,7 @@ class ConversableAgent(Agent):
                             )
                         else:
                             agent.description = agent_data['description']
-                            agent.system_message = agent_data['system_message']
+                            agent.update_system_message(agent_data['system_message'])
                             agent.user_id = self.user_id
                             agent.api_key = self.api_key
                         agent._code_execution_config["work_dir"] = self.user_id
@@ -1286,7 +1305,7 @@ class ConversableAgent(Agent):
         # Assume the FastAPI endpoint is /discover_agents
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/discover_agents',
+                url=f'http://{AUTOGEN_BACKEND}/discover_agents/',
                 json=DiscoverAgentsModel(query=query,
                                          category=category,
                                          user_id=self.user_id,
@@ -1296,7 +1315,7 @@ class ConversableAgent(Agent):
         except requests.HTTPError as e:
             return f"Error discovering agent: {e}"
         if response.status_code == 200:
-            return response.json()  # Assuming it returns agent names and descriptions
+            return response.json()["response"]  # Assuming it returns agent names and descriptions
         return "Error: Unable to discover agents"
 
     def create_or_update_agent(self, agent_name: str, agent_description: str, system_message: str, function_names: str, category: str = None) -> str: 
@@ -1316,7 +1335,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1335,7 +1354,7 @@ class ConversableAgent(Agent):
         # Assume the FastAPI endpoint is /discover_functions
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/discover_functions',
+                url=f'http://{AUTOGEN_BACKEND}/discover_functions/',
                 json=DiscoverFunctionsModel(query=query,
                                             category=category,
                                             user_id=self.user_id,
@@ -1345,7 +1364,7 @@ class ConversableAgent(Agent):
         except requests.HTTPError as e:
             return f"Error discovering agent: {e}"
         if response.status_code == 200:
-            return response.json()
+            return response.json()["response"]
         return "Error: Unable to discover functions"
 
     def add_functions(self, function_names: str) -> str:
@@ -1362,7 +1381,7 @@ class ConversableAgent(Agent):
         )
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent',
+                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
                 json=agent_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
@@ -1409,16 +1428,13 @@ class ConversableAgent(Agent):
             "parameters": {"type": "object", "properties": json_args},
             "required": json_reqs,
         }
-
         # Check if a function with the same name already exists
         existing_function_index = next((index for (index, d) in enumerate(self.llm_config["functions"]) if d["name"] == name), None)
-
         # If it does, update that entry; if not, append a new entry
         if existing_function_index is not None:
             self.llm_config["functions"][existing_function_index] = function_config
         else:
             self.llm_config["functions"].append(function_config)
-
         if class_name:
             # Assuming class_name refers to a class with a method named `name`
             self.register_function(
@@ -1440,7 +1456,7 @@ class ConversableAgent(Agent):
         description: str,
         category: str,
         code: str,
-        arguments: str,
+        arguments: str = None,
         required_arguments: str = None,
         packages: str = None
     ) -> str:
@@ -1448,37 +1464,34 @@ class ConversableAgent(Agent):
         json_reqs = None
         package_list = None
         try:
-            json_args = json.loads(arguments)
+            if arguments:
+                json_args = json.loads(arguments)
             if required_arguments:
                 json_reqs = json.loads(required_arguments)
             if packages:
                 package_list = json.loads(packages)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when defining function: {e}"
-
-        result = self.define_function_internal(name, description, json_args, code, json_reqs, package_list)
-        
+        result = self.define_function_internal(name, description, json_args or {}, code, json_reqs or [], package_list or [])
         func_model = AddFunctionModel(
             user_id=self.user_id,
             api_key=self.api_key,
             name=name,
             description=description,
-            required=json_reqs if json_reqs else None,
+            required=json_reqs,
             arguments=json_args,
-            packages=package_list if package_list else None,
+            packages=package_list,
             code=code,
             category=category
         )
-        
         try:
             response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/add_function',
+                url=f'http://{AUTOGEN_BACKEND}/add_function/',
                 json=func_model.dict()
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
         except requests.HTTPError as e:
             return f"Error adding function: {e}"
-
         add_result = self.add_functions(json.dumps([name]))
         if add_result != "Functions added successfully":
             return add_result

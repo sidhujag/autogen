@@ -24,6 +24,9 @@ class QueryModel(BaseModel):
 async def query(input: QueryModel):
     user = UserProxyAgent(
         "UserProxyAgent",
+        user_id=input.user_id,
+        api_key=input.api_key,
+        system_message="Pass me messages so I can relay back to the user.",
         description="The proxy to the user to get input or relay response",
         llm_config=False,
         default_auto_reply="This is UserProxyAgent speaking.",
@@ -38,11 +41,12 @@ async def query(input: QueryModel):
     groupchat = GroupChat(agents=[{"name": user.name, "description": user.description}], invitees=[])
     group_chat_manager = GroupChatManager(
         name="group_manager",
-        groupchat=groupchat, 
+        groupchat=groupchat,
         user_id=input.user_id, 
         api_key=input.api_key,
         default_auto_reply="This is group_manager speaking."
     )
+    user.prepare_agents()
     user.invite_to_group("user_assistant", "group_manager", "Hello user_assistant, please join our group.")
     assistant.join_group("group_manager", "Hello this is the user assistant joining!")
     user.initiate_chat(group_chat_manager, message=input.query)
