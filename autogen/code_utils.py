@@ -14,6 +14,7 @@ try:
     import docker
 except ImportError:
     docker = None
+
 DEFAULT_MODEL = "gpt-4"
 FAST_MODEL = "gpt-3.5-turbo"
 # Regular expression for finding a code block
