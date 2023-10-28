@@ -1,5 +1,6 @@
 from .. import GroupChatManager, GroupChat, ConversableAgent, BackendService, FunctionsService, GroupService, AgentService
 from backend_service import AuthAgent, GetAgentModel
+from ..service.group_function_specs import group_function_specs
 from typing import Dict
 AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
 In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
@@ -65,8 +66,9 @@ class MakeService:
             agent.llm_config = agent.DEFAULT_CONFIG.copy()
         if 'llm_config' in agent_data:
             agent.llm_config.update(agent_data['llm_config'])
-        else:
-            agent.llm_config["api_key"] = auth.api_key
+       
+        agent.llm_config["api_key"] = auth.api_key
+        agent.llm_config["functions"] = group_function_specs
         
         agent.register_function(function_map={
             "send_message": AgentService.send_message,
