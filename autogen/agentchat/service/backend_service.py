@@ -9,6 +9,10 @@ AUTOGEN_BACKEND = "127.0.0.1:8001"
 class AuthAgent:
     api_key: str
     namespace_id: str
+
+class DeleteAgentModel(BaseModel):
+    name: str
+    auth: AuthAgent
     
 class GetAgentModel(BaseModel):
     name: str
@@ -54,6 +58,16 @@ class BackendService:
     def set_auth(self, agent_name, agent_data) -> AuthAgent:
         self.AUTH[agent_name] = agent_data['auth']
         return self.AUTH[agent_name]
+
+    def delete_agent(self, sender: ConversableAgent, data_model: DeleteAgentModel):
+        auth: AuthAgent = self.AUTH.get(sender.name)
+        if auth is None:
+            return None, "No auth, agent has no way to authenticate against backend!"
+        data_model.auth = auth
+        response, err = self.call("delete_agent", data_model.dict())
+        if err != None:
+            return None, err
+        return response, None
 
     def upsert_agent_data(self, sender: ConversableAgent, data_model: UpsertAgentModel):
         auth: AuthAgent = self.AUTH.get(sender.name)

@@ -1,6 +1,6 @@
 
 from .. import GroupChatManager, MakeService, BackendService, AgentService, ConversableAgent
-from backend_service import UpsertAgentModel
+from backend_service import UpsertAgentModel, DeleteAgentModel
 
 class GroupService:
     def join_group(self, sender: ConversableAgent, group_manager_name: str, hello_message: str = None) -> str:
@@ -50,11 +50,16 @@ class GroupService:
             return f"Could not create group: {err}"
         return "Group created!"
 
-    def delete_group(self, group_manager) -> str:
+    def delete_group(self, sender: ConversableAgent, group_manager: GroupChatManager) -> str:
         del_group_error = group_manager.delete_group_helper()
         if del_group_error != "":
             return del_group_error
         del MakeService.AGENT_REGISTRY[group_manager.name]
+        response, err = BackendService.delete_agent(sender, DeleteAgentModel(
+            name=group_manager.name
+        ))
+        if err is not None:
+            return err
         return "Group deleted!"
 
     def leave_group(self, sender: ConversableAgent, group_manager_name: str, goodbye_message: str = None) -> str:
@@ -67,10 +72,9 @@ class GroupService:
         if result != "Group exited!":
             return result
         if len(group_manager.groupchat.agents) == 0:
-             result = self.delete_group(group_manager)
+             result = self.delete_group(sender, group_manager)
              if result != "Group deleted!":
                 return result
-        # if agents list is empty it should delete the agent
         response, err = BackendService.upsert_agent_data(sender, UpsertAgentModel(
             name=group_manager_name,
             agents=group_manager.groupchat.agents
