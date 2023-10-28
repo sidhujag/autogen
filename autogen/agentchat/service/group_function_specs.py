@@ -95,7 +95,7 @@ create_or_update_agent = {
         "properties": {
             "name": {
                 "type": "string",
-                "description": "The agent name, must be unique to all agents."
+                "description": "The name of agent to create or update, must be unique to all agents."
             },
             "description": {
                 "type": "string",

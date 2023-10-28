@@ -5,12 +5,10 @@ import json
 import logging
 import requests
 
-from pydantic import BaseModel
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from autogen import oai
 from .agent import Agent
-from .group_function_specs import group_function_specs
-AUTOGEN_BACKEND = "127.0.0.1:8001"
+from .service.group_function_specs import group_function_specs
 from autogen.code_utils import (
     DEFAULT_MODEL,
     UNKNOWN,
@@ -18,44 +16,6 @@ from autogen.code_utils import (
     extract_code,
     infer_lang,
 )
-class GetAgentModel(BaseModel):
-    name: str
-    user_id: str
-
-class DiscoverAgentsModel(BaseModel):
-    query: Optional[str] = None
-    category: str
-    user_id: str
-    api_key: str
-
-class DiscoverFunctionsModel(BaseModel):
-    query: Optional[str] = None
-    category: str
-    user_id: str
-    api_key: str
-
-class UpsertAgentModel(BaseModel):
-    name: str
-    user_id: str
-    api_key: str
-    description: Optional[str] = None
-    system_message: Optional[str] = None
-    function_names: Optional[List[str]] = None # cumulative
-    category: Optional[str] = None
-    agents: Optional[List[Dict]] = None
-    invitees: Optional[List[str]] = None
-    
-class AddFunctionModel(BaseModel):
-    name: str
-    user_id: str
-    api_key: str
-    description: str
-    arguments: Dict[str, Union[str, Dict]] = None
-    required: List[str] = None
-    category: str
-    packages: Optional[List[str]] = None
-    code: Optional[str] = None
-    class_name: Optional[str] = None
 
 try:
     from termcolor import colored
@@ -64,7 +24,7 @@ except ImportError:
     def colored(x, *args, **kwargs):
         return x
 
-AGENT_REGISTRY = {}
+
 logger = logging.getLogger(__name__)
 AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
 In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
@@ -73,7 +33,7 @@ Within a group, be aware of existing agents and the manager, but continue discov
 There usually is an agent or function available for almost anything you want to do, but if not then define new functions for generic code that may be useful. Similarily, define new agents for generic roles that are missing.
 Prioritize organization, robustness, and efficiency within groups. Build synergistic relationships with other agents. Communicate via a UserProxyAgent to interact with the user. Explore using provided functions and communication with other agents, forming hierarchical groups to manage context and delegate tasks efficiently. Respond with TERMINATE once all tasks are completed."""
 termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper()
-code_execution_config={"work_dir":"_output", "use_docker":"python:3"}
+
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
 
@@ -580,22 +540,6 @@ class ConversableAgent(Agent):
             self.clear_history(recipient)
             recipient.clear_history(self)
 
-    def prepare_agents(
-        self,
-    ):
-        from . import GroupChatManager
-        for agent in AGENT_REGISTRY.values():
-            print(f'agent {agent.name}')
-            if isinstance(agent, GroupChatManager):
-                res = self.create_group(agent.name, agent.description, agent.system_message, True)
-                if res != "Group created!":
-                    print(f'Oops! group: {agent.name} was not created properly: {res}')
-            elif isinstance(agent, ConversableAgent):
-                res = self.create_or_update_agent(agent.name, agent.description, agent.system_message, "[]", "planning")
-                if res != "Agent created or updated successfully":
-                    print(f'Oops! agent: {agent.name} was not created properly: {res}')
-                
-
     def initiate_chat(
         self,
         recipient: "ConversableAgent",
@@ -746,7 +690,7 @@ class ConversableAgent(Agent):
             messages = self._oai_messages[sender]
         message = messages[-1]
         if "function_call" in message:
-            _, func_return = self.execute_function(message["function_call"])
+            _, func_return = self.execute_function(sender, message["function_call"])
             return True, func_return
         return False, None
 
@@ -1045,7 +989,7 @@ class ConversableAgent(Agent):
             result.append(char)
         return "".join(result)
 
-    def execute_function(self, func_call):
+    def execute_function(self, sender, func_call):
         """Execute a function call and return the result.
 
         Override this function to modify the way to execute a function call.
@@ -1078,7 +1022,7 @@ class ConversableAgent(Agent):
                     flush=True,
                 )
                 try:
-                    content = func(**arguments)
+                    content = func(**arguments, sender=sender)
                     is_exec_success = True
                 except Exception as e:
                     content = f"Error: {e}"
@@ -1090,412 +1034,6 @@ class ConversableAgent(Agent):
             "role": "function",
             "content": str(content),
         }
-
-    def is_agent_in_group(self, agent: "ConversableAgent") -> bool:
-        return False
-    
-    def send_message(self, message: str, recipient: str, request_reply: bool = False) -> str:
-        from . import GroupChatManager
-        to_agent = self.get_agent(recipient)
-        if to_agent == self:
-            return "Could not send message: Trying to send to self"
-        if isinstance(to_agent, GroupChatManager):
-            # group manager should get a response so he can delegate further
-            request_reply = True
-            if to_agent.is_agent_in_group(self) is False:
-                return "Could not send message: Trying to send to a group that you are not in"
-        self.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
-        return "Sent message!"
-     
-    def join_group(self, group_manager_name: str, hello_message: str = None) -> str:
-        from . import GroupChatManager
-        group_manager = self.get_agent(group_manager_name)
-        if not isinstance(group_manager, GroupChatManager):
-            return "Could not send message: group_manager_name is not a group manager"
-        if group_manager is None:
-            return "Could not send message: Doesn't exists"
-        result = group_manager.join_group_helper(self, hello_message)
-        agent_model = UpsertAgentModel(
-            user_id=self.user_id,
-            api_key=self.api_key,
-            name=group_manager_name,
-            agents=group_manager.groupchat.agents,
-            invitees=group_manager.groupchat.invitees
-        )
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
-                json=agent_model.dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error joining group: {e}"
-        if response.status_code != 200:
-            return f"Error joining group: {response.text}"
-
-        return result
-   
-    def invite_to_group(self, agent_name: str, group_manager_name: str, invite_message: str = None) -> str:
-        from . import GroupChatManager
-        group_manager = self.get_agent(group_manager_name)
-        if group_manager is None:
-            return "Could not invite to group: Doesn't exists"
-        if not isinstance(group_manager, GroupChatManager):
-            return "Could not invite to group: group_manager_name is not a group manager"
-        agent = self.get_agent(agent_name)
-        result = group_manager.invite_to_group_helper(self, agent, invite_message)
-        agent_model = UpsertAgentModel(
-            user_id=self.user_id,
-            api_key=self.api_key,
-            name=group_manager_name,
-            invitees=group_manager.groupchat.invitees
-        )
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
-                json=agent_model.dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error inviting to group: {e}"
-        if response.status_code != 200:
-            return f"Error inviting to group: {response.text}"
-
-        return result
-
-    def create_group(self, group_manager_name: str, group_description: str, system_message: str = None, force: bool = False) -> str:
-        group_manager = self.get_agent(group_manager_name)
-        if group_manager is not None and force == False:
-            return "Could not create group: Already exists"
-        agent_model = UpsertAgentModel(
-            user_id=self.user_id,
-            api_key=self.api_key,
-            name=group_manager_name,
-            description=group_description,
-            system_message=system_message,
-            category="groups"
-        )
-        print(f'create_group agent_model {agent_model.dict()}')
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
-                json=agent_model.dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error creating group: {e}"
-        if response.status_code != 200:
-            return f"Error creating group: {response.text}"
-
-        # update agent registry based on upserted agent info from backend
-        if self.get_agent(group_manager_name, True) is None:
-            return "Error creating group: Could not fetch group after upserting to backend"
-
-        return "Group created!"
-
-    def delete_group(self, group_manager) -> str:
-        del_group_error = group_manager.delete_group_helper()
-        if del_group_error != "":
-            return del_group_error
-        del AGENT_REGISTRY[group_manager.name]
-        return "Group deleted!"
-
-    def leave_group(self, group_manager_name: str, goodbye_message: str = None) -> str:
-        from . import GroupChatManager
-        group_manager = self.get_agent(group_manager_name)
-        if group_manager is None:
-            return "Could not leave group: Doesn't exists"
-        if not isinstance(group_manager, GroupChatManager):
-            return "Could not leave group: group_manager_name is not a group manager"
-        result = group_manager.leave_group_helper(self, goodbye_message)
-        if len(group_manager.groupchat.agents) == 0:
-            result = self.delete_group(group_manager)
-        
-        # if agents list is empty it should delete the agent
-        agent_model = UpsertAgentModel(
-            user_id=self.user_id,
-            api_key=self.api_key,
-            name=group_manager_name,
-            agents=group_manager.groupchat.agents
-        )
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
-                json=agent_model.dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error leaving group: {e}"
-        if response.status_code != 200:
-            return f"Error leaving group: {response.text}"
-
-        return result
-
-
-    def get_agent(self, agent_name: str, update: bool = False) -> "ConversableAgent":
-        from . import GroupChatManager, GroupChat
-        agent: ConversableAgent = AGENT_REGISTRY.get(agent_name)
-        if agent is None or update is True:
-            # Assume the FastAPI endpoint is /get_agent and it returns agent details
-            try:
-                response = requests.post(
-                    url=f'http://{AUTOGEN_BACKEND}/get_agent/',
-                    json=GetAgentModel(name=agent_name,
-                                       user_id=self.user_id).dict()
-                )
-                response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-            except requests.HTTPError as e:
-                return f"Error getting agent: {e}"
-            if response.status_code == 200:
-                agent_data = response.json()["response"]
-                if len(agent_data["name"]) == 0:
-                    return None
-                # Check for required keys before accessing them
-                keys = ['description', 'system_message', 'functions']
-                if all(key in agent_data for key in keys):
-                    # Assuming agent_data contains 'system_message', 'description', 'functions'
-                    if 'agents' in agent_data and len(agent_data['agents']) > 0:
-                        print(f'get_agent agent_data {agent_data["agents"]}')
-                        agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in agent_data['agents']]
-                        if agent is None:
-                            groupchat = GroupChat(
-                                agents=agents_list,
-                                invitees=agent_data['invitees'],
-                                messages=[]
-                            )
-                            agent = GroupChatManager(
-                                user_id=self.user_id,
-                                api_key=self.api_key,
-                                groupchat=groupchat,
-                                name=agent_name,
-                                description=agent_data['description'],
-                                system_message=agent_data['system_message']
-                            )
-                        else:
-                            agent.description = agent_data['description']
-                            agent.update_system_message(agent_data['system_message'])
-                            agent.groupchat.agents = agents_list
-                            agent.groupchat.invitees = agent_data['invitees']
-                            agent.user_id = self.user_id
-                            agent.api_key = self.api_key
-                    else:
-                        if agent is None:
-                            agent = ConversableAgent(
-                                user_id=self.user_id,
-                                api_key=self.api_key,
-                                name=agent_name,
-                                description=agent_data['description'],
-                                system_message=agent_data['system_message']
-                            )
-                        else:
-                            agent.description = agent_data['description']
-                            agent.update_system_message(agent_data['system_message'])
-                            agent.user_id = self.user_id
-                            agent.api_key = self.api_key
-                        agent._code_execution_config["work_dir"] = self.user_id
-                    for fn in agent_data['functions']:
-                        agent.define_function_internal(fn['name'], fn['description'], fn['arguments'], fn['code'], fn['required'], fn['packages'], fn['class_name'])
-                else:
-                    missing_keys = [key for key in keys if key not in agent_data]
-                    return f"Error: Missing keys in agent_data: {', '.join(missing_keys)}"
-                AGENT_REGISTRY[agent_name] = agent
-        return agent
-
-    def discover_agents(self, category: str, query: str = None) -> str:
-        # Assume the FastAPI endpoint is /discover_agents
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/discover_agents/',
-                json=DiscoverAgentsModel(query=query,
-                                         category=category,
-                                         user_id=self.user_id,
-                                         api_key=self.api_key).dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error discovering agent: {e}"
-        if response.status_code == 200:
-            return response.json()["response"]  # Assuming it returns agent names and descriptions
-        return "Error: Unable to discover agents"
-
-    def create_or_update_agent(self, agent_name: str, agent_description: str, system_message: str, function_names: str, category: str = None) -> str: 
-        try:
-            json_fns = json.loads(function_names)
-        except json.JSONDecodeError as e:
-            return f"Error parsing JSON function names when trying to create or update agent: {e}"
-        # function_names is cumulatively added
-        agent_model = UpsertAgentModel(
-            user_id=self.user_id,
-            api_key=self.api_key,
-            name=agent_name,
-            description=agent_description,
-            system_message=system_message,
-            function_names=json_fns,
-            category=category
-        )
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
-                json=agent_model.dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error creating or updating agent: {e}"
-        if response.status_code != 200:
-            return f"Error creating or updating agent: {response.text}"
-        
-        # update agent registry based on upserted agent info from backend
-        if self.get_agent(agent_name, True) is None:
-            return "Error creating or updating agent: Could not fetch agent after upserting to backend"
-
-        return "Agent created or updated successfully"
-
-    def discover_functions(self, category: str, query: str = None) -> str:
-        # Assume the FastAPI endpoint is /discover_functions
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/discover_functions/',
-                json=DiscoverFunctionsModel(query=query,
-                                            category=category,
-                                            user_id=self.user_id,
-                                            api_key=self.api_key).dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error discovering agent: {e}"
-        if response.status_code == 200:
-            return response.json()["response"]
-        return "Error: Unable to discover functions"
-
-    def add_functions(self, function_names: str) -> str:
-        try:
-            json_fns = json.loads(function_names)
-        except json.JSONDecodeError as e:
-            return f"Error parsing JSON when trying to add function: {e}"
-        # function_names is cumulatively added
-        agent_model = UpsertAgentModel(
-            user_id=self.user_id,
-            api_key=self.api_key,
-            name=self.name,
-            function_names=json_fns,
-        )
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/upsert_agent/',
-                json=agent_model.dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error adding functions: {e}"
-        if response.status_code != 200:
-            return f"Error adding functions: {response.text}"
-        
-        # update agent registry based on upserted agent info from backend
-        if self.get_agent(self.name, True) is None:
-            return "Error adding functions: Could fetch agent after upserting to backend"
-
-        return "Functions added successfully"
-
-    def execute_func(self, name: str, code: str, packages: List[str], **args):
-        package_install_cmd = ' '.join(f'"{pkg}"' for pkg in packages)
-        pip_install = f'import subprocess\nsubprocess.run(["pip", "-qq", "install", {package_install_cmd}])' if len(packages) > 0 else ''
-        str_code = f"""
-    {pip_install}
-    print("Result of {name} function execution:")
-    {code}
-    args={args}
-    result={name}(**args)
-    if result is not None: print(result)
-    """
-        print(f"execute_code:\n{str_code}")
-        result = execute_code(str_code)[1]
-        print(f"Result: {result}")
-        return result
-
-    def define_function_internal(
-        self, 
-        name: str, 
-        description: str, 
-        json_args: Dict[str, Union[str, Dict]],
-        code: str, 
-        json_reqs: List[str],
-        packages: List[str],
-        class_name: str = None
-        ) -> str:
-        function_config = {
-            "name": name,
-            "description": description,
-            "parameters": {"type": "object", "properties": json_args},
-            "required": json_reqs,
-        }
-        # Check if a function with the same name already exists
-        existing_function_index = next((index for (index, d) in enumerate(self.llm_config["functions"]) if d["name"] == name), None)
-        # If it does, update that entry; if not, append a new entry
-        if existing_function_index is not None:
-            self.llm_config["functions"][existing_function_index] = function_config
-        else:
-            self.llm_config["functions"].append(function_config)
-        if class_name:
-            # Assuming class_name refers to a class with a method named `name`
-            self.register_function(
-                function_map={
-                    name: lambda **args: getattr(globals()[class_name](), name)(**args)
-                }
-            )
-        else:
-            self.register_function(
-                function_map={
-                    name: lambda **args: self.execute_func(name, code, packages, **args)
-                }
-            )
-        return f"A function has been added to the context of this agent.\nDescription: {description}"
-
-    def define_function(
-        self,
-        name: str,
-        description: str,
-        category: str,
-        code: str,
-        arguments: str = None,
-        required_arguments: str = None,
-        packages: str = None
-    ) -> str:
-        json_args = None
-        json_reqs = None
-        package_list = None
-        try:
-            if arguments:
-                json_args = json.loads(arguments)
-            if required_arguments:
-                json_reqs = json.loads(required_arguments)
-            if packages:
-                package_list = json.loads(packages)
-        except json.JSONDecodeError as e:
-            return f"Error parsing JSON when defining function: {e}"
-        result = self.define_function_internal(name, description, json_args or {}, code, json_reqs or [], package_list or [])
-        func_model = AddFunctionModel(
-            user_id=self.user_id,
-            api_key=self.api_key,
-            name=name,
-            description=description,
-            required=json_reqs,
-            arguments=json_args,
-            packages=package_list,
-            code=code,
-            category=category
-        )
-        try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/add_function/',
-                json=func_model.dict()
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
-        except requests.HTTPError as e:
-            return f"Error adding function: {e}"
-        add_result = self.add_functions(json.dumps([name]))
-        if add_result != "Functions added successfully":
-            return add_result
-        return result
 
     def generate_init_message(self, **context) -> Union[str, Dict]:
         """Generate the initial message for the agent.
