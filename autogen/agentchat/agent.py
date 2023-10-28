@@ -11,9 +11,6 @@ class Agent:
     def __init__(
         self,
         name: str,
-        description: str,
-        api_key: str,
-        user_id: str
     ):
         """
         Args:
@@ -21,44 +18,11 @@ class Agent:
         """
         # a dictionary of conversations, default value is list
         self._name = name
-        self._description = description
-        self._api_key = api_key
-        self._user_id = user_id
 
     @property
     def name(self):
         """Get the name of the agent."""
         return self._name
-
-    @property
-    def description(self):
-        """Get the description of the agent."""
-        return self._description
-    
-    @description.setter
-    def description(self, value):
-        """Set the description of the agent."""
-        self._description = value
-
-    @property
-    def api_key(self):
-        """Get the api_key of the agent."""
-        return self._api_key
-
-    @api_key.setter
-    def api_key(self, value):
-        """Set the api_key of the agent."""
-        self._api_key = value
-       
-    @property
-    def user_id(self):
-        """Get the user_id of the agent (for namespacing)."""
-        return self._user_id
-
-    @user_id.setter
-    def user_id(self, value):
-        """Set the user_id of the agent."""
-        self._user_id = value
 
     def send(self, message: Union[Dict, str], recipient: "Agent", request_reply: Optional[bool] = None):
         """(Abstract method) Send a message to another agent."""

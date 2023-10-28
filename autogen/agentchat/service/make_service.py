@@ -1,6 +1,13 @@
 from .. import GroupChatManager, GroupChat, ConversableAgent, BackendService, FunctionsService, GroupService, AgentService
 from backend_service import AuthAgent, GetAgentModel
 from typing import Dict
+AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
+In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
+Invite agents to join groups if beneficial. Form new groups with distinct names and managers to efficiently manage context and address concerns during problem-solving.
+Within a group, be aware of existing agents and the manager, but continue discovering useful agents. Explore your surroundings to answer queries, like messaging the right agent, forming new groups, or adding functions to enhance your capabilities. Create and execute simple code within conversations when necessary, although specific coding agents handle complex tasks.
+There usually is an agent or function available for almost anything you want to do, but if not then define new functions for generic code that may be useful. Similarily, define new agents for generic roles that are missing.
+Prioritize organization, robustness, and efficiency within groups. Build synergistic relationships with other agents. Communicate via a UserProxyAgent to interact with the user. Explore using provided functions and communication with other agents, forming hierarchical groups to manage context and delegate tasks efficiently. Respond with TERMINATE once all tasks are completed."""
+termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper()
 
 class MakeService:
     AGENT_REGISTRY: Dict[str, ConversableAgent] = {}
@@ -16,7 +23,6 @@ class MakeService:
         return 'invitees' in agent_data and 'agents' in agent_data and len(agent_data['agents']) > 0
 
     def update_agent(self, agent: ConversableAgent, agent_data):
-        agent.description = agent_data['description']
         agent.update_system_message(agent_data['system_message'])
         if self.is_group_chat_data(agent_data):
             agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in agent_data['agents']]
@@ -25,7 +31,6 @@ class MakeService:
         return agent
 
     def create_new_agent(self, agent_data):
-        description = agent_data['description']
         name = agent_data['name']
         system_message = agent_data['system_message']
         if self.is_group_chat_data(agent_data):
@@ -38,14 +43,14 @@ class MakeService:
             agent = GroupChatManager(
                 groupchat=groupchat,
                 name=name,
-                description=description,
-                system_message=system_message
+                system_message=system_message + AGENT_SYSTEM_MESSAGE,
+                termination_msg=termination_msg
             )
         else:
             agent = ConversableAgent(
                 name=name,
-                description=description,
-                system_message=system_message
+                system_message=system_message + AGENT_SYSTEM_MESSAGE,
+                termination_msg=termination_msg
             )
 
         auth: AuthAgent = BackendService.get_auth(name)
@@ -61,7 +66,7 @@ class MakeService:
         if 'llm_config' in agent_data:
             agent.llm_config.update(agent_data['llm_config'])
         else:
-            agent.llm_config['api_key'] = auth.api_key
+            agent.llm_config["api_key"] = auth.api_key
         
         agent.register_function(function_map={
             "send_message": AgentService.send_message,

@@ -3,12 +3,9 @@ from collections import defaultdict
 import copy
 import json
 import logging
-import requests
-
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from autogen import oai
 from .agent import Agent
-from .service.group_function_specs import group_function_specs
 from autogen.code_utils import (
     DEFAULT_MODEL,
     UNKNOWN,
@@ -26,13 +23,7 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
-In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
-Invite agents to join groups if beneficial. Form new groups with distinct names and managers to efficiently manage context and address concerns during problem-solving.
-Within a group, be aware of existing agents and the manager, but continue discovering useful agents. Explore your surroundings to answer queries, like messaging the right agent, forming new groups, or adding functions to enhance your capabilities. Create and execute simple code within conversations when necessary, although specific coding agents handle complex tasks.
-There usually is an agent or function available for almost anything you want to do, but if not then define new functions for generic code that may be useful. Similarily, define new agents for generic roles that are missing.
-Prioritize organization, robustness, and efficiency within groups. Build synergistic relationships with other agents. Communicate via a UserProxyAgent to interact with the user. Explore using provided functions and communication with other agents, forming hierarchical groups to manage context and delegate tasks efficiently. Respond with TERMINATE once all tasks are completed."""
-termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper()
+
 
 class ConversableAgent(Agent):
     """(In preview) A class for generic conversable agents which can be configured as assistant or user proxy.
@@ -51,22 +42,18 @@ class ConversableAgent(Agent):
 
     DEFAULT_CONFIG = {
         "model": DEFAULT_MODEL,
-        "functions": group_function_specs
     }
     MAX_CONSECUTIVE_AUTO_REPLY = 100  # maximum number of consecutive auto replies (subject to future change)
 
     def __init__(
         self,
         name: str,
-        description: Optional[str] = "",
-        api_key: Optional[str] = "",
-        user_id: Optional[str] = "",
         system_message: Optional[str] = "You are a helpful AI Assistant.",
-        is_termination_msg: Optional[Callable[[Dict], bool]] = termination_msg,
+        is_termination_msg: Optional[Callable[[Dict], bool]] = None,
         max_consecutive_auto_reply: Optional[int] = None,
         human_input_mode: Optional[str] = "TERMINATE",
         function_map: Optional[Dict[str, Callable]] = None,
-        code_execution_config: Optional[Union[Dict, bool]] = code_execution_config,
+        code_execution_config: Optional[Union[Dict, bool]] = None,
         llm_config: Optional[Union[Dict, bool]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
     ):
@@ -111,20 +98,19 @@ class ConversableAgent(Agent):
                 To disable llm-based auto reply, set to False.
             default_auto_reply (str or dict or None): default auto reply when no code execution or llm-based reply is generated.
         """
-        super().__init__(name, description, api_key, user_id)
+        super().__init__(name)
         # a dictionary of conversations, default value is list
         self._oai_messages = defaultdict(list)
-        self._oai_system_message = [{"content": system_message + AGENT_SYSTEM_MESSAGE, "role": "system"}]
+        self._oai_system_message = [{"content": system_message, "role": "system"}]
         self._is_termination_msg = (
             is_termination_msg if is_termination_msg is not None else (lambda x: x.get("content") == "TERMINATE")
         )
-        if llm_config is False and api_key == "":
+        if llm_config is False:
             self.llm_config = False
         else:
             self.llm_config = self.DEFAULT_CONFIG.copy()
             if isinstance(llm_config, dict):
                 self.llm_config.update(llm_config)
-            self.llm_config["api_key"] = self.api_key
 
         self._code_execution_config = {} if code_execution_config is None else code_execution_config
         self.human_input_mode = human_input_mode
@@ -134,19 +120,6 @@ class ConversableAgent(Agent):
         self._consecutive_auto_reply_counter = defaultdict(int)
         self._max_consecutive_auto_reply_dict = defaultdict(self.max_consecutive_auto_reply)
         self._function_map = {} if function_map is None else function_map
-        self.register_function(function_map={
-            "send_message": self.send_message,
-            "join_group": self.join_group,
-            "invite_to_group": self.invite_to_group,
-            "create_group": self.create_group,
-            "leave_group": self.leave_group,
-            "discover_agents": self.discover_agents,
-            "create_or_update_agent": self.create_or_update_agent,
-            "discover_functions": self.discover_functions,
-            "add_functions": self.add_functions,
-            "define_function": self.define_function
-        })
-
         self._default_auto_reply = default_auto_reply
         self._reply_func_list = []
         self.reply_at_receive = defaultdict(bool)
@@ -154,13 +127,7 @@ class ConversableAgent(Agent):
         self.register_reply([Agent, None], ConversableAgent.generate_code_execution_reply)
         self.register_reply([Agent, None], ConversableAgent.generate_function_call_reply)
         self.register_reply([Agent, None], ConversableAgent.check_termination_and_human_reply)
-        self.register_agent(self)
 
-    def register_agent(self, agent: "ConversableAgent"):
-        if not isinstance(agent, ConversableAgent):
-            raise ValueError("Only instances of ConversableAgent can be registered.")
-        AGENT_REGISTRY[agent.name] = agent
-        
     def register_reply(
         self,
         trigger: Union[Type[Agent], str, Agent, Callable[[Agent], bool], List],
@@ -690,6 +657,7 @@ class ConversableAgent(Agent):
             messages = self._oai_messages[sender]
         message = messages[-1]
         if "function_call" in message:
+            # MAKEAI
             _, func_return = self.execute_function(sender, message["function_call"])
             return True, func_return
         return False, None
@@ -989,6 +957,7 @@ class ConversableAgent(Agent):
             result.append(char)
         return "".join(result)
 
+    # MAKEAI
     def execute_function(self, sender, func_call):
         """Execute a function call and return the result.
 
@@ -1022,6 +991,7 @@ class ConversableAgent(Agent):
                     flush=True,
                 )
                 try:
+                    # MAKEAI
                     content = func(**arguments, sender=sender)
                     is_exec_success = True
                 except Exception as e:
