@@ -26,7 +26,6 @@ class UserProxyAgent(ConversableAgent):
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
         llm_config: Optional[Union[Dict, bool]] = False,
         system_message: Optional[str] = "",
-        **kwargs,
     ):
         """
         Args:
@@ -71,14 +70,13 @@ class UserProxyAgent(ConversableAgent):
                 Only used when llm_config is not False. Use it to reprogram the agent.
         """
         super().__init__(
-            name=name,
-            system_message=system_message,
-            is_termination_msg=is_termination_msg,
-            max_consecutive_auto_reply=max_consecutive_auto_reply,
-            human_input_mode=human_input_mode,
-            function_map=function_map,
-            code_execution_config=code_execution_config,
-            llm_config=llm_config,
-            default_auto_reply=default_auto_reply,
-            **kwargs,
+            name,
+            system_message,
+            is_termination_msg,
+            max_consecutive_auto_reply,
+            human_input_mode,
+            function_map,
+            code_execution_config,
+            llm_config,
+            default_auto_reply,
         )
