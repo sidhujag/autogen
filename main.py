@@ -16,7 +16,7 @@ logging.basicConfig(filename=LOGFILE_PATH, filemode='w',
                     format='%(asctime)s.%(msecs)03d %(name)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S', force=True, level=logging.INFO)
 
 class QueryModel(BaseModel):
-    user_id: str
+    namespace_id: str
     api_key: str
     query: str
 
@@ -24,7 +24,7 @@ class QueryModel(BaseModel):
 async def query(input: QueryModel):
     user = UserProxyAgent(
         "UserProxyAgent",
-        user_id=input.user_id,
+        namespace_id=input.namespace_id,
         api_key=input.api_key,
         system_message="Pass me messages so I can relay back to the user.",
         description="The proxy to the user to get input or relay response",
@@ -33,7 +33,7 @@ async def query(input: QueryModel):
     )
     assistant = ConversableAgent(
         "user_assistant",
-        user_id=input.user_id,
+        namespace_id=input.namespace_id,
         api_key=input.api_key,
         human_input_mode="NEVER",
         default_auto_reply="This is the user_assistant speaking."
@@ -42,7 +42,7 @@ async def query(input: QueryModel):
     group_chat_manager = GroupChatManager(
         name="group_manager",
         groupchat=groupchat,
-        user_id=input.user_id, 
+        namespace_id=input.namespace_id, 
         api_key=input.api_key,
         default_auto_reply="This is group_manager speaking."
     )
