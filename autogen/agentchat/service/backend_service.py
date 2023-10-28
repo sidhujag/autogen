@@ -64,7 +64,7 @@ class BackendService:
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
-        response, err = self.call("delete_agent", data_model.dict())
+        response, err = self.call("delete_agent", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
@@ -74,7 +74,7 @@ class BackendService:
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
-        response, err = self.call("upsert_agent", data_model.dict())
+        response, err = self.call("upsert_agent", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
@@ -84,7 +84,7 @@ class BackendService:
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
-        response, err = self.call("get_agent", data_model.dict())
+        response, err = self.call("get_agent", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         if 'name' not in response or len(response["name"]) == 0:
@@ -93,6 +93,7 @@ class BackendService:
         if not all(key in response for key in keys):
             missing_keys = [key for key in keys if key not in response]
             return None, f"Error: Missing keys in agent_data: {', '.join(missing_keys)}"
+        response["auth"] = auth
         return response, None
 
     def add_function(self, sender: ConversableAgent, data_model: AddFunctionModel):
@@ -100,7 +101,7 @@ class BackendService:
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
-        response, err = self.call("add_functions", data_model.dict())
+        response, err = self.call("add_functions", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
@@ -110,7 +111,7 @@ class BackendService:
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
-        response, err = self.call("discover_functions", data_model.dict())
+        response, err = self.call("discover_functions", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
@@ -120,7 +121,7 @@ class BackendService:
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
-        response, err = self.call("discover_agents", data_model.dict())
+        response, err = self.call("discover_agents", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None

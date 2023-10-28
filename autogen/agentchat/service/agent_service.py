@@ -1,5 +1,5 @@
 import json
-from .. import GroupChatManager, ConversableAgent, BackendService, MakeService
+from .. import GroupChatManager, ConversableAgent, BackendService, MakeService, FunctionsService
 from backend_service import DiscoverAgentsModel, UpsertAgentModel
 
 class AgentService:
@@ -8,7 +8,7 @@ class AgentService:
         if agent is None:
             agent_data, err = BackendService.get_agent_data(agent_name)
             if err is None:
-                agent = MakeService.create_new_agent(agent_data)
+                agent = MakeService.create_new_agent(**agent_data)
                 MakeService.AGENT_REGISTRY[agent_name] = agent
         return agent
 
@@ -34,7 +34,7 @@ class AgentService:
             return f"Could not discover agents: {err}"
         return response
 
-    def create_or_update_agent(self, sender: ConversableAgent, agent_name: str, agent_description: str, system_message: str, function_names: str, category: str = None) -> str: 
+    def create_or_update_agent(self, sender: ConversableAgent, agent_name: str, agent_description: str = None, system_message: str = None, function_names: str = None, category: str = None) -> str: 
         if sender is None:
             return "Sender not found"
         try:

@@ -21,7 +21,7 @@ class FunctionsService:
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when trying to add function: {e}"
         # function_names is cumulatively added
-        response, err = MakeService.upsert_agent(sender, {"name": sender.name, "function_names": json_fns})
+        response, err = MakeService.upsert_agent(sender, UpsertAgentModel(name=sender.name, function_names=json_fns))
         if err is not None:
             return f"Could not add function(s): {err}"
         return "Functions added successfully"
@@ -51,7 +51,7 @@ class FunctionsService:
         code: str, 
         json_reqs: List[str],
         packages: List[str],
-        class_name: str = None
+        class_name: str
         ) -> str:
         function_config = {
             "name": name,
@@ -66,7 +66,7 @@ class FunctionsService:
             agent.llm_config["functions"][existing_function_index] = function_config
         else:
             agent.llm_config["functions"].append(function_config)
-        if class_name:
+        if class_name is not "":
             # Assuming class_name refers to a class with a method named `name`
             agent.register_function(
                 function_map={
