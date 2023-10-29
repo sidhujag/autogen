@@ -6,7 +6,7 @@ class GroupService:
     def join_group(self, sender: ConversableAgent, group_manager_name: str, hello_message: str = None) -> str:
         group_manager = AgentService.get_agent(group_manager_name)
         if not isinstance(group_manager, GroupChatManager):
-            return "Could not send message: group_manager_name is not a group manager"
+            return f"Could not send message: {group_manager_name} is not a group manager"
         if group_manager is None:
             return "Could not send message: Doesn't exists"
         result = group_manager.join_group_helper(sender, hello_message)
@@ -26,7 +26,7 @@ class GroupService:
         if group_manager is None:
             return "Could not invite to group: Doesn't exists"
         if not isinstance(group_manager, GroupChatManager):
-            return "Could not invite to group: group_manager_name is not a group manager"
+            return f"Could not invite to group: {group_manager_name} is not a group manager"
         agent = AgentService.get_agent(agent_name)
         result = group_manager.invite_to_group_helper(sender, agent, invite_message)
         if result != "Invite sent!":
@@ -67,7 +67,7 @@ class GroupService:
         if group_manager is None:
             return "Could not leave group: Doesn't exists"
         if not isinstance(group_manager, GroupChatManager):
-            return "Could not leave group: group_manager_name is not a group manager"
+            return f"Could not leave group: {group_manager_name} is not a group manager"
         result = group_manager.leave_group_helper(sender, goodbye_message)
         if result != "Group exited!":
             return result
