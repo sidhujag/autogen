@@ -2,7 +2,6 @@
 import requests
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Union
-from .. import ConversableAgent
 
 AUTOGEN_BACKEND = "127.0.0.1:8001"
 
@@ -31,6 +30,7 @@ class DiscoverFunctionsModel(BaseModel):
 class UpsertAgentModel(BaseModel):
     name: str
     auth: AuthAgent
+    human_input_mode: Optional[str] = None
     description: Optional[str] = None
     system_message: Optional[str] = None
     function_names: Optional[List[str]] = None # cumulative
@@ -38,6 +38,19 @@ class UpsertAgentModel(BaseModel):
     agents: Optional[List[Dict]] = None
     invitees: Optional[List[str]] = None
     
+class BaseAgent(BaseModel):
+    name: str = Field(default="")
+    namespace_id: str = Field(default="")
+    description: str = Field(default="")
+    human_input_mode: str = Field(default="TERMINATE")
+    system_message: str = Field(default="")
+    category: str = Field(default="")
+    agents: List[Dict] = Field(default_factory=list)
+    invitees: List[str] = Field(default_factory=list)
+
+class BackendAgent(BaseAgent):
+    functions: List[Dict] = Field(default_factory=list)
+
 class AddFunctionModel(BaseModel):
     name: str
     auth: AuthAgent
@@ -59,8 +72,8 @@ class BackendService:
         self.AUTH[agent_name] = agent_data['auth']
         return self.AUTH[agent_name]
 
-    def delete_agent(self, sender: ConversableAgent, data_model: DeleteAgentModel):
-        auth: AuthAgent = self.AUTH.get(sender.name)
+    def delete_backend_agent(self, sender: str, data_model: DeleteAgentModel):
+        auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
@@ -69,8 +82,8 @@ class BackendService:
             return None, err
         return response, None
 
-    def upsert_agent_data(self, sender: ConversableAgent, data_model: UpsertAgentModel):
-        auth: AuthAgent = self.AUTH.get(sender.name)
+    def upsert_backend_agent(self, sender: str, data_model: UpsertAgentModel):
+        auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
@@ -79,8 +92,8 @@ class BackendService:
             return None, err
         return response, None
         
-    def get_agent_data(self, sender: ConversableAgent, data_model: GetAgentModel):
-        auth: AuthAgent = self.AUTH.get(sender.name)
+    def get_backend_agent(self, sender: str, data_model: GetAgentModel) -> BackendAgent:
+        auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
@@ -94,20 +107,20 @@ class BackendService:
             missing_keys = [key for key in keys if key not in response]
             return None, f"Error: Missing keys in agent_data: {', '.join(missing_keys)}"
         response["auth"] = auth
-        return response, None
+        return BackendAgent(response), None
 
-    def add_function(self, sender: ConversableAgent, data_model: AddFunctionModel):
-        auth: AuthAgent = self.AUTH.get(sender.name)
+    def add_backend_function(self, sender: str, data_model: AddFunctionModel):
+        auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
-        response, err = self.call("add_functions", data_model.dict(exclude_none=True))
+        response, err = self.call("add_function", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
-    def discover_functions(self, sender: ConversableAgent, data_model: DiscoverFunctionsModel):
-        auth: AuthAgent = self.AUTH.get(sender.name)
+    def discover_backend_functions(self, sender: str, data_model: DiscoverFunctionsModel):
+        auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
@@ -116,8 +129,8 @@ class BackendService:
             return None, err
         return response, None
 
-    def discover_agents(self, sender: ConversableAgent, data_model: DiscoverAgentsModel):
-        auth: AuthAgent = self.AUTH.get(sender.name)
+    def discover_backend_agents(self, sender: str, data_model: DiscoverAgentsModel):
+        auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
             return None, "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth

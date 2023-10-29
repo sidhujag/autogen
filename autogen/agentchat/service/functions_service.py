@@ -1,7 +1,7 @@
         
 import json
 from .. import MakeService, BackendService, ConversableAgent
-from backend_service import AddFunctionModel, DiscoverFunctionsModel
+from backend_service import AddFunctionModel, DiscoverFunctionsModel, UpsertAgentModel
 from typing import Dict, List, Union
 from autogen.code_utils import (
     execute_code
@@ -10,7 +10,7 @@ from autogen.code_utils import (
 class FunctionsService:
     def discover_functions(self, sender: ConversableAgent, category: str, query: str = None) -> str:
         # Assume the FastAPI endpoint is /discover_functions
-        response, err = BackendService.discover_functions(sender, DiscoverFunctionsModel(query=query, category=category))
+        response, err = BackendService.discover_backend_functions(sender.name, DiscoverFunctionsModel(query=query, category=category))
         if err is not None:
             return f"Could not discover functions: {err}"
         return response
@@ -21,7 +21,7 @@ class FunctionsService:
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when trying to add function: {e}"
         # function_names is cumulatively added
-        response, err = MakeService.upsert_agent(sender, UpsertAgentModel(name=sender.name, function_names=json_fns))
+        err = MakeService.upsert_agent(sender, UpsertAgentModel(name=sender.name, function_names=json_fns))
         if err is not None:
             return f"Could not add function(s): {err}"
         return "Functions added successfully"
@@ -105,7 +105,7 @@ class FunctionsService:
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when defining function: {e}"
         
-        result, err = BackendService.add_function(sender, AddFunctionModel(
+        result, err = BackendService.add_backend_function(sender.name, AddFunctionModel(
             name=name,
             description=description,
             required=json_reqs,

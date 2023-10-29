@@ -6,9 +6,9 @@ class AgentService:
     def get_agent(self, agent_name: str) -> ConversableAgent:
         agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(agent_name)
         if agent is None:
-            agent_data, err = BackendService.get_agent_data(agent_name)
+            backend_agent, err = BackendService.get_backend_agent(agent_name)
             if err is None:
-                agent = MakeService.create_new_agent(**agent_data)
+                agent = MakeService.make_agent(backend_agent)
                 MakeService.AGENT_REGISTRY[agent_name] = agent
         return agent
 
@@ -29,7 +29,7 @@ class AgentService:
     def discover_agents(self, sender: ConversableAgent, category: str, query: str = None) -> str:
         if sender is None:
             return "Sender not found"
-        response, err = BackendService.discover_agents(sender.name, DiscoverAgentsModel(query=query,category=category))
+        response, err = BackendService.discover_backend_agents(sender.name, DiscoverAgentsModel(query=query,category=category))
         if err is not None:
             return f"Could not discover agents: {err}"
         return response
@@ -41,13 +41,13 @@ class AgentService:
             json_fns = json.loads(function_names)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON function names when trying to create or update agent: {e}"
-        response, err = MakeService.upsert_agent(UpsertAgentModel(
+        err = MakeService.upsert_agent(sender, UpsertAgentModel(
             name=agent_name,
             description=agent_description,
             system_message=system_message,
             function_names=json_fns,
             category=category
-        ), sender)
+        ))
         if err is not None:
             return f"Could not create or update agent: {err}"
         return "Agent created or updated successfully"

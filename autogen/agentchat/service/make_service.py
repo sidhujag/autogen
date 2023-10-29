@@ -1,5 +1,5 @@
 from .. import GroupChatManager, GroupChat, ConversableAgent, BackendService, FunctionsService, GroupService, AgentService
-from backend_service import AuthAgent, GetAgentModel, UpsertAgentModel
+from backend_service import AuthAgent, GetAgentModel, UpsertAgentModel, BackendAgent
 from ..service.group_function_specs import group_function_specs
 from typing import Dict, List
 AGENT_SYSTEM_MESSAGE = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
@@ -23,50 +23,52 @@ class MakeService:
     def is_group_chat_data(self, agents: List[Dict]):
         return len(agents) > 0
 
-    def update_agent(self, agent: ConversableAgent, system_message: str, description: str, invitees: List[str], agents: List[Dict], functions: List[Dict]):
-        agent.update_system_message(system_message)
-        if self.is_group_chat_data(agents):
-            agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in agents]
+    def update_agent(self, agent: ConversableAgent, backend_agent: BackendAgent):
+        agent.update_system_message(backend_agent.system_message)
+        if self.is_group_chat_data(backend_agent.agents):
+            agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in backend_agent.agents]
             agent.groupchat.agents = agents_list
-            agent.groupchat.invitees = invitees
-            agent.description = description
-        for function in functions:
+            agent.groupchat.invitees = backend_agent.invitees
+            agent.description = backend_agent.description
+        for function in backend_agent.functions:
             FunctionsService.define_function_internal(agent=agent, **function)
-        return agent
+        MakeService.AGENT_REGISTRY[agent.name] = agent
 
-    def create_new_agent(self, auth_agent: AuthAgent, name: str, system_message: str, description: str, invitees: List[str], agents: List[Dict], functions: List[Dict], llm_config: Dict = None):
-        if self.is_group_chat_data(agents):
-            agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in agents]
+    def make_agent(self, backend_agent: BackendAgent):
+        if self.is_group_chat_data(backend_agent.agents):
+            agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in backend_agent.agents]
             groupchat = GroupChat(
                 agents=agents_list,
-                invitees=invitees,
+                invitees=backend_agent.invitees,
                 messages=[]
             )
             agent = GroupChatManager(
                 groupchat=groupchat,
-                name=name,
-                system_message=system_message + AGENT_SYSTEM_MESSAGE,
+                name=backend_agent.name,
+                human_input_mode=backend_agent.human_input_mode,
+                system_message=backend_agent.system_message + AGENT_SYSTEM_MESSAGE,
                 termination_msg=termination_msg
             )
         else:
             agent = ConversableAgent(
-                name=name,
-                system_message=system_message + AGENT_SYSTEM_MESSAGE,
+                name=backend_agent.name,
+                human_input_mode=backend_agent.human_input_mode,
+                system_message=backend_agent.system_message + AGENT_SYSTEM_MESSAGE,
                 termination_msg=termination_msg
             )
-        auth: AuthAgent = BackendService.get_auth(name)
+        auth: AuthAgent = BackendService.get_auth(backend_agent.name)
         if auth is None:
-            if auth_agent:
-                auth = BackendService.set_auth(auth_agent)
+            if backend_agent.auth_agent:
+                auth = BackendService.set_auth(backend_agent.auth_agent)
             else:
                 print("No auth, agent has no way to authenticate against backend!")
                 return None
 
-        agent.description = description
+        agent.description = backend_agent.description
         if agent.llm_config is False:
             agent.llm_config = agent.DEFAULT_CONFIG.copy()
-        if llm_config:
-            agent.llm_config.update(llm_config)
+        if backend_agent.llm_config:
+            agent.llm_config.update(backend_agent.llm_config)
        
         agent.llm_config["api_key"] = auth.api_key
         agent.llm_config["functions"] = group_function_specs
@@ -84,21 +86,21 @@ class MakeService:
             "define_function": FunctionsService.define_function
         })
         agent._code_execution_config = {"work_dir":auth.namespace_id, "use_docker":"python:3"}
-        for function in functions:
+        for function in backend_agent.functions:
             FunctionsService.define_function_internal(agent=agent, **function)
+        MakeService.AGENT_REGISTRY[agent.name] = agent
         return agent
     
     def upsert_agent(self, sender: ConversableAgent, upsertModel: UpsertAgentModel):
         agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(upsertModel["name"])
-        response, err = BackendService.upsert_agent_data(sender, upsertModel)
+        response, err = BackendService.upsert_backend_agent(sender.name, upsertModel)
         if err is not None:
-            return None, err
-        agent_data, err = BackendService.get_agent_data(sender, GetAgentModel(name=upsertModel["name"]))
+            return err
+        backend_agent, err = BackendService.get_backend_agent(sender.name, GetAgentModel(name=upsertModel["name"]))
         if err is not None:
-            return None, err
+            return err
         if agent is None:
-            agent = self.create_new_agent(**agent_data)
+            agent = self.make_agent(backend_agent)
         else:
-            agent = self.update_agent(agent=agent, **agent_data)
-        MakeService.AGENT_REGISTRY[agent_data["name"]] = agent
-        return response, None
+            self.update_agent(agent, backend_agent)
+        return None
