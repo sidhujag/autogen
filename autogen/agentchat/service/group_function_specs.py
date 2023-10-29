@@ -15,7 +15,7 @@ send_message_spec = {
 
 join_group_spec = {
     "name": "join_group",
-    "description": "Join a specified group if you have been already invited.",
+    "description": "Join a specified group if you have been already invited. Groups are referenced by the group manager name.",
     "parameters": {
         "type": "object",
         "properties": {
