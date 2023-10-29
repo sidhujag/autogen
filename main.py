@@ -46,5 +46,5 @@ async def query(input: QueryModel):
         category="groups"
     ))
     GroupService.invite_to_group(sender=group_chat_manager, agent_name="UserProxyAgent", invite_message="Hello UserProxyAgent, please join our group")
-    GroupService.join_group(sender=user, group_manager_name="group_manager", hello_message=user.default_auto_reply)
+    GroupService.join_group(sender=user, group_manager_name="group_manager", hello_message=user._default_auto_reply)
     user.initiate_chat(recipient=group_chat_manager, message=input.query)
