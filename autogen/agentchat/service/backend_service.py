@@ -1,6 +1,6 @@
 
 import requests
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Union
 
 AUTOGEN_BACKEND = "127.0.0.1:8001"
