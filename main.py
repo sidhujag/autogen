@@ -6,6 +6,7 @@ from autogen.agentchat.conversable_agent import ConversableAgent
 from pydantic import BaseModel
 from autogen.agentchat import MakeService, GroupService
 from autogen.agentchat.service.backend_service import BackendAgent, AuthAgent
+from autogen.agentchat.groupchat import GroupChatManager
 app = FastAPI()
 
 # Initialize logging
@@ -38,10 +39,10 @@ async def query(input: QueryModel):
         default_auto_reply="This is the user_assistant speaking.",
         category="user"
     ))
-    group_chat_manager: ConversableAgent = MakeService.make_agent(BackendAgent(
+    group_chat_manager: GroupChatManager = MakeService.make_agent(BackendAgent(
         name="group_manager",
         auth=input.auth,
-        agents=["user_assistant"],
+        agents=["user_assistant"], # this will trigger group chat manager to be created
         default_auto_reply="This is group_manager speaking.",
         category="groups"
     ))

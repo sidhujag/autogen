@@ -37,8 +37,7 @@ class MakeService:
         if self.is_group_chat_data(backend_agent.agents):
             groupchat = GroupChat(
                 agents=backend_agent.agents,
-                invitees=backend_agent.invitees,
-                messages=[]
+                invitees=backend_agent.invitees
             )
             agent = GroupChatManager(
                 groupchat=groupchat,
