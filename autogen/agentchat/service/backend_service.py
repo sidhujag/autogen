@@ -102,12 +102,6 @@ class BackendService:
         response, err = self.call("get_agent", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
-        if 'name' not in response or len(response["name"]) == 0:
-            return None, "invalid response"
-        keys = ['description', 'system_message', 'functions']
-        if not all(key in response for key in keys):
-            missing_keys = [key for key in keys if key not in response]
-            return None, f"Error: Missing keys in agent_data: {', '.join(missing_keys)}"
         response["auth"] = auth
         return BackendAgent(response), None
 
