@@ -31,6 +31,7 @@ class UpsertAgentModel(BaseModel):
     name: str
     auth: AuthAgent
     human_input_mode: Optional[str] = None
+    default_auto_reply: Optional[str] = None
     description: Optional[str] = None
     system_message: Optional[str] = None
     function_names: Optional[List[str]] = None # cumulative
@@ -43,6 +44,7 @@ class BaseAgent(BaseModel):
     namespace_id: str = Field(default="")
     description: str = Field(default="")
     human_input_mode: str = Field(default="TERMINATE")
+    default_auto_reply: Field(default="")
     system_message: str = Field(default="")
     category: str = Field(default="")
     agents: List[Dict] = Field(default_factory=list)
@@ -75,22 +77,22 @@ class BackendService:
     def delete_backend_agent(self, sender: str, data_model: DeleteAgentModel):
         auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
-            return None, "No auth, agent has no way to authenticate against backend!"
+            return "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
         response, err = self.call("delete_agent", data_model.dict(exclude_none=True))
         if err != None:
-            return None, err
-        return response, None
+            return err
+        return None
 
     def upsert_backend_agent(self, sender: str, data_model: UpsertAgentModel):
         auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
-            return None, "No auth, agent has no way to authenticate against backend!"
+            return "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
         response, err = self.call("upsert_agent", data_model.dict(exclude_none=True))
         if err != None:
-            return None, err
-        return response, None
+            return err
+        return None
         
     def get_backend_agent(self, sender: str, data_model: GetAgentModel) -> BackendAgent:
         auth: AuthAgent = self.AUTH.get(sender)
@@ -112,12 +114,12 @@ class BackendService:
     def add_backend_function(self, sender: str, data_model: AddFunctionModel):
         auth: AuthAgent = self.AUTH.get(sender)
         if auth is None:
-            return None, "No auth, agent has no way to authenticate against backend!"
+            return "No auth, agent has no way to authenticate against backend!"
         data_model.auth = auth
         response, err = self.call("add_function", data_model.dict(exclude_none=True))
         if err != None:
-            return None, err
-        return response, None
+            return err
+        return None
 
     def discover_backend_functions(self, sender: str, data_model: DiscoverFunctionsModel):
         auth: AuthAgent = self.AUTH.get(sender)

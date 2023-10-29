@@ -46,6 +46,7 @@ class MakeService:
                 groupchat=groupchat,
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
+                default_auto_reply=backend_agent.default_auto_reply,
                 system_message=backend_agent.system_message + AGENT_SYSTEM_MESSAGE,
                 termination_msg=termination_msg
             )
@@ -53,6 +54,7 @@ class MakeService:
             agent = ConversableAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
+                default_auto_reply=backend_agent.default_auto_reply,
                 system_message=backend_agent.system_message + AGENT_SYSTEM_MESSAGE,
                 termination_msg=termination_msg
             )
@@ -93,7 +95,7 @@ class MakeService:
     
     def upsert_agent(self, sender: ConversableAgent, upsertModel: UpsertAgentModel):
         agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(upsertModel["name"])
-        response, err = BackendService.upsert_backend_agent(sender.name, upsertModel)
+        err = BackendService.upsert_backend_agent(sender.name, upsertModel)
         if err is not None:
             return err
         backend_agent, err = BackendService.get_backend_agent(sender.name, GetAgentModel(name=upsertModel["name"]))

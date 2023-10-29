@@ -12,7 +12,7 @@ class GroupService:
         result = group_manager.join_group_helper(sender, hello_message)
         if result != "Group joined!":
             return result
-        response, err = BackendService.upsert_backend_agent(sender.name, UpsertAgentModel(
+        err = BackendService.upsert_backend_agent(sender.name, UpsertAgentModel(
             name=group_manager_name,
             agents=group_manager.groupchat.agents,
             invitees=group_manager.groupchat.invitees
@@ -31,7 +31,7 @@ class GroupService:
         result = group_manager.invite_to_group_helper(sender, agent, invite_message)
         if result != "Invite sent!":
             return result
-        response, err = BackendService.upsert_backend_agent(sender.name, UpsertAgentModel(
+        err = BackendService.upsert_backend_agent(sender.name, UpsertAgentModel(
             name=group_manager_name,
             invitees=group_manager.groupchat.invitees
         ))
@@ -55,7 +55,7 @@ class GroupService:
         if del_group_error != "":
             return del_group_error
         del MakeService.AGENT_REGISTRY[group_manager.name]
-        response, err = BackendService.delete_backend_agent(sender.name, DeleteAgentModel(
+        err = BackendService.delete_backend_agent(sender.name, DeleteAgentModel(
             name=group_manager.name
         ))
         if err is not None:
@@ -75,7 +75,7 @@ class GroupService:
              result = self.delete_group(sender, group_manager)
              if result != "Group deleted!":
                 return result
-        response, err = BackendService.upsert_backend_agent(sender.name, UpsertAgentModel(
+        err = BackendService.upsert_backend_agent(sender.name, UpsertAgentModel(
             name=group_manager_name,
             agents=group_manager.groupchat.agents
         ))

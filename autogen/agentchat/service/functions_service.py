@@ -105,7 +105,7 @@ class FunctionsService:
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when defining function: {e}"
         
-        result, err = BackendService.add_backend_function(sender.name, AddFunctionModel(
+        err = BackendService.add_backend_function(sender.name, AddFunctionModel(
             name=name,
             description=description,
             required=json_reqs,

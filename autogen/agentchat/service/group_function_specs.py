@@ -42,7 +42,7 @@ invite_to_group_spec = {
 
 create_group_spec = {
     "name": "create_group",
-    "description": "Create a new group.",
+    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -75,8 +75,8 @@ discover_agents_spec = {
         "properties": {
             "category": {
                 "type": "string",
-                "description": "A category to filter agents based on predefined categories. To find group managers (group admins) use groups category (if not in group then subsequently can try to join these groups by getting an invite from someone in the group including group manager). ",
-                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "groups"]
+                "description": "A category to filter agents based on predefined categories. To find group managers (group admins) use groups category (if not in group then subsequently can try to join these groups by getting an invite from someone in the group including group manager). 'user' group is for different agents to proxy user communication",
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "groups", "user"]
             },
             "query": {
                 "type": "string",
@@ -107,8 +107,8 @@ create_or_update_agent = {
             },
             "category": {
                 "type": "string",
-                "description": "A category to sort agent based on predefined categories. Set this if creating a new agent.",
-                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning"]
+                "description": "A category to sort agent based on predefined categories. Set this if creating a new agent. 'groups' not available here if that is what you are looking for, to make new group use create_group function.",
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "user"]
             }
         },
         "required": ["name"]

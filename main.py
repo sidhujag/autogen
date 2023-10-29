@@ -2,11 +2,10 @@ import os
 import logging
 
 from fastapi import FastAPI
-from autogen.agentchat.user_proxy_agent import UserProxyAgent
 from autogen.agentchat.conversable_agent import ConversableAgent
-from autogen.agentchat.groupchat import GroupChat, GroupChatManager
 from pydantic import BaseModel
-
+from autogen.agentchat import MakeService, GroupService
+from autogen.agentchat.service.backend_service import BackendAgent, AuthAgent
 app = FastAPI()
 
 # Initialize logging
@@ -16,37 +15,36 @@ logging.basicConfig(filename=LOGFILE_PATH, filemode='w',
                     format='%(asctime)s.%(msecs)03d %(name)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S', force=True, level=logging.INFO)
 
 class QueryModel(BaseModel):
-    namespace_id: str
-    api_key: str
+    auth: AuthAgent
     query: str
 
 @app.post('/query/')
 async def query(input: QueryModel):
-    user = UserProxyAgent(
-        "UserProxyAgent",
-        namespace_id=input.namespace_id,
-        api_key=input.api_key,
+    user: ConversableAgent = MakeService.make_agent(BackendAgent(
+        name="UserProxyAgent",
+        auth=input.auth,
         system_message="Pass me messages so I can relay back to the user.",
         description="The proxy to the user to get input or relay response",
-        llm_config=False,
+        human_input_mode="ALWAYS",
         default_auto_reply="This is UserProxyAgent speaking.",
-    )
-    assistant = ConversableAgent(
-        "user_assistant",
-        namespace_id=input.namespace_id,
-        api_key=input.api_key,
+        category="user"
+    ))
+    user_assistant: ConversableAgent = MakeService.make_agent(BackendAgent(
+        name="user_assistant",
+        auth=input.auth,
+        system_message="Pass me messages so I can relay back to the user.",
+        description="The proxy to the user to get input or relay response",
         human_input_mode="NEVER",
-        default_auto_reply="This is the user_assistant speaking."
-    )
-    groupchat = GroupChat(agents=[{"name": user.name, "description": user.description}], invitees=[])
-    group_chat_manager = GroupChatManager(
+        default_auto_reply="This is the user_assistant speaking.",
+        category="user"
+    ))
+    group_chat_manager: ConversableAgent = MakeService.make_agent(BackendAgent(
         name="group_manager",
-        groupchat=groupchat,
-        namespace_id=input.namespace_id, 
-        api_key=input.api_key,
-        default_auto_reply="This is group_manager speaking."
-    )
-    user.prepare_agents()
-    user.invite_to_group("user_assistant", "group_manager", "Hello user_assistant, please join our group.")
-    assistant.join_group("group_manager", "Hello this is the user assistant joining!")
+        auth=input.auth,
+        agents=["user_assistant"],
+        default_auto_reply="This is group_manager speaking.",
+        category="groups"
+    ))
+    GroupService.invite_to_group(group_chat_manager, user, "Hello UserProxyAgent, please join our group")
+    GroupService.join_group(user, "group_manager", user.default_auto_reply)
     user.initiate_chat(group_chat_manager, message=input.query)
