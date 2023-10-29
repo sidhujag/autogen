@@ -33,8 +33,7 @@ async def query(input: QueryModel):
     user_assistant: ConversableAgent = MakeService.make_agent(BackendAgent(
         name="user_assistant",
         auth=input.auth,
-        system_message="Pass me messages so I can relay back to the user.",
-        description="The proxy to the user to get input or relay response",
+        description="A generic AI assistant that can solve problems",
         human_input_mode="NEVER",
         default_auto_reply="This is the user_assistant speaking.",
         category="user"
