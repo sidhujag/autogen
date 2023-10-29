@@ -26,8 +26,7 @@ class MakeService:
     def update_agent(self, agent: ConversableAgent, backend_agent: BackendAgent):
         agent.update_system_message(backend_agent.system_message)
         if self.is_group_chat_data(backend_agent.agents):
-            agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in backend_agent.agents]
-            agent.groupchat.agents = agents_list
+            agent.groupchat.agents = backend_agent.agents
             agent.groupchat.invitees = backend_agent.invitees
             agent.description = backend_agent.description
         for function in backend_agent.functions:
@@ -36,9 +35,8 @@ class MakeService:
 
     def make_agent(self, backend_agent: BackendAgent):
         if self.is_group_chat_data(backend_agent.agents):
-            agents_list = [{'name': agent['name'], 'description': agent['description']} for agent in backend_agent.agents]
             groupchat = GroupChat(
-                agents=agents_list,
+                agents=backend_agent.agents,
                 invitees=backend_agent.invitees,
                 messages=[]
             )

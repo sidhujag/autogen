@@ -16,16 +16,12 @@ class GroupChat:
     - invitees: a list of invited agents to join group.
     """
 
-    agents: List[Dict]
+    agents: List[str]
     invitees: List[str]
     def reset(self):
         """Reset the group chat."""
         self.agents.clear()
         self.invitees.clear()
-
-    def _participant_roles(self):
-        return "\n".join([f"{agent['name']}: {agent['description']}" for agent in self.agents])
-
 
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
@@ -53,7 +49,7 @@ class GroupChatManager(ConversableAgent):
         # self._random = random.Random(seed)
 
     def is_agent_in_group(self, agent_name: str) -> bool:
-        return any(agent['name'] == agent_name for agent in self.groupchat.agents)
+        return any(agent == agent_name for agent in self.groupchat.agents)
 
     def join_group_helper(self, agent: ConversableAgent,  welcome_message: str) -> str:
         if agent.name not in self.groupchat.invitees:
@@ -64,13 +60,13 @@ class GroupChatManager(ConversableAgent):
             self.groupchat.invitees.remove(agent.name)
         except ValueError:
             return "Could not join group: Not invited"
-        other_roles = f"The following other agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
-        self.groupchat.agents.append({"name": agent.name, "description": agent.description})
+        other_roles = f"The following other agents are in the group: {self.groupchat.agents}, the group manager: {self.name}"
+        self.groupchat.agents.append(agent.name)
         # send discovery of other agents to the new agent
         self.send(other_roles, agent, request_reply=False, silent=True)
         if welcome_message:
             agent.send(welcome_message, self, request_reply=False, silent=True)
-        new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
+        new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat.agents}, the group manager: {self.name}"
         self.update_system_message(new_system_message)
         return "Group joined!"
 
@@ -78,7 +74,7 @@ class GroupChatManager(ConversableAgent):
         if self.is_agent_in_group(agent.name) is False:
             return "Could not leave group: Not in the group"
         # Find the agent in the agents list
-        agent_to_remove = next((a for a in self.groupchat.agents if a['name'] == agent.name), None)
+        agent_to_remove = next((a for a in self.groupchat.agents if a == agent.name), None)
         
         # If the agent is found, remove it from the agents list
         if agent_to_remove:
@@ -87,7 +83,7 @@ class GroupChatManager(ConversableAgent):
             return "Could not leave group: Agent not found in group"
         if goodbye_message:
             agent.send(goodbye_message, self, request_reply=False, silent=True)
-        new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat._participant_roles()}, the group manager: {self.name}"
+        new_system_message = self.system_message + f"\nThe following agents are in the group: {self.groupchat.agents}, the group manager: {self.name}"
         self.update_system_message(new_system_message)
         return "Group exited!"
 
@@ -122,8 +118,8 @@ class GroupChatManager(ConversableAgent):
         message = messages[-1]
         speaker = sender
         # broadcast the message to all agents except the speaker
-        for agentObj in config.agents:
-            agent = AgentService.get_agent(agentObj["name"])
+        for agent_name in config.agents:
+            agent = AgentService.get_agent(agent_name)
             if agent and agent != speaker:
                 self.send(message, agent, request_reply=False, silent=True)
         # this should be the first callback so let the rest of the callbacks run, at the end AI can reply if it gets there

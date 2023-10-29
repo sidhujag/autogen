@@ -36,7 +36,7 @@ class UpsertAgentModel(BaseModel):
     system_message: Optional[str] = None
     function_names: Optional[List[str]] = None # cumulative
     category: Optional[str] = None
-    agents: Optional[List[Dict]] = None
+    agents: Optional[List[str]] = None
     invitees: Optional[List[str]] = None
     
 class BaseAgent(BaseModel):
@@ -47,7 +47,7 @@ class BaseAgent(BaseModel):
     default_auto_reply: Field(default="")
     system_message: str = Field(default="")
     category: str = Field(default="")
-    agents: List[Dict] = Field(default_factory=list)
+    agents: List[str] = Field(default_factory=list)
     invitees: List[str] = Field(default_factory=list)
 
 class BackendAgent(BaseAgent):
