@@ -1,9 +1,10 @@
 
-from . import GroupChatManager, MakeService, BackendService, AgentService, ConversableAgent, UpsertAgentModel, DeleteAgentModel, GetAgentModel
-
+from .. import ConversableAgent
 class GroupService:
     @staticmethod
     def join_group(sender: ConversableAgent, group_manager_name: str, hello_message: str = None) -> str:
+        from .. import GroupChatManager
+        from . import BackendService, AgentService, UpsertAgentModel, GetAgentModel
         group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_manager_name))
         if group_manager is None:
             return "Could not send message: Doesn't exists"
@@ -24,6 +25,8 @@ class GroupService:
 
     @staticmethod
     def invite_to_group(sender: ConversableAgent, agent_name: str, group_manager_name: str, invite_message: str = None) -> str:
+        from .. import GroupChatManager
+        from . import BackendService, AgentService, UpsertAgentModel, GetAgentModel
         group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_manager_name))
         if group_manager is None:
             return "Could not invite to group: Group manager doesn't exists"
@@ -46,7 +49,8 @@ class GroupService:
 
     @staticmethod
     def create_group(sender: ConversableAgent, group_manager_name: str, group_description: str, system_message: str = None) -> str:
-        err = MakeService.upsert_agent(sender, UpsertAgentModel(
+        from . import MakeService, UpsertAgentModel
+        agent, err = MakeService.upsert_agent(UpsertAgentModel(
             auth=sender.auth,
             name=group_manager_name,
             description=group_description,
@@ -58,7 +62,8 @@ class GroupService:
         return "Group created!"
 
     @staticmethod
-    def delete_group(sender: ConversableAgent, group_manager: GroupChatManager) -> str:
+    def delete_group(sender: ConversableAgent, group_manager) -> str:
+        from . import MakeService, BackendService, DeleteAgentModel
         del_group_error = group_manager.delete_group_helper()
         if del_group_error != "":
             return del_group_error
@@ -73,6 +78,8 @@ class GroupService:
 
     @staticmethod
     def leave_group(sender: ConversableAgent, group_manager_name: str, goodbye_message: str = None) -> str:
+        from .. import GroupChatManager
+        from . import BackendService, AgentService, UpsertAgentModel, GetAgentModel
         group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_manager_name))
         if group_manager is None:
             return "Could not leave group: Doesn't exists"

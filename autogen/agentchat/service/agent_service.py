@@ -1,9 +1,9 @@
 import json
-from . import GroupChatManager, ConversableAgent, BackendService, MakeService, DiscoverAgentsModel, UpsertAgentModel, GetAgentModel
-
+from .. import GroupChatManager, ConversableAgent
 class AgentService:
     @staticmethod
-    def get_agent(agent_model: GetAgentModel) -> ConversableAgent:
+    def get_agent(agent_model) -> ConversableAgent:
+        from . import BackendService, MakeService
         agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(agent_model.name)
         if agent is None:
             backend_agent, err = BackendService.get_backend_agent(agent_model)
@@ -14,6 +14,7 @@ class AgentService:
 
     @staticmethod
     def send_message(sender: ConversableAgent, message: str, recipient: str, request_reply: bool = False) -> str:
+        from . import GetAgentModel
         if sender is None:
             return "Could not send message: sender not found"
         to_agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=recipient))
@@ -29,6 +30,7 @@ class AgentService:
 
     @staticmethod
     def discover_agents(sender: ConversableAgent, category: str, query: str = None) -> str:
+        from . import BackendService, DiscoverAgentsModel
         if sender is None:
             return "Sender not found"
         response, err = BackendService.discover_backend_agents(DiscoverAgentsModel(auth=sender.auth, query=query,category=category))
@@ -38,13 +40,14 @@ class AgentService:
 
     @staticmethod
     def create_or_update_agent(sender: ConversableAgent, agent_name: str, agent_description: str = None, system_message: str = None, function_names: str = None, category: str = None) -> str: 
+        from . import MakeService, UpsertAgentModel
         if sender is None:
             return "Sender not found"
         try:
             json_fns = json.loads(function_names)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON function names when trying to create or update agent: {e}"
-        err = MakeService.upsert_agent(UpsertAgentModel(
+        agent, err = MakeService.upsert_agent(UpsertAgentModel(
             auth=sender.auth,
             name=agent_name,
             description=agent_description,

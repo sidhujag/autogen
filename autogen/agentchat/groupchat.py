@@ -4,12 +4,8 @@ from typing import Dict, List, Optional, Union
 from .agent import Agent
 import logging
 from . import ConversableAgent
-from . import AgentService
-from .service.backend_service import GetAgentModel
-
 logger = logging.getLogger(__name__)
 
-GROUP_MANAGER_SYSTEM_MESSAGE = """ As a group manager, continuously message relevant agents in your group until satisfied with the results or awaiting responses. Delegate tasks to agents sequentially based on your plan, informing the initiating agent once all tasks are complete. Communication halts if you stop messaging until a human or another agent messages you. Note: All messages in a group are shared with every agent, increasing context window requirements and inferencing costs with more communication and content."""
 @dataclass
 class GroupChat:
     """A group chat class that contains the following data fields:
@@ -17,8 +13,8 @@ class GroupChat:
     - invitees: a list of invited agents to join group.
     """
 
-    agents: set
-    invitees: set
+    agents: dict[str, bool]
+    invitees: dict[str, bool]
     def reset(self):
         """Reset the group chat."""
         self.agents.clear()
@@ -42,7 +38,7 @@ class GroupChatManager(ConversableAgent):
             name=name,
             max_consecutive_auto_reply=max_consecutive_auto_reply,
             human_input_mode=human_input_mode,
-            system_message=system_message + GROUP_MANAGER_SYSTEM_MESSAGE,
+            system_message=system_message,
             **kwargs,
         )
         self.base_system_message = system_message
@@ -55,9 +51,9 @@ class GroupChatManager(ConversableAgent):
             return "Could not join group: Not invited"
         if agent.name not in self.groupchat.agents:
             return "Could not join group: Already in the group"
-        self.groupchat.invitees.remove(agent.name)
+        del self.groupchat.invitees[agent.name]
         other_roles = f"The following other agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}"
-        self.groupchat.agents.add(agent.name)
+        self.groupchat.agents[agent.name] = True
         # send discovery of other agents to the new agent
         self.send(other_roles, agent, request_reply=False, silent=True)
         if welcome_message and welcome_message != "":
@@ -68,7 +64,7 @@ class GroupChatManager(ConversableAgent):
     def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None) -> str:
         if agent.name not in self.groupchat.agents:
             return "Could not leave group: Not in the group"
-        self.groupchat.agents.remove(agent.name)
+        del self.groupchat.agents[agent.name]
         if goodbye_message and goodbye_message != "":
             agent.send(goodbye_message, self, request_reply=False, silent=True)
         self.update_system_message(self.base_system_message + f"\nThe following agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}")
@@ -87,7 +83,7 @@ class GroupChatManager(ConversableAgent):
             return "Could not invite to group: Already in the group"
         if inviter.name not in self.groupchat.agents:
             return "Cannot invite others to this group: You are not in the group"
-        self.groupchat.invitees.add(invited.name)
+        self.groupchat.invitees[invited.name] = True
         if invite_message and invite_message != "":
             inviter.send(invite_message, invited, request_reply=False, silent=True)
         return "Invite sent!"
@@ -99,6 +95,7 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ) -> Union[str, Dict, None]:
         """Run a group chat."""
+        from .service import AgentService, GetAgentModel
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]

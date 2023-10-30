@@ -1,5 +1,3 @@
-from ..groupchat import GroupChatManager, GroupChat
-from ..conversable_agent import ConversableAgent
 from .group_service import GroupService
 from .agent_service import AgentService
 from .functions_service import FunctionsService
@@ -17,9 +15,6 @@ from .backend_service import (
     BackendAgent
 )
 __all__ = [
-    "GroupChatManager",
-    "GroupChat",
-    "ConversableAgent",
     "GroupService",
     "AgentService",
     "MakeService",

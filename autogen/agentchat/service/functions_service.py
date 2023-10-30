@@ -1,7 +1,7 @@
         
 import json
-from . import MakeService, BackendService, ConversableAgent, AddFunctionModel, DiscoverFunctionsModel, UpsertAgentModel
-from typing import Dict, List, Any
+from .. import ConversableAgent
+from typing import List, Any
 from pydantic import ValidationError
 from autogen.code_utils import (
     execute_code
@@ -10,6 +10,7 @@ from autogen.code_utils import (
 class FunctionsService:
     @staticmethod
     def discover_functions(sender: ConversableAgent, category: str, query: str = None) -> str:
+        from . import BackendService, DiscoverFunctionsModel
         response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
         if err is not None:
             return f"Could not discover functions: {err}"
@@ -17,6 +18,7 @@ class FunctionsService:
 
     @staticmethod
     def add_functions(sender: ConversableAgent, function_names: str) -> str:
+        from . import MakeService, UpsertAgentModel
         try:
             function_names_list = json.loads(function_names)
             if not isinstance(function_names_list, list):
@@ -24,10 +26,10 @@ class FunctionsService:
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when trying to add function: {e}"
         
-        err = MakeService.upsert_agent(UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names_list))
+        agent, err = MakeService.upsert_agent(UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names_list))
         if err is not None:
             return f"Could not add function(s): {err}"
-        return "Functions added successfully"
+        return "Function(s) added successfully"
 
     @staticmethod
     def execute_func(name: str, code: str, packages: List[str], **args):
@@ -49,14 +51,17 @@ class FunctionsService:
     @staticmethod
     def define_function_internal(
         agent: ConversableAgent, 
-        function: AddFunctionModel
+        function
         ) -> str:
         function_config = {
             "name": function.name,
             "description": function.description,
-            "parameters": function.parameters,
+            "parameters": function.parameters.dict(exclude_none=True),
         }
         # Check if a function with the same name already exists
+        if 'functions' not in agent.llm_config:
+            agent.llm_config["functions"]= []
+    
         existing_function_index = next((index for (index, d) in enumerate(agent.llm_config["functions"]) if d["name"] == function.name), None)
         # If it does, update that entry; if not, append a new entry
         if existing_function_index is not None:
@@ -78,10 +83,11 @@ class FunctionsService:
                     function.name: lambda **args: FunctionsService.execute_func(function.name, function.code, function.packages or [], **args)
                 }
             )
-        return f"A function has been added to the context of this agent.\nDescription: {function.description}"
+        return "Function added!"
  
     @staticmethod
     def define_function(sender: ConversableAgent, **kwargs: Any) -> str:
+        from . import BackendService, AddFunctionModel
         # Convert JSON encoded string parameters to dict and list
         if 'parameters' in kwargs and type(kwargs['parameters']) == str:
             try:

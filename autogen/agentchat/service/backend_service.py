@@ -1,12 +1,11 @@
 
 import requests
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
-from . import ConversableAgent
+from typing import Any, List, Optional, Tuple
 
 AUTOGEN_BACKEND = "127.0.0.1:8001"
 
-class AuthAgent:
+class AuthAgent(BaseModel):
     api_key: str
     namespace_id: str
 
@@ -35,44 +34,41 @@ class UpsertAgentModel(BaseModel):
     default_auto_reply: Optional[str] = None
     description: Optional[str] = None
     system_message: Optional[str] = None
+    base_system_message: Optional[str] = None
     function_names: Optional[List[str]] = None # cumulative
     category: Optional[str] = None
-    agents: Optional[set] = None
-    invitees: Optional[set] = None
+    agents: Optional[dict[str, bool]] = None
+    invitees: Optional[dict[str, bool]] = None
     
 class BaseAgent(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent
     description: str = Field(default="")
     human_input_mode: str = Field(default="TERMINATE")
-    default_auto_reply: Field(default="")
+    default_auto_reply: str = Field(default="")
     system_message: str = Field(default="")
+    base_system_message: str = Field(default="")
     category: str = Field(default="")
-    agents: set = Field(default_factory=set)
-    invitees: set = Field(default_factory=set)
+    agents: dict = Field(default_factory=dict)
+    invitees: dict = Field(default_factory=dict)
 
 class BackendAgent(BaseAgent):
-    functions: List[Dict] = Field(default_factory=list)
+    functions: List[dict] = Field(default_factory=list)
 
-class OpenAPI2Parameter(BaseModel):
-    name: str
-    in_: str = Field(..., alias="in")
-    description: Optional[str]
-    required: Optional[bool] = False
-    type_: str = Field(..., alias="type")
-    format_: Optional[str] = Field(None, alias="format")
-    items: Optional[Dict[str, Any]]
+class OpenAIParameter(BaseModel):
+    type: str
+    properties: dict[str, Any]
+    required: Optional[List[str]] = None
 
 class AddFunctionModel(BaseModel):
     name: str
-    auth: AuthAgent
     description: str
-    parameters: List[OpenAPI2Parameter]
     category: str
-    auth: Optional[AuthAgent] = None
+    class_name: str
+    parameters: OpenAIParameter
+    auth: AuthAgent
     packages: Optional[List[str]] = None
     code: Optional[str] = None
-    class_name: Optional[str] = None
 
 class BackendService:
     @staticmethod
@@ -83,21 +79,20 @@ class BackendService:
         return None
     
     @staticmethod
-    def upsert_backend_agent(sender: ConversableAgent, data_model: UpsertAgentModel):
-        if sender.auth is None:
-            return "No auth, agent has no way to authenticate against backend!"
-        data_model.auth = sender.auth
+    def upsert_backend_agent(data_model: UpsertAgentModel):
         response, err = BackendService.call("upsert_agent", data_model.dict(exclude_none=True))
         if err != None:
             return err
         return None
 
     @staticmethod
-    def get_backend_agent(data_model: GetAgentModel) -> BackendAgent:
+    def get_backend_agent(data_model: GetAgentModel) -> Tuple[Optional[BackendAgent], Optional[str]]:
         response, err = BackendService.call("get_agent", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
-        return BackendAgent(response), None
+        if not isinstance(response, dict):
+            return None, "Unexpected response format: backend response is not a dictionary"
+        return BackendAgent(**response), None
 
     @staticmethod
     def add_backend_function(data_model: AddFunctionModel):
