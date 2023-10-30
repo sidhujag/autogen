@@ -5,10 +5,10 @@ class GroupService:
     @staticmethod
     def join_group(sender: ConversableAgent, group_manager_name: str, hello_message: str = None) -> str:
         group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_manager_name))
-        if not isinstance(group_manager, GroupChatManager):
-            return f"Could not send message: {group_manager_name} is not a group manager"
         if group_manager is None:
             return "Could not send message: Doesn't exists"
+        if not isinstance(group_manager, GroupChatManager):
+            return f"Could not send message: {group_manager_name} is not a group manager"
         result = group_manager.join_group_helper(sender, hello_message)
         if result != "Group joined!":
             return result
