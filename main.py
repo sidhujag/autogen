@@ -2,11 +2,17 @@ import os
 import logging
 
 from fastapi import FastAPI
-from autogen.agentchat.conversable_agent import ConversableAgent
 from pydantic import BaseModel
-from autogen.agentchat import MakeService, GroupService
-from autogen.agentchat.service.backend_service import BackendAgent, AuthAgent
-from autogen.agentchat.groupchat import GroupChatManager
+from autogen.agentchat.service import BackendAgent, AuthAgent, ConversableAgent, GroupChatManager, MakeService, GroupService, FunctionsService
+from autogen.agentchat.service.group_function_specs import(send_message_spec,
+    join_group_spec,
+    invite_to_group_spec,
+    create_group_spec,
+    leave_group_spec,
+    discover_agents_spec,
+    create_or_update_agent,
+    discover_functions,
+    define_function)
 app = FastAPI()
 
 # Initialize logging
@@ -19,6 +25,17 @@ class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
 
+def register_base_functions(agent: ConversableAgent):
+    FunctionsService.define_function(agent, send_message_spec)
+    FunctionsService.define_function(agent, join_group_spec)
+    FunctionsService.define_function(agent, invite_to_group_spec)
+    FunctionsService.define_function(agent, create_group_spec)
+    FunctionsService.define_function(agent, leave_group_spec)
+    FunctionsService.define_function(agent, discover_agents_spec)
+    FunctionsService.define_function(agent, create_or_update_agent)
+    FunctionsService.define_function(agent, discover_functions)
+    FunctionsService.define_function(agent, define_function)
+
 @app.post('/query/')
 async def query(input: QueryModel):
     user: ConversableAgent = MakeService.make_agent(BackendAgent(
@@ -30,6 +47,7 @@ async def query(input: QueryModel):
         default_auto_reply="This is UserProxyAgent speaking.",
         category="user"
     ))
+    register_base_functions(user)
     user_assistant: ConversableAgent = MakeService.make_agent(BackendAgent(
         name="user_assistant",
         auth=input.auth,
@@ -38,6 +56,7 @@ async def query(input: QueryModel):
         default_auto_reply="This is the user_assistant speaking.",
         category="user"
     ))
+    register_base_functions(user_assistant)
     group_chat_manager: GroupChatManager = MakeService.make_agent(BackendAgent(
         name="group_manager",
         auth=input.auth,
@@ -45,6 +64,7 @@ async def query(input: QueryModel):
         default_auto_reply="This is group_manager speaking.",
         category="groups"
     ))
+    register_base_functions(group_chat_manager)
     GroupService.invite_to_group(sender=group_chat_manager, agent_name="UserProxyAgent", invite_message="Hello UserProxyAgent, please join our group")
     GroupService.join_group(sender=user, group_manager_name="group_manager", hello_message=user._default_auto_reply)
     user.initiate_chat(recipient=group_chat_manager, message=input.query)

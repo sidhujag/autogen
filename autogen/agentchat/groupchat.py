@@ -5,6 +5,7 @@ from .agent import Agent
 import logging
 from . import ConversableAgent
 from . import AgentService
+from .service.backend_service import GetAgentModel
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class GroupChatManager(ConversableAgent):
         speaker = sender
         # broadcast the message to all agents except the speaker
         for agent_name in config.agents:
-            agent = AgentService.get_agent(agent_name)
+            agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=agent_name))
             if agent and agent != speaker:
                 self.send(message, agent, request_reply=False, silent=True)
         # this should be the first callback so let the rest of the callbacks run, at the end AI can reply if it gets there

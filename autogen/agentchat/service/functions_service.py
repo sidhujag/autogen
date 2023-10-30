@@ -1,32 +1,36 @@
         
 import json
-from .. import MakeService, BackendService, ConversableAgent
-from backend_service import AddFunctionModel, DiscoverFunctionsModel, UpsertAgentModel
-from typing import Dict, List, Union
+from . import MakeService, BackendService, ConversableAgent, AddFunctionModel, DiscoverFunctionsModel, UpsertAgentModel
+from typing import Dict, List, Any
+from pydantic import ValidationError
 from autogen.code_utils import (
     execute_code
 )
 
 class FunctionsService:
-    def discover_functions(self, sender: ConversableAgent, category: str, query: str = None) -> str:
-        # Assume the FastAPI endpoint is /discover_functions
-        response, err = BackendService.discover_backend_functions(sender.name, DiscoverFunctionsModel(query=query, category=category))
+    @staticmethod
+    def discover_functions(sender: ConversableAgent, category: str, query: str = None) -> str:
+        response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
         if err is not None:
             return f"Could not discover functions: {err}"
         return response
 
-    def add_functions(self, sender: ConversableAgent, function_names: str) -> str:
+    @staticmethod
+    def add_functions(sender: ConversableAgent, function_names: str) -> str:
         try:
-            json_fns = json.loads(function_names)
+            function_names_list = json.loads(function_names)
+            if not isinstance(function_names_list, list):
+                return "Error: function_names must be a list"
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when trying to add function: {e}"
-        # function_names is cumulatively added
-        err = MakeService.upsert_agent(sender, UpsertAgentModel(name=sender.name, function_names=json_fns))
+        
+        err = MakeService.upsert_agent(UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names_list))
         if err is not None:
             return f"Could not add function(s): {err}"
         return "Functions added successfully"
 
-    def execute_func(self, name: str, code: str, packages: List[str], **args):
+    @staticmethod
+    def execute_func(name: str, code: str, packages: List[str], **args):
             package_install_cmd = ' '.join(f'"{pkg}"' for pkg in packages)
             pip_install = f'import subprocess\nsubprocess.run(["pip", "-qq", "install", {package_install_cmd}])' if len(packages) > 0 else ''
             str_code = f"""
@@ -42,79 +46,65 @@ class FunctionsService:
             print(f"Result: {result}")
             return result
 
+    @staticmethod
     def define_function_internal(
-        self,
-        agent, 
-        name: str, 
-        description: str, 
-        json_args: Dict[str, Union[str, Dict]],
-        code: str, 
-        json_reqs: List[str],
-        packages: List[str],
-        class_name: str
+        agent: ConversableAgent, 
+        function: AddFunctionModel
         ) -> str:
         function_config = {
-            "name": name,
-            "description": description,
-            "parameters": {"type": "object", "properties": json_args},
-            "required": json_reqs,
+            "name": function.name,
+            "description": function.description,
+            "parameters": function.parameters,
         }
         # Check if a function with the same name already exists
-        existing_function_index = next((index for (index, d) in enumerate(agent.llm_config["functions"]) if d["name"] == name), None)
+        existing_function_index = next((index for (index, d) in enumerate(agent.llm_config["functions"]) if d["name"] == function.name), None)
         # If it does, update that entry; if not, append a new entry
         if existing_function_index is not None:
             agent.llm_config["functions"][existing_function_index] = function_config
         else:
             agent.llm_config["functions"].append(function_config)
-        if class_name is not "":
+        if function.class_name and function.class_name is not "":
             # Assuming class_name refers to a class with a method named `name`
             agent.register_function(
                 function_map={
-                    name: lambda **args: getattr(globals()[class_name](), name)(**args)
+                    function.name: lambda **args: getattr(globals()[function.class_name](), function.name)(**args)
                 }
             )
         else:
+            if not function.code or function.code == "":
+                return "function code was empty unexpectedly, either define a class_name or code"
             agent.register_function(
                 function_map={
-                    name: lambda **args: self.execute_func(name, code, packages, **args)
+                    function.name: lambda **args: FunctionsService.execute_func(function.name, function.code, function.packages or [], **args)
                 }
             )
-        return f"A function has been added to the context of this agent.\nDescription: {description}"
+        return f"A function has been added to the context of this agent.\nDescription: {function.description}"
  
-    def define_function(
-        self,
-        sender: ConversableAgent,
-        name: str,
-        description: str,
-        category: str,
-        code: str,
-        arguments: str = None,
-        required_arguments: str = None,
-        packages: str = None
-    ) -> str:
-        json_args = None
-        json_reqs = None
-        package_list = None
-        try:
-            if arguments:
-                json_args = json.loads(arguments)
-            if required_arguments:
-                json_reqs = json.loads(required_arguments)
-            if packages:
-                package_list = json.loads(packages)
-        except json.JSONDecodeError as e:
-            return f"Error parsing JSON when defining function: {e}"
+    @staticmethod
+    def define_function(sender: ConversableAgent, **kwargs: Any) -> str:
+        # Convert JSON encoded string parameters to dict and list
+        if 'parameters' in kwargs and type(kwargs['parameters']) == str:
+            try:
+                kwargs['parameters'] = json.loads(kwargs['parameters'])
+            except json.JSONDecodeError as e:
+                return f"Error parsing JSON for parameters: {e}"
         
-        err = BackendService.add_backend_function(sender.name, AddFunctionModel(
-            name=name,
-            description=description,
-            required=json_reqs,
-            arguments=json_args,
-            packages=package_list,
-            code=code,
-            category=category
-        ))
+        if 'packages' in kwargs and type(kwargs['packages']) == str:
+            try:
+                kwargs['packages'] = json.loads(kwargs['packages'])
+            except json.JSONDecodeError as e:
+                return f"Error parsing JSON for packages: {e}"
+
+        # Create AddFunctionModel instance
+        try:
+            function = AddFunctionModel(**kwargs, auth=sender.auth)
+        except ValidationError as e:
+            return f"Validation error when defining function: {e}"
+        # Add the backend function
+        err = BackendService.add_backend_function(function)
         if err is not None:
             return f"Could not define function: {err}"
         
-        return self.add_functions(sender, json.dumps([name]))
+        # Convert the function names to a JSON-encoded list of strings and call add_functions
+        function_names_json = json.dumps([function.name])
+        return FunctionsService.add_functions(sender, function_names_json)

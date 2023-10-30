@@ -1,6 +1,7 @@
-
 send_message_spec = {
     "name": "send_message",
+    "category": "communication",
+    "class_name": "AgentService.send_message",
     "description": "Send a message to an individual agent or to all agents in a group via the group manager.",
     "parameters": {
         "type": "object",
@@ -15,6 +16,8 @@ send_message_spec = {
 
 join_group_spec = {
     "name": "join_group",
+    "category": "communication",
+    "class_name": "GroupService.join_group",
     "description": "Join a specified group if you have been already invited. Groups are referenced by the group manager name.",
     "parameters": {
         "type": "object",
@@ -28,6 +31,8 @@ join_group_spec = {
 
 invite_to_group_spec = {
     "name": "invite_to_group",
+    "category": "communication",
+    "class_name": "GroupService.invite_to_group",
     "description": "Invite another agent to a specified group. Agents can only join if they have been invited.",
     "parameters": {
         "type": "object",
@@ -42,6 +47,8 @@ invite_to_group_spec = {
 
 create_group_spec = {
     "name": "create_group",
+    "category": "communication",
+    "class_name": "GroupService.create_group",
     "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category.",
     "parameters": {
         "type": "object",
@@ -56,6 +63,8 @@ create_group_spec = {
 
 leave_group_spec = {
     "name": "leave_group",
+    "category": "communication",
+    "class_name": "GroupService.leave_group",
     "description": "Leave a specified group.",
     "parameters": {
         "type": "object",
@@ -69,6 +78,8 @@ leave_group_spec = {
 
 discover_agents_spec = {
     "name": "discover_agents",
+    "category": "communication",
+    "class_name": "AgentService.discover_agents",
     "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. Agent names and descriptions are returned.",
     "parameters": {
         "type": "object",
@@ -89,6 +100,8 @@ discover_agents_spec = {
 
 create_or_update_agent = {
     "name": "create_or_update_agent",
+    "category": "communication",
+    "class_name": "AgentService.create_or_update_agent",
     "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
     "parameters": {
         "type": "object",
@@ -117,6 +130,8 @@ create_or_update_agent = {
 
 discover_functions = {
     "name": "discover_functions",
+    "category": "programming",
+    "class_name": "FunctionsService.discover_functions",
     "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. An agent can add the returned function(s) via add_functions so they can subsequently be called. Function names and descriptions are returned.",
     "parameters": {
         "type": "object",
@@ -137,6 +152,8 @@ discover_functions = {
 
 add_functions = {
     "name": "add_functions",
+    "category": "programming",
+    "class_name": "FunctionsService.add_functions",
     "description": "Allows agents to add specific function ability to themselves, usually you would discover functions prior to adding. Once added, the agent may decide to use this function.",
     "parameters": {
         "type": "object",
@@ -152,6 +169,8 @@ add_functions = {
 
 define_function = {
     "name": "define_function",
+    "category": "programming",
+    "class_name": "FunctionsService.define_function",
     "description": "Define a new function through python code to add to the context of the agent. Necessary Python packages must be declared. Once defined, the agent may decide to use this function, respond with a normal message.",
     "parameters": {
         "type": "object",
@@ -164,21 +183,21 @@ define_function = {
                 "type": "string",
                 "description": "A short description of the function.",
             },
-            "arguments": {
+            "parameters": {
                 "type": "string",
-                "description": "JSON schema of arguments encoded as a string. For example: { \"url\": { \"type\": \"string\", \"description\": \"The URL\", }}",
-            },
-            "required_arguments": {
-                "type": "string",
-                "description": "JSON schema of required arguments encoded as an array. For example: [\"argument1\", \"argument2\"]",
+                "description": "JSON schema of the parameters object encoded as a string. Use the standard OpenAPI 2.0 specification, and examples of functions already attached to see format.",
             },
             "packages": {
                 "type": "string",
-                "description": "JSON schema of required packages names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. For example: [\"package1\", \"package2\"]",
+                "description": "JSON schema of required packages names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. For example: [\"package1\", \"package2\"]. Should also include code.",
             },
             "code": {
                 "type": "string",
-                "description": "The implementation in Python. Do not include the function declaration.",
+                "description": "The implementation in Python. Do not include the function declaration. You should include either one of code or class_name but not both.",
+            },
+            "class_name": {
+                "type": "string",
+                "description": "If code is not provided but a class_name object to invoke when function is called. Follows pattern of [class].[name] where class is the class of the python class and name is the function name. Example: FunctionsService.add_functions. You should include either one of code or class_name but not both.",
             },
             "category": {
                 "type": "string",
@@ -186,18 +205,6 @@ define_function = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             },
         },
-        "required": ["name", "description", "code", "category"],
+        "required": ["name", "description", "category"],
     },
 }
-# Aggregate all function specs into a list for easier import
-group_function_specs = [
-    send_message_spec,
-    join_group_spec,
-    invite_to_group_spec,
-    create_group_spec,
-    leave_group_spec,
-    discover_agents_spec,
-    create_or_update_agent,
-    discover_functions,
-    define_function
-]

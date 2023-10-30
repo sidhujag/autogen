@@ -1,7 +1,8 @@
 
 import requests
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
+from . import ConversableAgent
 
 AUTOGEN_BACKEND = "127.0.0.1:8001"
 
@@ -41,7 +42,7 @@ class UpsertAgentModel(BaseModel):
     
 class BaseAgent(BaseModel):
     name: str = Field(default="")
-    namespace_id: str = Field(default="")
+    auth: AuthAgent
     description: str = Field(default="")
     human_input_mode: str = Field(default="TERMINATE")
     default_auto_reply: Field(default="")
@@ -53,89 +54,74 @@ class BaseAgent(BaseModel):
 class BackendAgent(BaseAgent):
     functions: List[Dict] = Field(default_factory=list)
 
+class OpenAPI2Parameter(BaseModel):
+    name: str
+    in_: str = Field(..., alias="in")
+    description: Optional[str]
+    required: Optional[bool] = False
+    type_: str = Field(..., alias="type")
+    format_: Optional[str] = Field(None, alias="format")
+    items: Optional[Dict[str, Any]]
+
 class AddFunctionModel(BaseModel):
     name: str
     auth: AuthAgent
     description: str
-    arguments: Dict[str, Union[str, Dict]] = None
-    required: List[str] = None
+    parameters: List[OpenAPI2Parameter]
     category: str
+    auth: Optional[AuthAgent] = None
     packages: Optional[List[str]] = None
     code: Optional[str] = None
     class_name: Optional[str] = None
 
 class BackendService:
-    AUTH: Dict[str, AuthAgent] = {}
+    @staticmethod
+    def delete_backend_agent(data_model: DeleteAgentModel):
+        response, err = BackendService.call("delete_agent", data_model.dict(exclude_none=True))
+        if err != None:
+            return err
+        return None
     
-    def get_auth(self, agent_name) -> AuthAgent:
-        return self.AUTH.get(agent_name)
-
-    def set_auth(self, agent_name, agent_data) -> AuthAgent:
-        self.AUTH[agent_name] = agent_data['auth']
-        return self.AUTH[agent_name]
-
-    def delete_backend_agent(self, sender: str, data_model: DeleteAgentModel):
-        auth: AuthAgent = self.AUTH.get(sender)
-        if auth is None:
+    @staticmethod
+    def upsert_backend_agent(sender: ConversableAgent, data_model: UpsertAgentModel):
+        if sender.auth is None:
             return "No auth, agent has no way to authenticate against backend!"
-        data_model.auth = auth
-        response, err = self.call("delete_agent", data_model.dict(exclude_none=True))
+        data_model.auth = sender.auth
+        response, err = BackendService.call("upsert_agent", data_model.dict(exclude_none=True))
         if err != None:
             return err
         return None
 
-    def upsert_backend_agent(self, sender: str, data_model: UpsertAgentModel):
-        auth: AuthAgent = self.AUTH.get(sender)
-        if auth is None:
-            return "No auth, agent has no way to authenticate against backend!"
-        data_model.auth = auth
-        response, err = self.call("upsert_agent", data_model.dict(exclude_none=True))
-        if err != None:
-            return err
-        return None
-        
-    def get_backend_agent(self, sender: str, data_model: GetAgentModel) -> BackendAgent:
-        auth: AuthAgent = self.AUTH.get(sender)
-        if auth is None:
-            return None, "No auth, agent has no way to authenticate against backend!"
-        data_model.auth = auth
-        response, err = self.call("get_agent", data_model.dict(exclude_none=True))
+    @staticmethod
+    def get_backend_agent(data_model: GetAgentModel) -> BackendAgent:
+        response, err = BackendService.call("get_agent", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
-        response["auth"] = auth
         return BackendAgent(response), None
 
-    def add_backend_function(self, sender: str, data_model: AddFunctionModel):
-        auth: AuthAgent = self.AUTH.get(sender)
-        if auth is None:
-            return "No auth, agent has no way to authenticate against backend!"
-        data_model.auth = auth
-        response, err = self.call("add_function", data_model.dict(exclude_none=True))
+    @staticmethod
+    def add_backend_function(data_model: AddFunctionModel):
+        response, err = BackendService.call("add_function", data_model.dict(exclude_none=True))
         if err != None:
             return err
         return None
 
-    def discover_backend_functions(self, sender: str, data_model: DiscoverFunctionsModel):
-        auth: AuthAgent = self.AUTH.get(sender)
-        if auth is None:
-            return None, "No auth, agent has no way to authenticate against backend!"
-        data_model.auth = auth
-        response, err = self.call("discover_functions", data_model.dict(exclude_none=True))
+    @staticmethod
+    def discover_backend_functions(data_model: DiscoverFunctionsModel):
+        response, err = BackendService.call("discover_functions", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
-    def discover_backend_agents(self, sender: str, data_model: DiscoverAgentsModel):
-        auth: AuthAgent = self.AUTH.get(sender)
-        if auth is None:
-            return None, "No auth, agent has no way to authenticate against backend!"
-        data_model.auth = auth
-        response, err = self.call("discover_agents", data_model.dict(exclude_none=True))
+    @staticmethod
+    def discover_backend_agents(data_model: DiscoverAgentsModel):
+        response, err = BackendService.call("discover_agents", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
-    def call(self, endpoint, json):   
+    @staticmethod
+    def call(endpoint, json):   
         try:
             response = requests.post(
                 url=f'http://{AUTOGEN_BACKEND}/{endpoint}/',
