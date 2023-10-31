@@ -57,6 +57,8 @@ class GroupChatManager(ConversableAgent):
             return "Could not join group: Already in the group"
         if agent.name not in self.groupchat.invitees:
             return "Could not join group: Not invited"
+        if agent.name == self.name:
+            return "Could not join group: You are the group manager already"
         self.groupchat.invitees.remove(agent.name)
         other_roles = f"The following other agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}"
         self.groupchat.agents.append(agent.name)
@@ -82,6 +84,8 @@ class GroupChatManager(ConversableAgent):
             return "Could not invite to group: Already in the group"
         if inviter.name not in self.groupchat.agents and inviter.name != self.name:
             return "Cannot invite others to this group: You are not in the group"
+        if invited.name == self.name:
+            return "Could not invite to group: You are the group manager already"
         self.groupchat.invitees.append(invited.name)
         if invite_message:
             inviter.send(invite_message, invited, request_reply=False, silent=True)

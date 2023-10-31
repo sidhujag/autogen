@@ -22,10 +22,10 @@ join_group_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "group_manager_name": {"type": "string", "description": "The name of the group manager who manages the group."},
+            "group_agent_name": {"type": "string", "description": "The name of the group agent who manages the group."},
             "hello_message": {"type": "string", "description": "A welcome message, if any. Maybe describe your skills and invite others to send you a message so you can solve a task for the group."}
         },
-        "required": ["group_manager_name"],
+        "required": ["group_agent_name"],
     },
 }
 
@@ -38,10 +38,10 @@ invite_to_group_spec = {
         "type": "object",
         "properties": {
             "agent_name": {"type": "string", "description": "The name of the agent to invite."},
-            "group_manager_name": {"type": "string", "description": "The name of the group manager who manages the group."},
+            "group_agent_name": {"type": "string", "description": "The name of the group agent who manages the group."},
             "invite_message": {"type": "string", "description": "An invitation message, if any. The receiving agent does not have to join but usually will as he is invited for his specific skills."}
         },
-        "required": ["agent_name", "group_manager_name"],
+        "required": ["agent_name", "group_agent_name"],
     },
 }
 
@@ -49,11 +49,11 @@ create_group_spec = {
     "name": "create_group",
     "category": "communication",
     "class_name": "GroupService.create_group",
-    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category. When creating a group you must invite atleast one other agent.",
+    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category. The calling agent will be automatically added to the group upon creation.",
     "parameters": {
         "type": "object",
         "properties": {
-            "group_manager_name": {"type": "string", "description": "The name of the new group manager who will manage the group."},
+            "group_agent_name": {"type": "string", "description": "The name of the new group agent who will manage the group."},
             "group_description": {"type": "string", "description": "Short description of the new group."},
             "system_message": {"type": "string", "description": "A system message for the new group, if any."},
             "invitees": {
@@ -62,7 +62,7 @@ create_group_spec = {
                 "description": "Array of agents to invite to new group."
             },
         },
-        "required": ["group_manager_name", "group_description", "invitees"],
+        "required": ["group_agent_name", "group_description"],
     },
 }
 
@@ -74,10 +74,10 @@ leave_group_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "group_manager_name": {"type": "string", "description": "The name of the group manager who manages the group. If you are the last agent to leave, the group gets deleted automatically."},
+            "group_agent_name": {"type": "string", "description": "The name of the group agent who manages the group. If you are the last agent to leave, the group gets deleted automatically."},
             "goodbye_message": {"type": "string", "description": "A farewell message, if any."}
         },
-        "required": ["group_manager_name"],
+        "required": ["group_agent_name"],
     },
 }
 

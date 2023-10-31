@@ -4,20 +4,20 @@ from typing import List
 
 class GroupService:
     @staticmethod
-    def join_group(sender: ConversableAgent, group_manager_name: str, hello_message: str = None) -> str:
+    def join_group(sender: ConversableAgent, group_agent_name: str, hello_message: str = None) -> str:
         from .. import GroupChatManager
         from . import BackendService, AgentService, UpsertAgentModel, GetAgentModel
-        group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_manager_name))
+        group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_agent_name))
         if group_manager is None:
             return "Could not send message: Doesn't exists"
         if not isinstance(group_manager, GroupChatManager):
-            return f"Could not send message: {group_manager_name} is not a group manager"
+            return f"Could not send message: {group_agent_name} is not a group manager"
         result = group_manager.join_group_helper(sender, hello_message)
         if result != "Group joined!":
             return result
         err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
-            name=group_manager_name,
+            name=group_agent_name,
             agents=group_manager.groupchat.agents,
             invitees=group_manager.groupchat.invitees
         )])
@@ -26,14 +26,14 @@ class GroupService:
         return result
 
     @staticmethod
-    def invite_to_group(sender: ConversableAgent, agent_name: str, group_manager_name: str, invite_message: str = None) -> str:
+    def invite_to_group(sender: ConversableAgent, agent_name: str, group_agent_name: str, invite_message: str = None) -> str:
         from .. import GroupChatManager
         from . import BackendService, AgentService, UpsertAgentModel, GetAgentModel
-        group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_manager_name))
+        group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_agent_name))
         if group_manager is None:
             return "Could not invite to group: Group manager doesn't exists"
         if not isinstance(group_manager, GroupChatManager):
-            return f"Could not invite to group: {group_manager_name} is not a group manager"
+            return f"Could not invite to group: {group_agent_name} is not a group manager"
         agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=agent_name))
         if agent is None:
             return "Could not invite to group: Agent doesn't exists"
@@ -42,7 +42,7 @@ class GroupService:
             return result
         err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
-            name=group_manager_name,
+            name=group_agent_name,
             invitees=group_manager.groupchat.invitees
         )])
         if err is not None:
@@ -50,16 +50,16 @@ class GroupService:
         return result
 
     @staticmethod
-    def create_group(sender: ConversableAgent, group_manager_name: str, group_description: str, invitees: List[str], system_message: str = None) -> str:
+    def create_group(sender: ConversableAgent, group_agent_name: str, group_description: str, invitees: List[str], system_message: str = None) -> str:
         from . import MakeService, UpsertAgentModel
-        if len(invitees) == 0:
-            return "Could not create group: you must invite atleast one agent to the group upon creation"
+        # invite the invitees and add yourself as the sole agent in the group
         agent, err = MakeService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
-            name=group_manager_name,
+            name=group_agent_name,
             description=group_description,
             system_message=system_message,
             invitees=invitees,
+            agents=[sender.name],
             category="groups"
         )])
         if err is not None:
@@ -82,14 +82,14 @@ class GroupService:
         return "Group deleted!"
 
     @staticmethod
-    def leave_group(sender: ConversableAgent, group_manager_name: str, goodbye_message: str = None) -> str:
+    def leave_group(sender: ConversableAgent, group_agent_name: str, goodbye_message: str = None) -> str:
         from .. import GroupChatManager
         from . import BackendService, AgentService, UpsertAgentModel, GetAgentModel
-        group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_manager_name))
+        group_manager = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=group_agent_name))
         if group_manager is None:
             return "Could not leave group: Doesn't exists"
         if not isinstance(group_manager, GroupChatManager):
-            return f"Could not leave group: {group_manager_name} is not a group manager"
+            return f"Could not leave group: {group_agent_name} is not a group manager"
         result = group_manager.leave_group_helper(sender, goodbye_message)
         if result != "Group exited!":
             return result
@@ -99,7 +99,7 @@ class GroupService:
                 return result
         err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
-            name=group_manager_name,
+            name=group_agent_name,
             agents=group_manager.groupchat.agents
         )])
         if err is not None:

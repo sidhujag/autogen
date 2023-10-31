@@ -23,15 +23,12 @@ class MakeService:
     
     @staticmethod
     def is_group_chat_data(backend_agent):
-        return len(backend_agent.agents) > 0 or len(backend_agent.invitees) > 0
+        return len(backend_agent.agents) > 0
 
     @staticmethod
     def update_agent(agent: ConversableAgent, backend_agent):
         from . import FunctionsService, AddFunctionModel
         if MakeService.is_group_chat_data(backend_agent):
-            if not isinstance(agent, GroupChatManager):
-                agent = MakeService._create_group_agent(backend_agent)
-                agent.auth = backend_agent.auth
             agent.update_system_message(backend_agent.system_message+MakeService.GROUP_MANAGER_SYSTEM_MESSAGE)
             agent.groupchat.agents = backend_agent.agents
             agent.groupchat.invitees = backend_agent.invitees
