@@ -72,27 +72,30 @@ class AddFunctionModel(BaseModel):
 
 class BackendService:
     @staticmethod
-    def delete_backend_agent(data_model: DeleteAgentModel):
-        response, err = BackendService.call("delete_agent", data_model.dict(exclude_none=True))
-        if err != None:
-            return err
-        return None
-    
-    @staticmethod
-    def upsert_backend_agent(data_model: UpsertAgentModel):
-        response, err = BackendService.call("upsert_agent", data_model.dict(exclude_none=True))
-        if err != None:
+    def delete_backend_agents(data_models: List[DeleteAgentModel]):
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("delete_agents", list_of_dicts)
+        if err is not None:
             return err
         return None
 
     @staticmethod
-    def get_backend_agent(data_model: GetAgentModel) -> Tuple[Optional[BackendAgent], Optional[str]]:
-        response, err = BackendService.call("get_agent", data_model.dict(exclude_none=True))
-        if err != None:
+    def upsert_backend_agents(data_models: List[UpsertAgentModel]):
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("upsert_agents", list_of_dicts)
+        if err is not None:
+            return err
+        return None
+
+    @staticmethod
+    def get_backend_agents(data_models: List[GetAgentModel]) -> Tuple[Optional[List[BackendAgent]], Optional[str]]:
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("get_agents", list_of_dicts)
+        if err is not None:
             return None, err
-        if not isinstance(response, dict):
-            return None, "Unexpected response format: backend response is not a dictionary"
-        return BackendAgent(**response), None
+        if not isinstance(response, list):
+            return None, "Unexpected response format: backend response is not a list"
+        return [BackendAgent(**agent) for agent in response], None
 
     @staticmethod
     def add_backend_functions(list_data_model: List[AddFunctionModel]):

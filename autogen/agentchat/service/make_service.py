@@ -78,17 +78,28 @@ class MakeService:
         return agent
     
     @staticmethod
-    def upsert_agent(upsert_model):
+    def upsert_agents(upsert_models):
         from . import BackendService, GetAgentModel
-        agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(upsert_model.name)
-        err = BackendService.upsert_backend_agent(upsert_model)
-        if err is not None:
+        
+        # Step 1: Upsert all agents in batch
+        err = BackendService.upsert_backend_agents(upsert_models)
+        if err:
             return None, err
-        backend_agent, err = BackendService.get_backend_agent(GetAgentModel(auth=upsert_model.auth, name=upsert_model.name))
-        if err is not None:
+
+        # Step 2: Retrieve all agents from backend in batch
+        get_agent_models = [GetAgentModel(auth=model.auth, name=model.name) for model in upsert_models]
+        backend_agents, err = BackendService.get_backend_agents(get_agent_models)
+        if err:
             return None, err
-        if agent is None:
-            agent = MakeService.make_agent(backend_agent)
-        else:
-            MakeService.update_agent(agent, backend_agent)
-        return agent, None
+
+        # Step 3: Update local agent registry
+        successful_agents = []
+        for backend_agent in backend_agents:
+            agent = MakeService.AGENT_REGISTRY.get(backend_agent.name)
+            if agent is None:
+                agent = MakeService.make_agent(backend_agent)
+            else:
+                MakeService.update_agent(agent, backend_agent)
+            successful_agents.append(agent)
+
+        return successful_agents, None

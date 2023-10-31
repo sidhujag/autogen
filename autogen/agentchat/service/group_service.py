@@ -13,12 +13,12 @@ class GroupService:
         result = group_manager.join_group_helper(sender, hello_message)
         if result != "Group joined!":
             return result
-        err = BackendService.upsert_backend_agent(UpsertAgentModel(
+        err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
             name=group_manager_name,
             agents=group_manager.groupchat.agents,
             invitees=group_manager.groupchat.invitees
-        ))
+        )])
         if err is not None:
             return err
         return result
@@ -38,11 +38,11 @@ class GroupService:
         result = group_manager.invite_to_group_helper(sender, agent, invite_message)
         if result != "Invite sent!":
             return result
-        err = BackendService.upsert_backend_agent(UpsertAgentModel(
+        err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
             name=group_manager_name,
             invitees=group_manager.groupchat.invitees
-        ))
+        )])
         if err is not None:
             return err
         return result
@@ -50,13 +50,13 @@ class GroupService:
     @staticmethod
     def create_group(sender: ConversableAgent, group_manager_name: str, group_description: str, system_message: str = None) -> str:
         from . import MakeService, UpsertAgentModel
-        agent, err = MakeService.upsert_agent(UpsertAgentModel(
+        agent, err = MakeService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=group_manager_name,
             description=group_description,
             system_message=system_message,
             category="groups"
-        ))
+        )])
         if err is not None:
             return f"Could not create group: {err}"
         return "Group created!"
@@ -68,10 +68,10 @@ class GroupService:
         if del_group_error != "":
             return del_group_error
         del MakeService.AGENT_REGISTRY[group_manager.name]
-        err = BackendService.delete_backend_agent(DeleteAgentModel(
+        err = BackendService.delete_backend_agents([DeleteAgentModel(
             auth=sender.auth,
             name=group_manager.name
-        ))
+        )])
         if err is not None:
             return err
         return "Group deleted!"
@@ -92,11 +92,11 @@ class GroupService:
              result = GroupService.delete_group(sender, group_manager)
              if result != "Group deleted!":
                 return result
-        err = BackendService.upsert_backend_agent(UpsertAgentModel(
+        err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
             name=group_manager_name,
             agents=group_manager.groupchat.agents
-        ))
+        )])
         if err is not None:
             return err
         return result

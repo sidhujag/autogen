@@ -26,7 +26,7 @@ class FunctionsService:
         except json.JSONDecodeError as e:
             return f"Error parsing JSON when trying to add function: {e}"
         
-        agent, err = MakeService.upsert_agent(UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names_list))
+        agent, err = MakeService.upsert_agents([UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names_list)])
         if err is not None:
             return f"Could not add function(s): {err}"
         return "Function(s) added successfully"
@@ -113,17 +113,19 @@ class FunctionsService:
         from . import BackendService
 
         function_models = []
+        function_names = []
         for func_spec in function_specs:
             function, error_message = FunctionsService._create_function_model(agent, func_spec)
             if error_message:
                 return error_message
             function_models.append(function)
+            function_names.append(function.name)
 
         err = BackendService.add_backend_functions(function_models)
         if err is not None:
             return f"Could not define functions: {err}"
         
-        return "Function(s) added successfully"
+        return FunctionsService.add_functions(agent, json.dumps(function_names))
 
     @staticmethod
     def define_function(agent: ConversableAgent, **kwargs: Any) -> str:

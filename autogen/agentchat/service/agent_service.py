@@ -6,9 +6,9 @@ class AgentService:
         from . import BackendService, MakeService
         agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(agent_model.name)
         if agent is None:
-            backend_agent, err = BackendService.get_backend_agent(agent_model)
+            backend_agent, err = BackendService.get_backend_agents([agent_model])
             if err is None:
-                agent = MakeService.make_agent(backend_agent)
+                agent = MakeService.make_agent(backend_agent[0])
                 MakeService.AGENT_REGISTRY[agent_model.name] = agent
         return agent
 
@@ -47,14 +47,14 @@ class AgentService:
             json_fns = json.loads(function_names)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON function names when trying to create or update agent: {e}"
-        agent, err = MakeService.upsert_agent(UpsertAgentModel(
+        agent, err = MakeService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=agent_name,
             description=agent_description,
             system_message=system_message,
             function_names=json_fns,
             category=category
-        ))
+        )])
         if err is not None:
             return f"Could not create or update agent: {err}"
         return "Agent created or updated successfully"
