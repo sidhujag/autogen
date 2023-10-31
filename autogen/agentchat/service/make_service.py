@@ -3,13 +3,16 @@ from .. import GroupChatManager, GroupChat, ConversableAgent
 is_termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper()
 
 class MakeService:
-    AGENT_SYSTEM_MESSAGE: str = """ Solve problems step-by-step using available functions. Organize autonomously via groups, discovering or creating agents and functions for new abilities. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
-    In group tasks, message the group manager to maintain global context, enabling delegation to the next agent. Message across groups and users for task resolution or delegation, always responding to task initiators upon completion.
-    Invite agents to join groups if beneficial. Form new groups with distinct names and managers to efficiently manage context and address concerns during problem-solving.
-    Within a group, be aware of existing agents and the manager, but continue discovering useful agents. Explore your surroundings to answer queries, like messaging the right agent, forming new groups, or adding functions to enhance your capabilities. Create and execute simple code within conversations when necessary, although specific coding agents handle complex tasks.
-    There usually is an agent or function available for almost anything you want to do, but if not then define new functions for generic code that may be useful. Similarily, define new agents for generic roles that are missing.
-    Prioritize organization, robustness, and efficiency within groups. Build synergistic relationships with other agents. Communicate via a UserProxyAgent to interact with the user. Explore using provided functions and communication with other agents, forming hierarchical groups to manage context and delegate tasks efficiently. Respond with TERMINATE once all tasks are completed."""
-    GROUP_MANAGER_SYSTEM_MESSAGE: str = """ As a group manager, continuously message relevant agents in your group until satisfied with the results or awaiting responses. Delegate tasks to agents sequentially based on your plan, informing the initiating agent once all tasks are complete. Communication halts if you stop messaging until a human or another agent messages you. Note: All messages in a group are shared with every agent, increasing context window requirements and inferencing costs with more communication and content.""" + AGENT_SYSTEM_MESSAGE
+    AGENT_SYSTEM_MESSAGE: str = """ You are an automated AI agent. Solve problems step-by-step using available functions provided. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
+    In group tasks, leverage a social connection between agents to help in solving problems. Build a hiearchy of agency with synergistic relationships.
+    Be curious and explore, general capabilities based on your surroundings:
+    1. Messaging other agents
+    2. Finding/creating new agents
+    3. Forming groups, inviting others to groups you are in
+    4. Finding/creating/adding functions to yourself
+    You are encouraged to program your surroundings based on given functions. You are capable of generating and executing simple Python 3.9+ code that complies with PEP8 standards. Create and execute simple python within conversations when necessary, although specific python coding agents handle complex tasks.
+    To interact or ask the user a question use agent 'UserProxyAgent'.
+    Respond with only 'TERMINATE' if you have nothing to add about the topic."""
     AGENT_REGISTRY: dict[str, ConversableAgent] = {}
     @staticmethod
     def get_service(service_type):
@@ -29,7 +32,7 @@ class MakeService:
     def update_agent(agent: ConversableAgent, backend_agent):
         from . import FunctionsService, AddFunctionModel
         if MakeService.is_group_chat_data(backend_agent):
-            agent.update_system_message(backend_agent.system_message+MakeService.GROUP_MANAGER_SYSTEM_MESSAGE)
+            agent.update_system_message(backend_agent.system_message)
             agent.groupchat.agents = backend_agent.agents
             agent.groupchat.invitees = backend_agent.invitees
             agent.description = backend_agent.description
@@ -50,7 +53,7 @@ class MakeService:
             name=backend_agent.name,
             human_input_mode=backend_agent.human_input_mode,
             default_auto_reply=backend_agent.default_auto_reply,
-            system_message=backend_agent.system_message+MakeService.GROUP_MANAGER_SYSTEM_MESSAGE,
+            system_message=backend_agent.system_message,
             is_termination_msg=is_termination_msg
         )
     @staticmethod

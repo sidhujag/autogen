@@ -28,7 +28,7 @@ def register_base_functions(agents: List[ConversableAgent]):
 
 @app.post('/query/')
 async def query(input: QueryModel):
-    user_mode = UpsertAgentModel(
+    user_model = UpsertAgentModel(
         name="UserProxyAgent",
         auth=input.auth,
         system_message="Pass me messages so I can relay back to the user.",
@@ -53,7 +53,7 @@ async def query(input: QueryModel):
         category="groups"
     )
     models = [
-        user_mode,
+        user_model,
         user_assistant_model,
         group_chat_manager_model
     ]
@@ -62,16 +62,11 @@ async def query(input: QueryModel):
         print(f'Error creating agents {err}')
         return
     register_base_functions(agents)
-    res = GroupService.create_group(agents[2], "group_agent", "Management group", ["user_assistant"])
-    print(f'create_group {res}')
-    res =GroupService.invite_to_group(sender=agents[1], agent_name="user_assistant", group_agent_name="group_agent", invite_message="Hello user_assistant, please join our group")
-    print(f'invite_to_group1 {res}')
-    res =GroupService.invite_to_group(sender=agents[2], agent_name="UserProxyAgent", group_agent_name="group_agent", invite_message="Hello UserProxyAgent, please join our group")
-    print(f'invite_to_group2 {res}')
-    res = GroupService.join_group(sender=agents[0], group_agent_name="group_agent", hello_message=agents[0]._default_auto_reply)
-    print(f'join_group1 {res}')
-    res =GroupService.join_group(sender=agents[1], group_agent_name="group_agent", hello_message=agents[1]._default_auto_reply)
-    print(f'join_group2 {res}')
-    #agents[0].initiate_chat(recipient=agents[1], message=input.query)
+    group_agent_name="group_agent"
+    GroupService.create_group(agents[2], group_agent_name=group_agent_name, group_description="Management group", invitees=[user_assistant_model.name])
+    GroupService.invite_to_group(sender=agents[2], agent_name=user_model.name, group_agent_name=group_agent_name, invite_message=f"Hello {user_model.name}, please join our group")
+    GroupService.join_group(sender=agents[0], group_agent_name=group_agent_name, hello_message=agents[0]._default_auto_reply)
+    GroupService.join_group(sender=agents[1], group_agent_name=group_agent_name, hello_message=agents[1]._default_auto_reply)
+    agents[0].initiate_chat(recipient=agents[1], message=input.query)
     
     
