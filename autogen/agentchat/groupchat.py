@@ -43,7 +43,12 @@ class GroupChatManager(ConversableAgent):
         )
         self.base_system_message = system_message
         self.groupchat = groupchat
+        # Order of register_reply is important.
+        # Allow sync chat if initiated using initiate_chat
         self.register_reply(Agent, GroupChatManager.run_chat, config=groupchat, reset_config=GroupChat.reset)
+        # Allow async chat if initiated using a_initiate_chat
+        self.register_reply(Agent, GroupChatManager.a_run_chat, config=groupchat, reset_config=GroupChat.reset)
+
         # self._random = random.Random(seed)
 
     
@@ -107,3 +112,22 @@ class GroupChatManager(ConversableAgent):
                 self.send(message, agent, request_reply=False, silent=True)
         # this should be the first callback so let the rest of the callbacks run, at the end AI can reply if it gets there
         return False, None
+
+
+    async def a_run_chat(
+        self,
+        messages: Optional[List[Dict]] = None,
+        sender: Optional[Agent] = None,
+        config: Optional[GroupChat] = None,
+    ):
+        """Run a group chat asynchronously."""
+        from .service import AgentService, GetAgentModel
+        if messages is None:
+            messages = self._oai_messages[sender]
+        message = messages[-1]
+        speaker = sender
+        for agent_name in config.agents:
+            agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=agent_name))
+            if agent and agent != speaker:
+                 await self.a_send(message, agent, request_reply=False, silent=True)
+        return True, None
