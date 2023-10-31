@@ -28,7 +28,6 @@ def register_base_functions(agents: List[ConversableAgent]):
 
 @app.post('/query/')
 async def query(input: QueryModel):
-    user: ConversableAgent
     user_mode = UpsertAgentModel(
         name="UserProxyAgent",
         auth=input.auth,
@@ -50,7 +49,6 @@ async def query(input: QueryModel):
         name="group_manager",
         auth=input.auth,
         human_input_mode="ALWAYS",
-        agents={"user_assistant": True}, # this will trigger group chat manager to be created
         default_auto_reply="This is group_manager speaking.",
         category="groups"
     )
@@ -64,6 +62,16 @@ async def query(input: QueryModel):
         print(f'Error creating agents {err}')
         return
     register_base_functions(agents)
-    GroupService.invite_to_group(sender=agents[2], agent_name="UserProxyAgent", group_manager_name="group_manager", invite_message="Hello UserProxyAgent, please join our group")
-    GroupService.join_group(sender=agents[0], group_manager_name="group_manager", hello_message=agents[0]._default_auto_reply)
-    agents[0].initiate_chat(recipient=agents[2], message=input.query)
+    res = GroupService.create_group(agents[2], "group_manager", "Management group", ["user_assistant"])
+    print(f'create_group {res}')
+    res =GroupService.invite_to_group(sender=agents[1], agent_name="user_assistant", group_manager_name="group_manager", invite_message="Hello user_assistant, please join our group")
+    print(f'invite_to_group1 {res}')
+    res =GroupService.invite_to_group(sender=agents[2], agent_name="UserProxyAgent", group_manager_name="group_manager", invite_message="Hello UserProxyAgent, please join our group")
+    print(f'invite_to_group2 {res}')
+    res = GroupService.join_group(sender=agents[0], group_manager_name="group_manager", hello_message=agents[0]._default_auto_reply)
+    print(f'join_group1 {res}')
+    res =GroupService.join_group(sender=agents[1], group_manager_name="group_manager", hello_message=agents[1]._default_auto_reply)
+    print(f'join_group2 {res}')
+    #agents[0].initiate_chat(recipient=agents[1], message=input.query)
+    
+    
