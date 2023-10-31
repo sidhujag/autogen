@@ -17,16 +17,9 @@ class FunctionsService:
         return response
 
     @staticmethod
-    def add_functions(sender: ConversableAgent, function_names: str) -> str:
+    def add_functions(sender: ConversableAgent, function_names: List[str]) -> str:
         from . import MakeService, UpsertAgentModel
-        try:
-            function_names_list = json.loads(function_names)
-            if not isinstance(function_names_list, list):
-                return "Error: function_names must be a list"
-        except json.JSONDecodeError as e:
-            return f"Error parsing JSON when trying to add function: {e}"
-        
-        agent, err = MakeService.upsert_agents([UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names_list)])
+        agent, err = MakeService.upsert_agents([UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names)])
         if err is not None:
             return f"Could not add function(s): {err}"
         return "Function(s) added successfully"
@@ -97,7 +90,7 @@ class FunctionsService:
     @staticmethod
     def _create_function_model(agent: ConversableAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
         from . import AddFunctionModel
-        for field in ['parameters', 'packages']:
+        for field in ['parameters']:
             error_message = FunctionsService._load_json_field(func_spec, field)
             if error_message:
                 return None, error_message
@@ -125,7 +118,7 @@ class FunctionsService:
         if err is not None:
             return f"Could not define functions: {err}"
         
-        return FunctionsService.add_functions(agent, json.dumps(function_names))
+        return FunctionsService.add_functions(agent, function_names)
 
     @staticmethod
     def define_function(agent: ConversableAgent, **kwargs: Any) -> str:
@@ -139,4 +132,4 @@ class FunctionsService:
         if err is not None:
             return f"Could not define function: {err}"
 
-        return FunctionsService.add_functions(agent, json.dumps([function.name]))
+        return FunctionsService.add_functions(agent, [function.name])

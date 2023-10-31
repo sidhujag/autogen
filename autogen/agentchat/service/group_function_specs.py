@@ -49,15 +49,20 @@ create_group_spec = {
     "name": "create_group",
     "category": "communication",
     "class_name": "GroupService.create_group",
-    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category.",
+    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category. When creating a group you must invite atleast one other agent.",
     "parameters": {
         "type": "object",
         "properties": {
             "group_manager_name": {"type": "string", "description": "The name of the new group manager who will manage the group."},
             "group_description": {"type": "string", "description": "Short description of the new group."},
-            "system_message": {"type": "string", "description": "A system message for the new group, if any."}
+            "system_message": {"type": "string", "description": "A system message for the new group, if any."},
+            "invitees": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Array of agents to invite to new group."
+            },
         },
-        "required": ["group_manager_name", "group_description"],
+        "required": ["group_manager_name", "group_description", "invitees"],
     },
 }
 
@@ -115,8 +120,9 @@ create_or_update_agent = {
                 "description": "A description of the features, functions, or functionalities of the agent."
             },
             "function_names": {
-                "type": "string",
-                "description": "JSON schema of function names encoded as an array. For example: [\"function1\", \"function2\"]",
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Array of function names."
             },
             "category": {
                 "type": "string",
@@ -159,11 +165,12 @@ add_functions = {
         "type": "object",
         "properties": {
             "function_names": {
-                "type": "string",
-                "description": "JSON schema of function names encoded as an array. For example: [\"function1\", \"function2\"]",
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Array of function names."
             },
         },
-        "required": []
+        "required": ["function_names"]
     },
 }
 
@@ -188,8 +195,9 @@ define_function = {
                 "description": "JSON schema of the parameters object encoded as a string. Use the standard OpenAPI 2.0 specification, and examples of functions already attached to see format.",
             },
             "packages": {
-                "type": "string",
-                "description": "JSON schema of required packages names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. For example: [\"package1\", \"package2\"]. Should also include code.",
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Array of package names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. Should also include code."
             },
             "code": {
                 "type": "string",

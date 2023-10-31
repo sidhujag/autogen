@@ -37,8 +37,8 @@ class UpsertAgentModel(BaseModel):
     base_system_message: Optional[str] = None
     function_names: Optional[List[str]] = None # cumulative
     category: Optional[str] = None
-    agents: Optional[dict[str, bool]] = None
-    invitees: Optional[dict[str, bool]] = None
+    agents: Optional[List[str]] = None
+    invitees: Optional[List[str]] = None
     
 class BaseAgent(BaseModel):
     name: str = Field(default="")
@@ -49,8 +49,8 @@ class BaseAgent(BaseModel):
     system_message: str = Field(default="")
     base_system_message: str = Field(default="")
     category: str = Field(default="")
-    agents: dict = Field(default_factory=dict)
-    invitees: dict = Field(default_factory=dict)
+    agents: list = Field(default_factory=list)
+    invitees: list = Field(default_factory=list)
 
 class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)

@@ -22,13 +22,16 @@ class MakeService:
             return FunctionsService()
     
     @staticmethod
-    def is_group_chat_data(agents: List[dict]):
-        return len(agents) > 0
+    def is_group_chat_data(backend_agent):
+        return len(backend_agent.agents) > 0 or len(backend_agent.invitees) > 0
 
     @staticmethod
     def update_agent(agent: ConversableAgent, backend_agent):
         from . import FunctionsService, AddFunctionModel
-        if MakeService.is_group_chat_data(backend_agent.agents):
+        if MakeService.is_group_chat_data(backend_agent):
+            if not isinstance(agent, GroupChatManager):
+                agent = MakeService._create_group_agent(backend_agent)
+                agent.auth = backend_agent.auth
             agent.update_system_message(backend_agent.system_message+MakeService.GROUP_MANAGER_SYSTEM_MESSAGE)
             agent.groupchat.agents = backend_agent.agents
             agent.groupchat.invitees = backend_agent.invitees
@@ -38,31 +41,37 @@ class MakeService:
         for function in backend_agent.functions:
             FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         MakeService.AGENT_REGISTRY[agent.name] = agent
-
+    
     @staticmethod
-    def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
-        from . import FunctionsService, AddFunctionModel
-        if MakeService.is_group_chat_data(backend_agent.agents):
-            groupchat = GroupChat(
-                agents=backend_agent.agents,
-                invitees=backend_agent.invitees
-            )
-            agent = GroupChatManager(
-                groupchat=groupchat,
-                name=backend_agent.name,
-                human_input_mode=backend_agent.human_input_mode,
-                default_auto_reply=backend_agent.default_auto_reply,
-                system_message=backend_agent.system_message+MakeService.GROUP_MANAGER_SYSTEM_MESSAGE,
-                is_termination_msg=is_termination_msg
-            )
-        else:
-            agent = ConversableAgent(
+    def _create_group_agent(backend_agent) -> GroupChatManager:
+        groupchat = GroupChat(
+            agents=backend_agent.agents,
+            invitees=backend_agent.invitees
+        )
+        return GroupChatManager(
+            groupchat=groupchat,
+            name=backend_agent.name,
+            human_input_mode=backend_agent.human_input_mode,
+            default_auto_reply=backend_agent.default_auto_reply,
+            system_message=backend_agent.system_message+MakeService.GROUP_MANAGER_SYSTEM_MESSAGE,
+            is_termination_msg=is_termination_msg
+        )
+    @staticmethod
+    def _create_agent(backend_agent) -> GroupChatManager:
+        return ConversableAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 system_message=backend_agent.system_message+MakeService.AGENT_SYSTEM_MESSAGE,
                 is_termination_msg=is_termination_msg
             )
+    @staticmethod
+    def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
+        from . import FunctionsService, AddFunctionModel
+        if MakeService.is_group_chat_data(backend_agent):
+            agent = MakeService._create_group_agent(backend_agent)
+        else:
+            agent = MakeService._create_agent(backend_agent)
         agent.auth = backend_agent.auth
         agent.description = backend_agent.description
         if agent.llm_config is False:

@@ -1,4 +1,4 @@
-import json
+from typing import List
 from .. import GroupChatManager, ConversableAgent
 class AgentService:
     @staticmethod
@@ -39,20 +39,16 @@ class AgentService:
         return response
 
     @staticmethod
-    def create_or_update_agent(sender: ConversableAgent, agent_name: str, agent_description: str = None, system_message: str = None, function_names: str = None, category: str = None) -> str: 
+    def create_or_update_agent(sender: ConversableAgent, agent_name: str, agent_description: str = None, system_message: str = None, function_names: List[str] = None, category: str = None) -> str: 
         from . import MakeService, UpsertAgentModel
         if sender is None:
             return "Sender not found"
-        try:
-            json_fns = json.loads(function_names)
-        except json.JSONDecodeError as e:
-            return f"Error parsing JSON function names when trying to create or update agent: {e}"
         agent, err = MakeService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=agent_name,
             description=agent_description,
             system_message=system_message,
-            function_names=json_fns,
+            function_names=function_names,
             category=category
         )])
         if err is not None:

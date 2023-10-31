@@ -13,12 +13,12 @@ class GroupChat:
     - invitees: a list of invited agents to join group.
     """
 
-    agents: dict[str, bool]
-    invitees: dict[str, bool]
+    agents: List[str]
+    invitees: List[str]
     def reset(self):
         """Reset the group chat."""
-        self.agents.clear()
-        self.invitees.clear()
+        self.agents = []
+        self.invitees = []
 
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
@@ -46,17 +46,17 @@ class GroupChatManager(ConversableAgent):
         self.register_reply(Agent, GroupChatManager.run_chat, config=groupchat, reset_config=GroupChat.reset)
         # self._random = random.Random(seed)
 
-    def join_group_helper(self, agent: ConversableAgent,  welcome_message: str = None) -> str:
+    
+    def join_group_helper(self, agent: ConversableAgent, welcome_message: str = None) -> str:
+        if agent.name in self.groupchat.agents:
+            return "Could not join group: Already in the group"
         if agent.name not in self.groupchat.invitees:
             return "Could not join group: Not invited"
-        if agent.name not in self.groupchat.agents:
-            return "Could not join group: Already in the group"
-        del self.groupchat.invitees[agent.name]
+        self.groupchat.invitees.remove(agent.name)
         other_roles = f"The following other agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}"
-        self.groupchat.agents[agent.name] = True
-        # send discovery of other agents to the new agent
+        self.groupchat.agents.append(agent.name)
         self.send(other_roles, agent, request_reply=False, silent=True)
-        if welcome_message and welcome_message != "":
+        if welcome_message:
             agent.send(welcome_message, self, request_reply=False, silent=True)
         self.update_system_message(self.base_system_message + f"\nThe following agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}")
         return "Group joined!"
@@ -64,11 +64,23 @@ class GroupChatManager(ConversableAgent):
     def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None) -> str:
         if agent.name not in self.groupchat.agents:
             return "Could not leave group: Not in the group"
-        del self.groupchat.agents[agent.name]
-        if goodbye_message and goodbye_message != "":
+        self.groupchat.agents.remove(agent.name)
+        if goodbye_message:
             agent.send(goodbye_message, self, request_reply=False, silent=True)
         self.update_system_message(self.base_system_message + f"\nThe following agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}")
         return "Group exited!"
+
+    def invite_to_group_helper(self, inviter: ConversableAgent, invited: ConversableAgent, invite_message: str = None) -> str:
+        if invited.name in self.groupchat.invitees:
+            return "Could not invite to group: Already invited"
+        if invited.name in self.groupchat.agents:
+            return "Could not invite to group: Already in the group"
+        if inviter.name not in self.groupchat.agents and inviter.name != self.name:
+            return "Cannot invite others to this group: You are not in the group"
+        self.groupchat.invitees.append(invited.name)
+        if invite_message:
+            inviter.send(invite_message, invited, request_reply=False, silent=True)
+        return "Invite sent!"
 
     def delete_group_helper(self) -> str:
         if len(self.groupchat.agents) > 0:
@@ -76,18 +88,6 @@ class GroupChatManager(ConversableAgent):
         self.groupchat.clear()
         return ""
 
-    def invite_to_group_helper(self, inviter: ConversableAgent, invited: ConversableAgent, invite_message: str = None) -> str:
-        if invited.name in self.groupchat.invitees:
-            return "Could not invite to group: Already invited"
-        if invited.name in self.groupchat.agents:
-            return "Could not invite to group: Already in the group"
-        if inviter.name not in self.groupchat.agents:
-            return "Cannot invite others to this group: You are not in the group"
-        self.groupchat.invitees[invited.name] = True
-        if invite_message and invite_message != "":
-            inviter.send(invite_message, invited, request_reply=False, silent=True)
-        return "Invite sent!"
-    
     def run_chat(
         self,
         messages: Optional[List[Dict]] = None,

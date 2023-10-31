@@ -1,5 +1,7 @@
 
 from .. import ConversableAgent
+from typing import List
+
 class GroupService:
     @staticmethod
     def join_group(sender: ConversableAgent, group_manager_name: str, hello_message: str = None) -> str:
@@ -48,13 +50,16 @@ class GroupService:
         return result
 
     @staticmethod
-    def create_group(sender: ConversableAgent, group_manager_name: str, group_description: str, system_message: str = None) -> str:
+    def create_group(sender: ConversableAgent, group_manager_name: str, group_description: str, invitees: List[str], system_message: str = None) -> str:
         from . import MakeService, UpsertAgentModel
+        if len(invitees) == 0:
+            return "Could not create group: you must invite atleast one agent to the group upon creation"
         agent, err = MakeService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=group_manager_name,
             description=group_description,
             system_message=system_message,
+            invitees=invitees,
             category="groups"
         )])
         if err is not None:
