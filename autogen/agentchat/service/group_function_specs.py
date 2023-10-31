@@ -208,3 +208,15 @@ define_function = {
         "required": ["name", "description", "category"],
     },
 }
+
+group_function_specs = [
+    send_message_spec,
+    join_group_spec,
+    invite_to_group_spec,
+    create_group_spec,
+    leave_group_spec,
+    discover_agents_spec,
+    create_or_update_agent,
+    discover_functions,
+    define_function
+]

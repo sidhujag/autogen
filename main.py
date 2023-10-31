@@ -5,15 +5,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat import ConversableAgent, GroupChatManager
 from autogen.agentchat.service import UpsertAgentModel, AuthAgent, MakeService, GroupService, FunctionsService
-from autogen.agentchat.service.group_function_specs import(send_message_spec,
-    join_group_spec,
-    invite_to_group_spec,
-    create_group_spec,
-    leave_group_spec,
-    discover_agents_spec,
-    create_or_update_agent,
-    discover_functions,
-    define_function)
+from autogen.agentchat.service.group_function_specs import group_function_specs
 app = FastAPI()
 
 # Initialize logging
@@ -27,41 +19,9 @@ class QueryModel(BaseModel):
     query: str
 
 def register_base_functions(agent: ConversableAgent):
-    response = FunctionsService.define_function(agent, **send_message_spec)
+    response = FunctionsService.define_functions(agent, group_function_specs)
     if response != "Function(s) added successfully":
-        print(f'send_message_spec err {response}')
-        return
-    response = FunctionsService.define_function(agent, **join_group_spec)
-    if response != "Function(s) added successfully":
-        print(f'join_group_spec err {response}')
-        return
-    response = FunctionsService.define_function(agent, **invite_to_group_spec)
-    if response != "Function(s) added successfully":
-        print(f'invite_to_group_spec err {response}')
-        return
-    response = FunctionsService.define_function(agent, **create_group_spec)
-    if response != "Function(s) added successfully":
-        print(f'create_group_spec err {response}')
-        return
-    response = FunctionsService.define_function(agent, **leave_group_spec)
-    if response != "Function(s) added successfully":
-        print(f'leave_group_spec err {response}')
-        return
-    response = FunctionsService.define_function(agent, **discover_agents_spec)
-    if response != "Function(s) added successfully":
-        print(f'discover_agents_spec err {response}')
-        return
-    response = FunctionsService.define_function(agent, **create_or_update_agent)
-    if response != "Function(s) added successfully":
-        print(f'create_or_update_agent err {response}')
-        return
-    response = FunctionsService.define_function(agent, **discover_functions)
-    if response != "Function(s) added successfully":
-        print(f'discover_functions err {response}')
-        return
-    response = FunctionsService.define_function(agent, **define_function)
-    if response != "Function(s) added successfully":
-        print(f'define_function err {response}')
+        print(f'define_functions err {response}')
         return
 
 @app.post('/query/')

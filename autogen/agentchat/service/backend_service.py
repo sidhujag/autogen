@@ -95,9 +95,12 @@ class BackendService:
         return BackendAgent(**response), None
 
     @staticmethod
-    def add_backend_function(data_model: AddFunctionModel):
-        response, err = BackendService.call("add_function", data_model.dict(exclude_none=True))
-        if err != None:
+    def add_backend_functions(list_data_model: List[AddFunctionModel]):
+        # Convert each AddFunctionModel object in the list to a dictionary
+        list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
+        # Make the backend call with the list of dictionaries
+        response, err = BackendService.call("add_functions", list_of_dicts)
+        if err is not None:
             return err
         return None
 

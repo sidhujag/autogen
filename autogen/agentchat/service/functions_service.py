@@ -1,7 +1,7 @@
         
 import json
 from .. import ConversableAgent
-from typing import List, Any
+from typing import List, Any, Optional, Dict, Tuple
 from pydantic import ValidationError
 from autogen.code_utils import (
     execute_code
@@ -68,7 +68,7 @@ class FunctionsService:
             agent.llm_config["functions"][existing_function_index] = function_config
         else:
             agent.llm_config["functions"].append(function_config)
-        if function.class_name and function.class_name is not "":
+        if function.class_name and function.class_name != "":
             # Assuming class_name refers to a class with a method named `name`
             agent.register_function(
                 function_map={
@@ -86,31 +86,55 @@ class FunctionsService:
         return "Function added!"
  
     @staticmethod
-    def define_function(sender: ConversableAgent, **kwargs: Any) -> str:
-        from . import BackendService, AddFunctionModel
-        # Convert JSON encoded string parameters to dict and list
-        if 'parameters' in kwargs and type(kwargs['parameters']) == str:
+    def _load_json_field(func_spec: Dict[str, Any], field: str) -> Optional[str]:
+        if field in func_spec and isinstance(func_spec[field], str):
             try:
-                kwargs['parameters'] = json.loads(kwargs['parameters'])
+                func_spec[field] = json.loads(func_spec[field])
             except json.JSONDecodeError as e:
-                return f"Error parsing JSON for parameters: {e}"
-        
-        if 'packages' in kwargs and type(kwargs['packages']) == str:
-            try:
-                kwargs['packages'] = json.loads(kwargs['packages'])
-            except json.JSONDecodeError as e:
-                return f"Error parsing JSON for packages: {e}"
+                return f"Error parsing JSON for {field} in function {func_spec.get('name', '')}: {e}"
+        return None
 
-        # Create AddFunctionModel instance
+    @staticmethod
+    def _create_function_model(agent: ConversableAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
+        from . import AddFunctionModel
+        for field in ['parameters', 'packages']:
+            error_message = FunctionsService._load_json_field(func_spec, field)
+            if error_message:
+                return None, error_message
+
         try:
-            function = AddFunctionModel(**kwargs, auth=sender.auth)
+            function = AddFunctionModel(**func_spec, auth=agent.auth)
+            return function, None
         except ValidationError as e:
-            return f"Validation error when defining function: {e}"
-        # Add the backend function
-        err = BackendService.add_backend_function(function)
+            return None, f"Validation error when defining function {func_spec.get('name', '')}: {e}"
+
+    @staticmethod
+    def define_functions(agent: ConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
+        from . import BackendService
+
+        function_models = []
+        for func_spec in function_specs:
+            function, error_message = FunctionsService._create_function_model(agent, func_spec)
+            if error_message:
+                return error_message
+            function_models.append(function)
+
+        err = BackendService.add_backend_functions(function_models)
+        if err is not None:
+            return f"Could not define functions: {err}"
+        
+        return "Function(s) added successfully"
+
+    @staticmethod
+    def define_function(agent: ConversableAgent, **kwargs: Any) -> str:
+        from . import BackendService
+
+        function, error_message = FunctionsService._create_function_model(agent, kwargs)
+        if error_message:
+            return error_message
+
+        err = BackendService.add_backend_functions([function])
         if err is not None:
             return f"Could not define function: {err}"
-        
-        # Convert the function names to a JSON-encoded list of strings and call add_functions
-        function_names_json = json.dumps([function.name])
-        return FunctionsService.add_functions(sender, function_names_json)
+
+        return FunctionsService.add_functions(agent, json.dumps([function.name]))
