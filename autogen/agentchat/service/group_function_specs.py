@@ -115,9 +115,9 @@ create_or_update_agent = {
                 "type": "string",
                 "description": "The name of agent to create or update, must be unique to all agents."
             },
-            "description": {
+            "agent_description": {
                 "type": "string",
-                "description": "A description of the features, functions, or functionalities of the agent."
+                "description": "A description of the agent - features, roles, functionalities of the agent etc."
             },
             "function_names": {
                 "type": "array",
