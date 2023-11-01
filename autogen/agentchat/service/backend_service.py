@@ -18,8 +18,8 @@ class GetAgentModel(BaseModel):
     auth: AuthAgent
 
 class DiscoverAgentsModel(BaseModel):
-    query: Optional[str] = None
-    category: str
+    query: str
+    category: Optional[str] = None
     auth: AuthAgent
 
 class DiscoverFunctionsModel(BaseModel):

@@ -30,7 +30,7 @@ class AgentService:
         return "Sent message!"
 
     @staticmethod
-    def discover_agents(sender: ConversableAgent, category: str, query: str = None) -> str:
+    def discover_agents(sender: ConversableAgent, query: str, category: str = None) -> str:
         from . import BackendService, DiscoverAgentsModel
         if sender is None:
             return "Sender not found"

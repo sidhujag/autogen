@@ -19,6 +19,7 @@ class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
 
+
 def register_base_functions(agents: List[ConversableAgent]):
     for agent in agents:
         response = FunctionsService.define_functions(agent, group_function_specs)
@@ -31,7 +32,7 @@ async def query(input: QueryModel):
     user_model = UpsertAgentModel(
         name="UserProxyAgent",
         auth=input.auth,
-        system_message="Pass me messages so I can relay back to the user.",
+        system_message="I am the proxy between agents and the user. The user initiates the original query through me and later any questions for the user can be sent to me so I can ask the user for manual input.",
         description="The proxy to the user to get input or relay response",
         human_input_mode="ALWAYS",
         default_auto_reply="This is UserProxyAgent speaking.",

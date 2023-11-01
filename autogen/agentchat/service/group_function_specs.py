@@ -96,10 +96,10 @@ discover_agents_spec = {
             },
             "query": {
                 "type": "string",
-                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure. If empty it will return the first 10 agents in the specified category."
+                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for."
             }
         },
-        "required": ["category"]
+        "required": ["query"]
     },
 }
 
@@ -138,7 +138,7 @@ discover_functions = {
     "name": "discover_functions",
     "category": "programming",
     "class_name": "FunctionsService.discover_functions",
-    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. An agent can add the returned function(s) via add_functions so they can subsequently be called. Function names and descriptions are returned.",
+    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. Function names and descriptions are returned. Usually paired with add_functions in a subsequent call.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -160,7 +160,7 @@ add_functions = {
     "name": "add_functions",
     "category": "programming",
     "class_name": "FunctionsService.add_functions",
-    "description": "Allows agents to add specific function ability to themselves, usually you would discover functions prior to adding. Once added, the agent may decide to use this function.",
+    "description": "Allows agents to add specific function ability to themselves. Usually paired with discover_functions.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -178,7 +178,7 @@ define_function = {
     "name": "define_function",
     "category": "programming",
     "class_name": "FunctionsService.define_function",
-    "description": "Define a new function through python code to add to the context of the agent. Useful for generic functions that you think will be widely in many other contexts. For specific problems you usually don't need a function you can just write code and agents will execute it. Necessary Python packages must be declared. Once defined, the agent may decide to use this function, respond with a normal message. Will upsert the functions to agent database.",
+    "description": "Define a new function through code to add to the context of the agent. Double check the code will run successfully against the execution template script. Useful for generic functions that you think will be widely in many other contexts. Necessary Python packages must be declared. Will automatically add the function to agent.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -199,13 +199,9 @@ define_function = {
                 "items": {"type": "string"},
                 "description": "Array of package names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. Should also include code."
             },
-           "code": {
-            "type": "string",
-            "description": "The implementation in Python. The code is executed as part of a larger script that includes installing required packages, defining your function, and executing it with provided arguments. For instance, if you define a function 'example(a, b)', it will be executed as 'result = example(**args)'. The 'result' variable will store the output of your function. Ensure your code is standalone and test it thoroughly before defining a function. Include either code or class_name in your definition, but not both. Here is a template of the execution script: 'import subprocess; subprocess.run(['pip', 'install', ...]); def your_function(...): ...; args = {...}; result = your_function(**args); if result is not None: print(result)'"
-            },
-            "class_name": {
+            "code": {
                 "type": "string",
-                "description": "If code is not provided but a class_name object to invoke when function is called. Follows pattern of [class].[name] where class is the class of the python class and name is the function name. Example: FunctionsService.add_functions. You should include either one of code or class_name but not both.",
+                "description": "The implementation in Python. The code is executed as part of a larger script that handles package installations, function definition, and function execution with the provided arguments. When defining a function, such as 'def your_function(a, b): ...', it will be executed as 'result = your_function(**args)'. The 'result' variable stores the output of your function. Ensure your code is standalone, follows Python syntax, and is thoroughly tested before defining a function. Here is a template of the execution script: 'import subprocess;\nsubprocess.run(['pip', 'install', ...]);\ndef your_function(...): ...;\nargs = {...};\nresult = your_function(**args);\nif result is not None:\n    print(result)'"
             },
             "category": {
                 "type": "string",
@@ -213,7 +209,7 @@ define_function = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             },
         },
-        "required": ["name", "description", "category"],
+        "required": ["name", "description", "code", "category"],
     },
 }
 
@@ -226,5 +222,6 @@ group_function_specs = [
     discover_agents_spec,
     create_or_update_agent,
     discover_functions,
-    define_function
+    define_function,
+    add_functions
 ]
