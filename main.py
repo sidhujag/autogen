@@ -3,7 +3,7 @@ import logging
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from autogen.agentchat import ConversableAgent, GroupChatManager
+from autogen.agentchat import ConversableAgent
 from autogen.agentchat.service import UpsertAgentModel, AuthAgent, MakeService, GroupService, FunctionsService
 from autogen.agentchat.service.group_function_specs import group_function_specs
 from typing import List

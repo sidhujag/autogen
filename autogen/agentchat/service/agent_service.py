@@ -1,4 +1,3 @@
-from typing import List
 from .. import GroupChatManager, ConversableAgent
 class AgentService:
     @staticmethod

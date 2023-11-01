@@ -1,5 +1,7 @@
         
 import json
+import sys
+
 from .. import ConversableAgent
 from typing import List, Any, Optional, Dict, Tuple
 from pydantic import ValidationError
@@ -28,18 +30,24 @@ class FunctionsService:
     def execute_func(name: str, code: str, packages: List[str], **args):
             package_install_cmd = ' '.join(f'"{pkg}"' for pkg in packages)
             pip_install = f'import subprocess\nsubprocess.run(["pip", "-qq", "install", {package_install_cmd}])' if len(packages) > 0 else ''
-            str_code = f"""
-        {pip_install}
-        print("Result of {name} function execution:")
-        {code}
-        args={args}
-        result={name}(**args)
-        if result is not None: print(result)
-        """
+            str_code = f"""{pip_install}
+print("Result of {name} function execution:")
+{code}
+args={args}
+result={name}(**args)
+if result is not None: print(result)"""
             print(f"execute_code:\n{str_code}")
             result = execute_code(str_code)[1]
             print(f"Result: {result}")
             return result
+
+    @staticmethod
+    def _find_class(class_name):
+        for module in sys.modules.values():
+            cls = getattr(module, class_name, None)
+            if cls is not None:
+                return cls
+        return None
 
     @staticmethod
     def define_function_internal(
@@ -62,12 +70,20 @@ class FunctionsService:
         else:
             agent.llm_config["functions"].append(function_config)
         if function.class_name and function.class_name != "":
-            # Assuming class_name refers to a class with a method named `name`
-            agent.register_function(
-                function_map={
-                    function.name: lambda **args: getattr(globals()[function.class_name](), function.name)(**args)
-                }
-            )
+            class_name, module_name = function.class_name.rsplit(".", 1)
+            ServiceClass = FunctionsService._find_class(class_name)
+            if ServiceClass is not None:
+                method = getattr(ServiceClass, module_name)
+                if method is not None:
+                    agent.register_function(
+                        function_map={
+                            function.name: lambda sender, **args: method(sender, **args)
+                        }
+                    )
+                else:
+                    return f"Method {module_name} not found in class {class_name}"
+            else:
+                return f"Class {class_name} not found"
         else:
             if not function.code or function.code == "":
                 return "function code was empty unexpectedly, either define a class_name or code"
@@ -90,6 +106,7 @@ class FunctionsService:
     @staticmethod
     def _create_function_model(agent: ConversableAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
         from . import AddFunctionModel
+        # for now only validate parameters through JSON string field, add to this list if other fields come up
         for field in ['parameters']:
             error_message = FunctionsService._load_json_field(func_spec, field)
             if error_message:
@@ -104,7 +121,6 @@ class FunctionsService:
     @staticmethod
     def define_functions(agent: ConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
         from . import BackendService
-
         function_models = []
         function_names = []
         for func_spec in function_specs:
@@ -117,7 +133,7 @@ class FunctionsService:
         err = BackendService.add_backend_functions(function_models)
         if err is not None:
             return f"Could not define functions: {err}"
-        
+
         return FunctionsService.add_functions(agent, function_names)
 
     @staticmethod

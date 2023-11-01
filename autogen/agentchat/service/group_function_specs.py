@@ -107,11 +107,11 @@ create_or_update_agent = {
     "name": "create_or_update_agent",
     "category": "communication",
     "class_name": "AgentService.create_or_update_agent",
-    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories.",
+    "description": "Create or update an agent.",
     "parameters": {
         "type": "object",
         "properties": {
-            "name": {
+            "agent_name": {
                 "type": "string",
                 "description": "The name of agent to create or update, must be unique to all agents."
             },
@@ -122,7 +122,7 @@ create_or_update_agent = {
             "function_names": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of function names."
+                "description": "Array of function names. Will upsert the functions to agent database."
             },
             "category": {
                 "type": "string",
@@ -130,7 +130,7 @@ create_or_update_agent = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "user"]
             }
         },
-        "required": ["name"]
+        "required": ["agent_name"]
     },
 }
 
@@ -167,7 +167,7 @@ add_functions = {
             "function_names": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of function names."
+                "description": "Array of function names. Will upsert functions to agent database."
             },
         },
         "required": ["function_names"]
@@ -178,7 +178,7 @@ define_function = {
     "name": "define_function",
     "category": "programming",
     "class_name": "FunctionsService.define_function",
-    "description": "Define a new function through python code to add to the context of the agent. Necessary Python packages must be declared. Once defined, the agent may decide to use this function, respond with a normal message.",
+    "description": "Define a new function through python code to add to the context of the agent. Necessary Python packages must be declared. Once defined, the agent may decide to use this function, respond with a normal message. Will upsert the functions to agent database.",
     "parameters": {
         "type": "object",
         "properties": {
