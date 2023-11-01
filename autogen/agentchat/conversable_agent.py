@@ -982,7 +982,7 @@ class ConversableAgent(Agent):
         return "".join(result)
 
     # MAKEAI
-    def execute_function(self, sender, func_call):
+    def execute_function(self, sender: "ConversableAgent", func_call):
         """Execute a function call and return the result.
 
         Override this function to modify the way to execute a function call.
@@ -996,7 +996,7 @@ class ConversableAgent(Agent):
             result_dict: a dictionary with keys "name", "role", and "content". Value of "role" is "function".
         """
         func_name = func_call.get("name", "")
-        func = self._function_map.get(func_name, None)
+        func = self._function_map.get(func_name, None) or sender._function_map.get(func_name, None)
 
         is_exec_success = False
         if func is not None:

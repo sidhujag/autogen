@@ -56,9 +56,9 @@ class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)
 
 class OpenAIParameter(BaseModel):
-    type: str
-    properties: dict[str, Any]
-    required: Optional[List[str]] = None
+    type: str = "object"
+    properties: dict[str, Any] = {}
+    required: Optional[List[str]] = []
 
 class AddFunctionModel(BaseModel):
     name: str

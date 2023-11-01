@@ -107,7 +107,7 @@ create_or_update_agent = {
     "name": "create_or_update_agent",
     "category": "communication",
     "class_name": "AgentService.create_or_update_agent",
-    "description": "Create or update an agent.",
+    "description": "Create or update an agent. If you are creating an agent for purpose of adding functions to run code, consider for simple tasks just to create code and agents will execute it. Creating an agent means it will be reusable in other contexts widely.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -178,7 +178,7 @@ define_function = {
     "name": "define_function",
     "category": "programming",
     "class_name": "FunctionsService.define_function",
-    "description": "Define a new function through python code to add to the context of the agent. Necessary Python packages must be declared. Once defined, the agent may decide to use this function, respond with a normal message. Will upsert the functions to agent database.",
+    "description": "Define a new function through python code to add to the context of the agent. Useful for generic functions that you think will be widely in many other contexts. For specific problems you usually don't need a function you can just write code and agents will execute it. Necessary Python packages must be declared. Once defined, the agent may decide to use this function, respond with a normal message. Will upsert the functions to agent database.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -199,9 +199,9 @@ define_function = {
                 "items": {"type": "string"},
                 "description": "Array of package names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. Should also include code."
             },
-            "code": {
-                "type": "string",
-                "description": "The implementation in Python. Do not include the function declaration. You should include either one of code or class_name but not both.",
+           "code": {
+            "type": "string",
+            "description": "The implementation in Python. The code is executed as part of a larger script that includes installing required packages, defining your function, and executing it with provided arguments. For instance, if you define a function 'example(a, b)', it will be executed as 'result = example(**args)'. The 'result' variable will store the output of your function. Ensure your code is standalone and test it thoroughly before defining a function. Include either code or class_name in your definition, but not both. Here is a template of the execution script: 'import subprocess; subprocess.run(['pip', 'install', ...]); def your_function(...): ...; args = {...}; result = your_function(**args); if result is not None: print(result)'"
             },
             "class_name": {
                 "type": "string",

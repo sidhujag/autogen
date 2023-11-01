@@ -1,4 +1,6 @@
 from .. import GroupChatManager, ConversableAgent
+from typing import List
+
 class AgentService:
     @staticmethod
     def get_agent(agent_model) -> ConversableAgent:

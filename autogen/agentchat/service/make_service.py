@@ -21,9 +21,6 @@ class MakeService:
     - Python 3.9+
     - Follow PEP8 coding standards.
     - Ensure that your code is clear and readable. Use meaningful variable and function names.
-    - Avoid complex and nested code structures when possible; aim for simplicity.
-    - Do not use 'return' outside functions. If you want to evaluate an expression, just write the expression.
-    - Ensure that your code does not produce errors. Test it before sending it.
     - If a function or module you need is not available, search for it, ask other agents or the user to help you find or create it.
     """
     AGENT_REGISTRY: dict[str, ConversableAgent] = {}
