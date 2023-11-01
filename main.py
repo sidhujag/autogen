@@ -46,28 +46,19 @@ async def query(input: QueryModel):
         default_auto_reply="This is the user_assistant speaking.",
         category="user"
     )
-    group_chat_manager_model = UpsertAgentModel(
-        name="group_manager",
-        auth=input.auth,
-        human_input_mode="NEVER",
-        default_auto_reply="This is group_manager speaking.",
-        category="groups"
-    )
     models = [
         user_model,
-        user_assistant_model,
-        group_chat_manager_model
+        user_assistant_model
     ]
     agents, err = MakeService.upsert_agents(models)
     if err is not None:
         print(f'Error creating agents {err}')
         return
     register_base_functions(agents)
-    group_agent_name="group_agent"
-    GroupService.create_group(agents[2], group_agent_name=group_agent_name, group_description="Management group", invitees=[user_assistant_model.name])
-    GroupService.invite_to_group(sender=agents[2], agent_name=user_model.name, group_agent_name=group_agent_name, invite_message=f"Hello {user_model.name}, please join our group")
-    GroupService.join_group(sender=agents[0], group_agent_name=group_agent_name, hello_message=agents[0]._default_auto_reply)
-    GroupService.join_group(sender=agents[1], group_agent_name=group_agent_name, hello_message=agents[1]._default_auto_reply)
-    agents[0].initiate_chat(recipient=agents[2], message=input.query)
+    response, group_chat_manager = GroupService.create_group(agents[0], group_chat="group_chat", group_description="Management group", invitees=[user_assistant_model.name])
+    GroupService.invite_to_group(sender=group_chat_manager, agent_name=user_model.name, group_chat="group_chat", invite_message=f"Hello {user_model.name}, please join our group")
+    GroupService.join_group(sender=agents[0], group_chat="group_chat", hello_message=agents[0]._default_auto_reply)
+    GroupService.join_group(sender=agents[1], group_chat="group_chat", hello_message=agents[1]._default_auto_reply)
+    agents[0].initiate_chat(recipient=group_chat_manager, message=input.query)
     
     
