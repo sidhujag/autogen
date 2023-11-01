@@ -41,14 +41,14 @@ async def query(input: QueryModel):
         name="user_assistant",
         auth=input.auth,
         description="A generic AI assistant that can solve problems",
-        human_input_mode="ALWAYS",
+        human_input_mode="NEVER",
         default_auto_reply="This is the user_assistant speaking.",
         category="user"
     )
     group_chat_manager_model = UpsertAgentModel(
         name="group_manager",
         auth=input.auth,
-        human_input_mode="ALWAYS",
+        human_input_mode="NEVER",
         default_auto_reply="This is group_manager speaking.",
         category="groups"
     )
@@ -67,6 +67,6 @@ async def query(input: QueryModel):
     GroupService.invite_to_group(sender=agents[2], agent_name=user_model.name, group_agent_name=group_agent_name, invite_message=f"Hello {user_model.name}, please join our group")
     GroupService.join_group(sender=agents[0], group_agent_name=group_agent_name, hello_message=agents[0]._default_auto_reply)
     GroupService.join_group(sender=agents[1], group_agent_name=group_agent_name, hello_message=agents[1]._default_auto_reply)
-    agents[0].initiate_chat(recipient=agents[1], message=input.query)
+    agents[0].initiate_chat(recipient=agents[2], message=input.query)
     
     
