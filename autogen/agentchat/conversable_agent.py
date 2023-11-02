@@ -603,7 +603,6 @@ class ConversableAgent(Agent):
             return False, None
         if messages is None:
             messages = self._oai_messages[sender]
-
         # TODO: #1143 handle token limit exceeded error
         response = oai.ChatCompletion.create(
             context=messages[-1].pop("context", None), messages=self._oai_system_message + messages, **llm_config
@@ -659,8 +658,7 @@ class ConversableAgent(Agent):
             messages = self._oai_messages[sender]
         message = messages[-1]
         if "function_call" in message:
-            # MAKEAI
-            _, func_return = self.execute_function(sender, message["function_call"])
+            _, func_return = self.execute_function(message["function_call"])
             return True, func_return
         return False, None
 
@@ -1066,8 +1064,7 @@ class ConversableAgent(Agent):
             result.append(char)
         return "".join(result)
 
-    # MAKEAI
-    def execute_function(self, sender: "ConversableAgent", func_call):
+    def execute_function(self, func_call):
         """Execute a function call and return the result.
 
         Override this function to modify the way to execute a function call.
@@ -1081,7 +1078,7 @@ class ConversableAgent(Agent):
             result_dict: a dictionary with keys "name", "role", and "content". Value of "role" is "function".
         """
         func_name = func_call.get("name", "")
-        func = self._function_map.get(func_name, None) or sender._function_map.get(func_name, None)
+        func = self._function_map.get(func_name, None)
 
         is_exec_success = False
         if func is not None:
@@ -1102,8 +1099,8 @@ class ConversableAgent(Agent):
                 try:
                     # MAKEAI
                     func_args = inspect.signature(func).parameters
-                    if 'sender' in func_args and isinstance(sender, ConversableAgent):
-                        content = func(**arguments, sender=sender)
+                    if 'sender' in func_args:
+                        content = func(**arguments, sender=self)
                     else:
                         content = func(**arguments)
                     is_exec_success = True

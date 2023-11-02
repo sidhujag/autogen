@@ -22,7 +22,7 @@ class GroupChat:
         in its `function_map`.
     """
 
-    agents: List[str]
+    agents: List[Agent]
     invitees: List[str]
     messages: List[Dict]
     max_round: int = 10
@@ -36,16 +36,21 @@ class GroupChat:
         self.invitees.clear()
         self.agents.clear()
 
-    def agent_by_name(self, name: str) -> str:
-        """Find the next speaker based on the message."""
-        return self.agents[self.agents.index(name)]
+    @property
+    def agent_names(self) -> List[str]:
+        """Return the names of the agents in the group chat."""
+        return [agent.name for agent in self.agents]
 
-    def next_agent(self, agent: Agent, agents: List[Agent]) -> str:
+    def agent_by_name(self, name: str) -> Agent:
+        """Find the next speaker based on the message."""
+        return self.agents[self.agent_names.index(name)]
+
+    def next_agent(self, agent: Agent, agents: List[Agent]) -> Agent:
         """Return the next agent in the list."""
         if agents == self.agents:
-            return agents[(self.agents.index(agent.name) + 1) % len(agents)]
+            return agents[(self.agent_names.index(agent.name) + 1) % len(agents)]
         else:
-            offset = self.agents.index(agent.name) + 1
+            offset = self.agent_names.index(agent.name) + 1
             for i in range(len(self.agents)):
                 if self.agents[(offset + i) % len(self.agents)] in agents:
                     return self.agents[(offset + i) % len(self.agents)]
@@ -88,8 +93,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
                 )
         selector.update_system_message(self.select_speaker_msg(agents))
         final, name = selector.generate_oai_reply(
-            self.messages
-            + [
+            [
                 {
                     "role": "system",
                     "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Only return the role.",
@@ -139,22 +143,22 @@ class GroupChatManager(ConversableAgent):
         # self._random = random.Random(seed)
 
     def join_group_helper(self, agent: ConversableAgent, welcome_message: str = None) -> str:
-        if agent.name in self.groupchat.agents:
+        if agent.name in self.groupchat.agent_names:
             return "Could not join group: Already in the group"
         if agent.name not in self.groupchat.invitees:
             return "Could not join group: Not invited"
         if agent.name == self.name:
             return "Could not join group: You are the group manager already"
         self.groupchat.invitees.remove(agent.name)
-        self.groupchat.agents.append(agent.name)
+        self.groupchat.agents.append(agent)
         if welcome_message:
-            agent.send(welcome_message, self, request_reply=False, silent=True)
+            agent.send(welcome_message, self, request_reply=False, silent=False)
         return "Group joined!"
 
     def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None) -> str:
-        if agent.name not in self.groupchat.agents:
+        if agent.name not in self.groupchat.agent_names:
             return "Could not leave group: Not in the group"
-        self.groupchat.agents.remove(agent.name)
+        self.groupchat.agents.remove(agent)
         if goodbye_message:
             agent.send(goodbye_message, self, request_reply=False, silent=True)
         return "Group exited!"
@@ -162,15 +166,15 @@ class GroupChatManager(ConversableAgent):
     def invite_to_group_helper(self, inviter: ConversableAgent, invited: ConversableAgent, invite_message: str = None) -> str:
         if invited.name in self.groupchat.invitees:
             return "Could not invite to group: Already invited"
-        if invited.name in self.groupchat.agents:
+        if invited.name in self.groupchat.agent_names:
             return "Could not invite to group: Already in the group"
-        if inviter.name not in self.groupchat.agents and inviter.name != self.name:
+        if inviter.name not in self.groupchat.agent_names and inviter.name != self.name:
             return "Cannot invite others to this group: You are not in the group"
         if invited.name == self.name:
             return "Could not invite to group: You are the group manager already"
         self.groupchat.invitees.append(invited.name)
         if invite_message:
-            inviter.send(invite_message, invited, request_reply=False, silent=True)
+            inviter.send(invite_message, invited, request_reply=False, silent=False)
         return "Invite sent!"
 
     def delete_group_helper(self) -> str:
@@ -198,8 +202,7 @@ class GroupChatManager(ConversableAgent):
                 message["name"] = speaker.name
             groupchat.messages.append(message)
             # broadcast the message to all agents except the speaker
-            for agent_name in groupchat.agents:
-                agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=agent_name))
+            for agent in groupchat.agents:
                 if agent != speaker:
                     self.send(message, agent, request_reply=False, silent=True)
             if i == groupchat.max_round - 1:
@@ -207,16 +210,14 @@ class GroupChatManager(ConversableAgent):
                 break
             try:
                 # select the next speaker
-                speaker_name = groupchat.select_speaker(speaker, self)
-                speaker = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=speaker_name))
+                speaker = groupchat.select_speaker(speaker, self)
                 # let the speaker speak
                 reply = speaker.generate_reply(sender=self)
             except KeyboardInterrupt:
                 # let the admin agent speak if interrupted
-                if groupchat.admin_name in groupchat.agents:
+                if groupchat.admin_name in groupchat.agent_names:
                     # admin agent is one of the participants
-                    speaker_name = groupchat.agent_by_name(groupchat.admin_name)
-                    speaker = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=speaker_name))
+                    speaker = groupchat.agent_by_name(groupchat.admin_name)
                     reply = speaker.generate_reply(sender=self)
                 else:
                     # admin agent is not found in the participants
@@ -259,7 +260,7 @@ class GroupChatManager(ConversableAgent):
                 reply = await speaker.a_generate_reply(sender=self)
             except KeyboardInterrupt:
                 # let the admin agent speak if interrupted
-                if groupchat.admin_name in groupchat.agents:
+                if groupchat.admin_name in groupchat.agent_names:
                     # admin agent is one of the participants
                     speaker = groupchat.agent_by_name(groupchat.admin_name)
                     reply = await speaker.a_generate_reply(sender=self)

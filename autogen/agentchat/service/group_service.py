@@ -18,7 +18,7 @@ class GroupService:
         err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
             name=group_chat,
-            agents=group_manager.groupchat.agents,
+            agents=group_manager.groupchat.agent_names,
             invitees=group_manager.groupchat.invitees
         )])
         if err is not None:
@@ -95,7 +95,7 @@ class GroupService:
         err = BackendService.upsert_backend_agents([UpsertAgentModel(
             auth=sender.auth,
             name=group_chat,
-            agents=group_manager.groupchat.agents
+            agents=group_manager.groupchat.agent_names
         )])
         if err is not None:
             return err

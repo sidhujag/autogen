@@ -42,7 +42,7 @@ class MakeService:
     
     @staticmethod
     def is_group_chat_data(backend_agent):
-        return len(backend_agent.agents) > 0
+        return len(backend_agent.invitees) > 0 or len(backend_agent.agents) > 0
 
     @staticmethod
     def update_agent(agent: ConversableAgent, backend_agent):
@@ -60,9 +60,18 @@ class MakeService:
     
     @staticmethod
     def _create_group_agent(backend_agent) -> GroupChatManager:
+        from . import AgentService, GetAgentModel
+        group_agents = []
+        for group_agent_name in backend_agent.agents:
+            agent = AgentService.get_agent(GetAgentModel(auth=backend_agent.auth, name=group_agent_name))
+            if agent is None:
+                return None, f"Could not get group agent {group_agent_name}"
+            group_agents.append(agent)
         groupchat = GroupChat(
-            agents=backend_agent.agents,
-            invitees=backend_agent.invitees
+            agents=group_agents,
+            invitees=backend_agent.invitees,
+            messages=[],
+            max_round=50
         )
         return GroupChatManager(
             groupchat=groupchat,
@@ -71,7 +80,7 @@ class MakeService:
             default_auto_reply=backend_agent.default_auto_reply,
             system_message=backend_agent.system_message,
             is_termination_msg=is_termination_msg
-        )
+        ), None
     @staticmethod
     def _create_agent(backend_agent) -> GroupChatManager:
         return ConversableAgent(
@@ -85,7 +94,9 @@ class MakeService:
     def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
         from . import FunctionsService, AddFunctionModel
         if MakeService.is_group_chat_data(backend_agent):
-            agent = MakeService._create_group_agent(backend_agent)
+            agent, err = MakeService._create_group_agent(backend_agent)
+            if err is not None:
+                return None, err
         else:
             agent = MakeService._create_agent(backend_agent)
         agent.auth = backend_agent.auth
@@ -100,7 +111,7 @@ class MakeService:
         for function in backend_agent.functions:
             FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         MakeService.AGENT_REGISTRY[agent.name] = agent
-        return agent
+        return agent, None
     
     @staticmethod
     def upsert_agents(upsert_models):
@@ -122,7 +133,9 @@ class MakeService:
         for backend_agent in backend_agents:
             agent = MakeService.AGENT_REGISTRY.get(backend_agent.name)
             if agent is None:
-                agent = MakeService.make_agent(backend_agent)
+                agent, err = MakeService.make_agent(backend_agent)
+                if err is not None:
+                    return None, err
             else:
                 MakeService.update_agent(agent, backend_agent)
             successful_agents.append(agent)

@@ -24,7 +24,7 @@ class AgentService:
         if isinstance(to_agent, GroupChatManager):
             # group manager should get a response so he can delegate further
             request_reply = True
-            if sender.name not in to_agent.agents:
+            if sender.name not in to_agent.agent_names:
                 return "Could not send message: Trying to send to a group that you are not in"
         sender.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
         return "Sent message!"

@@ -55,7 +55,6 @@ class FunctionsService:
         # Check if a function with the same name already exists
         if 'functions' not in agent.llm_config:
             agent.llm_config["functions"]= []
-    
         existing_function_index = next((index for (index, d) in enumerate(agent.llm_config["functions"]) if d["name"] == function.name), None)
         # If it does, update that entry; if not, append a new entry
         if existing_function_index is not None:
