@@ -129,7 +129,6 @@ class GroupChatManager(ConversableAgent):
             system_message=system_message,
             **kwargs,
         )        
-        self.base_system_message = system_message
         self.groupchat = groupchat
         # Order of register_reply is important.
         # Allow sync chat if initiated using initiate_chat
@@ -147,12 +146,9 @@ class GroupChatManager(ConversableAgent):
         if agent.name == self.name:
             return "Could not join group: You are the group manager already"
         self.groupchat.invitees.remove(agent.name)
-        other_roles = f"The following other agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}"
         self.groupchat.agents.append(agent.name)
-        self.send(other_roles, agent, request_reply=False, silent=True)
         if welcome_message:
             agent.send(welcome_message, self, request_reply=False, silent=True)
-        self.update_system_message(self.base_system_message + f"\nThe following agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}")
         return "Group joined!"
 
     def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None) -> str:
@@ -161,7 +157,6 @@ class GroupChatManager(ConversableAgent):
         self.groupchat.agents.remove(agent.name)
         if goodbye_message:
             agent.send(goodbye_message, self, request_reply=False, silent=True)
-        self.update_system_message(self.base_system_message + f"\nThe following agents are in the group: {', '.join(self.groupchat.agents)}, the group manager: {self.name}")
         return "Group exited!"
 
     def invite_to_group_helper(self, inviter: ConversableAgent, invited: ConversableAgent, invite_message: str = None) -> str:

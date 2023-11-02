@@ -2,7 +2,7 @@ send_message_spec = {
     "name": "send_message",
     "category": "communication",
     "class_name": "AgentService.send_message",
-    "description": "Send a message to an individual agent or to all agents in a group via the group manager.",
+    "description": "Send a message from calling agent to another agent or all agents in a group via sending to group chat.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -18,7 +18,7 @@ join_group_spec = {
     "name": "join_group",
     "category": "communication",
     "class_name": "GroupService.join_group",
-    "description": "Join a specified group if you have been already invited. Groups are referenced by the group manager name.",
+    "description": "Trigger the calling agent to join a specified group if it have been already invited.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -33,7 +33,7 @@ invite_to_group_spec = {
     "name": "invite_to_group",
     "category": "communication",
     "class_name": "GroupService.invite_to_group",
-    "description": "Invite another agent to a specified group. Agents can only join if they have been invited.",
+    "description": "Invite another agent to a specified group. Agents can only join if they have been invited. Caller must be in the group already.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -49,7 +49,7 @@ create_group_spec = {
     "name": "create_group",
     "category": "communication",
     "class_name": "GroupService.create_group",
-    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category. The calling agent will be automatically added to the group upon creation.",
+    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category. Group is empty by default.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -70,7 +70,7 @@ leave_group_spec = {
     "name": "leave_group",
     "category": "communication",
     "class_name": "GroupService.leave_group",
-    "description": "Leave a specified group.",
+    "description": "Trigger the calling agent to leave a specified group.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -85,7 +85,7 @@ discover_agents_spec = {
     "name": "discover_agents",
     "category": "communication",
     "class_name": "AgentService.discover_agents",
-    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. Agent names and descriptions are returned.",
+    "description": "Allows agents to discover other agents based on specific queries. Agents can be searched via a natural query of required features or based on the specified categories. Agent names and descriptions are returned.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -107,7 +107,7 @@ create_or_update_agent = {
     "name": "create_or_update_agent",
     "category": "communication",
     "class_name": "AgentService.create_or_update_agent",
-    "description": "Create or update an agent. If you are creating an agent for purpose of adding functions to run code, consider for simple tasks just to create code and agents will execute it. Creating an agent means it will be reusable in other contexts widely.",
+    "description": "Create or update an agent. If you are creating an agent for purpose of adding functions to run code, consider for simple tasks just to create code and agents will execute it. Creating an agent means it will be reusable in other contexts widely. You can not update other agents, caller is authenticated.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -138,7 +138,7 @@ discover_functions = {
     "name": "discover_functions",
     "category": "programming",
     "class_name": "FunctionsService.discover_functions",
-    "description": "Allows agents to discover other agents based on specific queries related to features, functions, functionalities, or categories. Agents can be searched via a natural query of required features or based on the specified categories. Function names and descriptions are returned. Usually paired with add_functions in a subsequent call.",
+    "description": "Allows agents to discover other agents based on specific queries. Agents can be searched via a natural query of required features or based on the specified categories. function names and descriptions are returned. Usually paired with add_functions in a subsequent call.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -149,7 +149,7 @@ discover_functions = {
             },
             "query": {
                 "type": "string",
-                "description": "A natural language query describing the desired features, functions, or functionalities of the agent being searched for. This can be left empty if not sure. If empty it will look for up to the first 10 functions in the category specified."
+                "description": "A natural language query describing the desired features/functionalities of the agent being searched for. This can be left empty if not sure. If empty it will look for up to the first 10 functions in the category specified."
             }
         },
         "required": ["category"]
@@ -160,7 +160,7 @@ add_functions = {
     "name": "add_functions",
     "category": "programming",
     "class_name": "FunctionsService.add_functions",
-    "description": "Allows agents to add specific function ability to themselves. Usually paired with discover_functions.",
+    "description": "Allows agents to add specific ability to themselves. Usually paired with discover_functions. Will only add the functions to the calling agent.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -178,7 +178,7 @@ define_function = {
     "name": "define_function",
     "category": "programming",
     "class_name": "FunctionsService.define_function",
-    "description": "Define a new function through code to add to the context of the agent. Double check the code will run successfully against the execution template script. Useful for generic functions that you think will be widely in many other contexts. Necessary Python packages must be declared. Will automatically add the function to agent.",
+    "description": "Define a new function through code to add to the environment. Useful for non-niche generic code that may benefit from reuse. Necessary Python packages must be imported. External packages must be installed in the code through subprocess (avoids ModuleNotFoundError). Will automatically add the function to calling agent.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -192,16 +192,11 @@ define_function = {
             },
             "parameters": {
                 "type": "string",
-                "description": "JSON schema of the parameters object encoded as a string. Use the standard OpenAPI 2.0 specification, and examples of functions already attached to see format.",
+                "description": "JSON schema of the parameters object encoded as a string. Use the standard OpenAPI 2.0 specification for parameters in function calling, and examples of functions already attached to see format. These are injected as global variables.",
             },
-            "packages": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Array of package names imported by the function encoded as an array. Packages need to be installed with pip prior to invoking the function. This solves ModuleNotFoundError. Should also include code."
-            },
-            "code": {
+            "pycode": {
                 "type": "string",
-                "description": "The implementation in Python. The code is executed as part of a larger script that handles package installations, function definition, and function execution with the provided arguments. When defining a function, such as 'def your_function(a, b): ...', it will be executed as 'result = your_function(**args)'. The 'result' variable stores the output of your function. Ensure your code is standalone, follows Python syntax, and is thoroughly tested before defining a function. Here is a template of the execution script: 'import subprocess;\nsubprocess.run(['pip', 'install', ...]);\ndef your_function(...): ...;\nargs = {...};\nresult = your_function(**args);\nif result is not None:\n    print(result)'"
+                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables."
             },
             "category": {
                 "type": "string",
@@ -209,7 +204,7 @@ define_function = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             },
         },
-        "required": ["name", "description", "code", "category"],
+        "required": ["name", "description", "pycode", "category"],
     },
 }
 

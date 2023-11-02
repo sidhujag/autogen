@@ -27,19 +27,12 @@ class FunctionsService:
         return "Function(s) added successfully"
 
     @staticmethod
-    def execute_func(name: str, code: str, packages: List[str], **args):
-            package_install_cmd = ' '.join(f'"{pkg}"' for pkg in packages)
-            pip_install = f'import subprocess\nsubprocess.run(["pip", "-qq", "install", {package_install_cmd}])' if len(packages) > 0 else ''
-            str_code = f"""{pip_install}
-print("Result of {name} function execution:")
-{code}
-args={args}
-result={name}(**args)
-if result is not None: print(result)"""
-            print(f"execute_code:\n{str_code}")
-            result = execute_code(str_code)[1]
-            print(f"Result: {result}")
-            return result
+    def execute_func(pycode: str, **args):
+        global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
+        str_code = f"{global_vars_code}{pycode}"
+        exitcode, logs, env = execute_code(str_code)
+        exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
+        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"
 
     @staticmethod
     def _find_class(class_name):
@@ -89,7 +82,7 @@ if result is not None: print(result)"""
                 return "function code was empty unexpectedly, either define a class_name or code"
             agent.register_function(
                 function_map={
-                    function.name: lambda **args: FunctionsService.execute_func(function.name, function.code, function.packages or [], **args)
+                    function.name: lambda **args: FunctionsService.execute_func(function.code, **args)
                 }
             )
         return "Function added!"
