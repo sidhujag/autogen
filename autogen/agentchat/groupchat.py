@@ -93,7 +93,8 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
                 )
         selector.update_system_message(self.select_speaker_msg(agents))
         final, name = selector.generate_oai_reply(
-            [
+            self.messages
+            + [
                 {
                     "role": "system",
                     "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Only return the role.",
