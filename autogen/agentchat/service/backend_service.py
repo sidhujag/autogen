@@ -75,6 +75,8 @@ class BackendService:
     def delete_backend_agents(data_models: List[DeleteAgentModel]):
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("delete_agents", list_of_dicts)
+        if response != "success":
+            return response
         if err is not None:
             return err
         return None
@@ -83,6 +85,8 @@ class BackendService:
     def upsert_backend_agents(data_models: List[UpsertAgentModel]):
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("upsert_agents", list_of_dicts)
+        if response != "success":
+            return response
         if err is not None:
             return err
         return None
@@ -103,6 +107,8 @@ class BackendService:
         list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
         # Make the backend call with the list of dictionaries
         response, err = BackendService.call("add_functions", list_of_dicts)
+        if response != "success":
+            return response
         if err is not None:
             return err
         return None
