@@ -122,7 +122,7 @@ create_or_update_agent = {
             "function_names": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of function names. Will upsert the functions to agent database."
+                "description": "Array of function names. Will upsert the functions to agent database. Functions must already exist prior to adding to an agent."
             },
             "category": {
                 "type": "string",
@@ -196,7 +196,7 @@ define_function = {
             },
             "pycode": {
                 "type": "string",
-                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables."
+                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables. Make sure code has been tested previously to execute and work atleast once prior to defining it as function. After defining you should subsequently run the function as a test for quality assurance and fix it as needed."
             },
             "category": {
                 "type": "string",
