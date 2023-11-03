@@ -191,7 +191,6 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ) -> Union[str, Dict, None]:
         """Run a group chat."""
-        from .service import AgentService, GetAgentModel
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
