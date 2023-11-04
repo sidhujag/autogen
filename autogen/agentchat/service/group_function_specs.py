@@ -28,12 +28,12 @@ create_or_update_group_spec = {
             "agents_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of agents to add to group."
+                "description": "Agent(s) to invite to group. Group agents can only see the context of the conversation of that group from the moment they join."
             },
             "agents_to_remove": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of agents to remove from group."
+                "description": "Agent(s) to remove from group."
             },
         },
         "required": ["group", "description"],
@@ -82,12 +82,12 @@ create_or_update_agent = {
             "functions_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of function names to add to agent. Functions must already exist."
+                "description": "Function(s) to add to agent. Functions must already exist."
             },
             "functions_to_remove": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of function names to remove from agent."
+                "description": "Function(s) to remove from agent."
             },
             "category": {
                 "type": "string",
@@ -110,7 +110,7 @@ discover_functions = {
             "category": {
                 "type": "string",
                 "description": "A category to filter agents based on predefined categories.",
-                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"]
             },
             "query": {
                 "type": "string",
@@ -148,7 +148,7 @@ define_function = {
             "category": {
                 "type": "string",
                 "description": "A category to filter functions based on predefined categories.",
-                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"]
             },
         },
         "required": ["name", "description", "code", "category"],

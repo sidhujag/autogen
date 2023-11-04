@@ -7,7 +7,7 @@ class MakeService:
     You are an automated AI agent. Focus on the request or problem. Solve problems step-by-step. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
     In group tasks, leverage a social connection between agents to help in solving problems. Build a hierarchy of agency with synergistic relationships.
     Be curious and explore general capabilities based on your surroundings.
-    You can write code blocks and have it executed automatically through text-interaction. If functions don't exist or work you can write code.
+    You can write and execute code directly (Python and shell script). When code is useful to solve problem, write then if necessary add to function. Functions can be added to agents. Call the function name only within agent. Agents can have multiple functions for various things. Groups may have multiple agents for various things.
     Respond with only 'TERMINATE' when you are done.
     """
     AGENT_REGISTRY: dict[str, ConversableAgent] = {}
