@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class GroupChat:
-    """A group chat class that contains the following data fields:
+    """(In preview) A group chat class that contains the following data fields:
     - agents: a list of participating agents.
     - messages: a list of messages in the group chat.
     - max_round: the maximum number of rounds.
@@ -23,23 +23,19 @@ class GroupChat:
     """
 
     agents: List[Agent]
-    invitees: List[str]
     messages: List[Dict]
     max_round: int = 10
     admin_name: str = "Admin"
     func_call_filter: bool = True
 
-
-    def reset(self):
-        """Reset the group chat."""
-        self.messages.clear()
-        self.invitees.clear()
-        self.agents.clear()
-
     @property
     def agent_names(self) -> List[str]:
         """Return the names of the agents in the group chat."""
         return [agent.name for agent in self.agents]
+
+    def reset(self):
+        """Reset the group chat."""
+        self.messages.clear()
 
     def agent_by_name(self, name: str) -> Agent:
         """Find the next speaker based on the message."""
@@ -133,8 +129,7 @@ class GroupChatManager(ConversableAgent):
             human_input_mode=human_input_mode,
             system_message=system_message,
             **kwargs,
-        )        
-        self.groupchat = groupchat
+        )
         # Order of register_reply is important.
         # Allow sync chat if initiated using initiate_chat
         self.register_reply(Agent, GroupChatManager.run_chat, config=groupchat, reset_config=GroupChat.reset)
@@ -142,47 +137,6 @@ class GroupChatManager(ConversableAgent):
         self.register_reply(Agent, GroupChatManager.a_run_chat, config=groupchat, reset_config=GroupChat.reset)
 
         # self._random = random.Random(seed)
-
-    def join_group_helper(self, agent: ConversableAgent, welcome_message: str = None) -> str:
-        if agent.name in self.groupchat.agent_names:
-            return "Could not join group: Already in the group"
-        if agent.name not in self.groupchat.invitees:
-            return "Could not join group: Not invited"
-        if agent.name == self.name:
-            return "Could not join group: You are the group manager already"
-        self.groupchat.invitees.remove(agent.name)
-        self.groupchat.agents.append(agent)
-        if welcome_message:
-            agent.send(welcome_message, self, request_reply=False, silent=False)
-        return "Group joined!"
-
-    def leave_group_helper(self, agent: ConversableAgent, goodbye_message: str = None) -> str:
-        if agent.name not in self.groupchat.agent_names:
-            return "Could not leave group: Not in the group"
-        self.groupchat.agents.remove(agent)
-        if goodbye_message:
-            agent.send(goodbye_message, self, request_reply=False, silent=True)
-        return "Group exited!"
-
-    def invite_to_group_helper(self, inviter: ConversableAgent, invited: ConversableAgent, invite_message: str = None) -> str:
-        if invited.name in self.groupchat.invitees:
-            return "Could not invite to group: Already invited"
-        if invited.name in self.groupchat.agent_names:
-            return "Could not invite to group: Already in the group"
-        if inviter.name not in self.groupchat.agent_names and inviter.name != self.name:
-            return "Cannot invite others to this group: You are not in the group"
-        if invited.name == self.name:
-            return "Could not invite to group: You are the group manager already"
-        self.groupchat.invitees.append(invited.name)
-        if invite_message:
-            inviter.send(invite_message, invited, request_reply=False, silent=False)
-        return "Invite sent!"
-
-    def delete_group_helper(self) -> str:
-        if len(self.groupchat.agents) > 0:
-            return "Could not delete group: Group is not empty"
-        self.groupchat.clear()
-        return ""
 
     def run_chat(
         self,

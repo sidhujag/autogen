@@ -14,72 +14,32 @@ send_message_spec = {
     }
 }
 
-join_group_spec = {
-    "name": "join_group",
+create_or_update_group_spec = {
+    "name": "create_or_update_group",
     "category": "communication",
-    "class_name": "GroupService.join_group",
-    "description": "Trigger the calling agent to join a specified group if it have been already invited.",
+    "class_name": "GroupService.create_or_update_group",
+    "description": "Create or update a group. Groups are discoverable via the 'groups' category..",
     "parameters": {
         "type": "object",
         "properties": {
-            "group_chat": {"type": "string", "description": "The name of the group chat."},
-            "hello_message": {"type": "string", "description": "A welcome message, if any. Maybe describe your skills and invite others to send you a message so you can solve a task for the group."}
-        },
-        "required": ["group_chat"],
-    },
-}
-
-invite_to_group_spec = {
-    "name": "invite_to_group",
-    "category": "communication",
-    "class_name": "GroupService.invite_to_group",
-    "description": "Invite another agent to a specified group. Agents can only join if they have been invited. Caller must be in the group already.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "agent_name": {"type": "string", "description": "The name of the agent to invite."},
-            "group_chat": {"type": "string", "description": "The name of the group chat."},
-            "invite_message": {"type": "string", "description": "An invitation message, if any. The receiving agent does not have to join but usually will as he is invited for his specific skills."}
-        },
-        "required": ["agent_name", "group_chat"],
-    },
-}
-
-create_group_spec = {
-    "name": "create_group",
-    "category": "communication",
-    "class_name": "GroupService.create_group",
-    "description": "Create a new group. Group manager agent is automatically placed in the 'groups' category. Group is empty by default.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "group_chat": {"type": "string", "description": "The name of the new group."},
-            "group_description": {"type": "string", "description": "Short description of the new group."},
-            "system_message": {"type": "string", "description": "A system message for the new group, if any."},
-            "invitees": {
+            "group": {"type": "string", "description": "The name of group. Acts as an indentifier."},
+            "description": {"type": "string", "description": "Short description of group."},
+            "system_message": {"type": "string", "description": "A system message for group, if any."},
+            "agents_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of agents to invite to new group."
+                "description": "Array of agents to add to group."
+            },
+            "agents_to_remove": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Array of agents to remove from group."
             },
         },
-        "required": ["group_chat", "group_description"],
+        "required": ["group", "description"],
     },
 }
 
-leave_group_spec = {
-    "name": "leave_group",
-    "category": "communication",
-    "class_name": "GroupService.leave_group",
-    "description": "Trigger the calling agent to leave a specified group.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "group_chat": {"type": "string", "description": "The name of the group chat."},
-            "goodbye_message": {"type": "string", "description": "A farewell message, if any."}
-        },
-        "required": ["group_chat"],
-    },
-}
 
 discover_agents_spec = {
     "name": "discover_agents",
@@ -111,26 +71,31 @@ create_or_update_agent = {
     "parameters": {
         "type": "object",
         "properties": {
-            "agent_name": {
+            "name": {
                 "type": "string",
-                "description": "The name of agent to create or update, must be unique to all agents."
+                "description": "The name of agent. Acts as an identifier."
             },
-            "agent_description": {
+            "description": {
                 "type": "string",
                 "description": "A description of the agent - features, roles, functionalities of the agent etc."
             },
-            "function_names": {
+            "functions_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Array of function names. Will upsert the functions to agent database. Functions must already exist prior to adding to an agent."
+                "description": "Array of function names to add to agent. Functions must already exist."
+            },
+            "functions_to_remove": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Array of function names to remove from agent."
             },
             "category": {
                 "type": "string",
-                "description": "A category to sort agent based on predefined categories. Set this if creating a new agent. 'groups' not available here if that is what you are looking for, to make new group use create_group function.",
+                "description": "A category to sort agent based on predefined categories. Set this if creating a new agent. 'groups' not available here if that is what you are looking for, to make new group use create_or_update_group function.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "user"]
             }
         },
-        "required": ["agent_name"]
+        "required": ["name"]
     },
 }
 
@@ -138,7 +103,7 @@ discover_functions = {
     "name": "discover_functions",
     "category": "programming",
     "class_name": "FunctionsService.discover_functions",
-    "description": "Allows agents to discover other agents based on specific queries. Agents can be searched via a natural query of required features or based on the specified categories. function names and descriptions are returned. Usually paired with add_functions in a subsequent call.",
+    "description": "Allows agents to discover other agents based on specific queries. Agents can be searched via a natural query of required features or based on the specified categories. function names and descriptions are returned.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -156,29 +121,11 @@ discover_functions = {
     },
 }
 
-add_functions = {
-    "name": "add_functions",
-    "category": "programming",
-    "class_name": "FunctionsService.add_functions",
-    "description": "Allows agents to add specific ability to themselves. Usually paired with discover_functions. Will only add the functions to the calling agent.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "function_names": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Array of function names. Will upsert functions to agent database."
-            },
-        },
-        "required": ["function_names"]
-    },
-}
-
 define_function = {
     "name": "define_function",
     "category": "programming",
     "class_name": "FunctionsService.define_function",
-    "description": "Define a new function through code to add to the environment. Useful for non-niche generic code that may benefit from reuse. Necessary Python packages must be imported. External packages must be installed in the code through subprocess (avoids ModuleNotFoundError). Will automatically add the function to calling agent.",
+    "description": "Define a new function through code to add to the environment after you have tested the code to be working. Useful for non-niche generic code that may benefit from reuse. Necessary Python packages must be imported. External packages must be installed in the code through subprocess (avoids ModuleNotFoundError). Only add code that has been tested. After creating, test the function and fix any issues.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -196,7 +143,7 @@ define_function = {
             },
             "pycode": {
                 "type": "string",
-                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables. Make sure code has been tested previously to execute and work atleast once prior to defining it as function. After defining you should subsequently run the function as a test for quality assurance and fix it as needed."
+                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables."
             },
             "category": {
                 "type": "string",
@@ -210,13 +157,9 @@ define_function = {
 
 group_function_specs = [
     send_message_spec,
-    join_group_spec,
-    invite_to_group_spec,
-    create_group_spec,
-    leave_group_spec,
+    create_or_update_group_spec,
     discover_agents_spec,
     create_or_update_agent,
     discover_functions,
-    define_function,
-    add_functions
+    define_function, 
 ]

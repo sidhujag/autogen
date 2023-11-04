@@ -17,15 +17,7 @@ class FunctionsService:
         if err is not None:
             return f"Could not discover functions: {err}"
         return response
-
-    @staticmethod
-    def add_functions(sender: ConversableAgent, function_names: List[str]) -> str:
-        from . import MakeService, UpsertAgentModel
-        agent, err = MakeService.upsert_agents([UpsertAgentModel(auth=sender.auth, name=sender.name, function_names=function_names)])
-        if err is not None:
-            return f"Could not add function(s): {err}"
-        return "Function(s) added successfully"
-
+    
     @staticmethod
     def execute_func(pycode: str, **args):
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
@@ -126,7 +118,7 @@ class FunctionsService:
         if err is not None:
             return f"Could not define functions: {err}"
 
-        return FunctionsService.add_functions(agent, function_names)
+        return "Functions defined! An agent can add them now"
 
     @staticmethod
     def define_function(agent: ConversableAgent, **kwargs: Any) -> str:
@@ -140,4 +132,4 @@ class FunctionsService:
         if err is not None:
             return f"Could not define function: {err}"
 
-        return FunctionsService.add_functions(agent, [function.name])
+        return "Function defined! An agent can add now"

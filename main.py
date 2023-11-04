@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat import ConversableAgent
-from autogen.agentchat.service import UpsertAgentModel, AuthAgent, MakeService, GroupService, FunctionsService
+from autogen.agentchat.service import UpsertAgentModel, AuthAgent, MakeService, GroupService, FunctionsService, AgentService
 from autogen.agentchat.service.group_function_specs import group_function_specs
 from typing import List
 app = FastAPI()
@@ -20,12 +20,15 @@ class QueryModel(BaseModel):
     query: str
 
 
-def register_base_functions(agents: List[ConversableAgent]):
-    for agent in agents:
-        response = FunctionsService.define_functions(agent, group_function_specs)
-        if response != "Function(s) added successfully":
+def register_base_functions(agent_models: List[UpsertAgentModel]):
+    list_fn_names = [fn_spec["name"] for fn_spec in group_function_specs]
+    for agent_model in agent_models:
+        response = FunctionsService.define_functions(agent_model, group_function_specs)
+        if response != "Functions defined! An agent can add them now":
             print(f'define_functions err {response}')
             return
+        agent_model.functions_to_add = list_fn_names
+    print("All functions registered.")
 
 @app.post('/query/')
 async def query(input: QueryModel):
@@ -50,15 +53,13 @@ async def query(input: QueryModel):
         user_model,
         user_assistant_model
     ]
+    register_base_functions(models)
+    agents: List[ConversableAgent] = None
     agents, err = MakeService.upsert_agents(models)
     if err is not None:
         print(f'Error creating agents {err}')
         return
-    register_base_functions(agents)
-    response, group_chat_manager = GroupService.create_group(agents[0], group_chat="group_chat", group_description="Management group", invitees=[user_assistant_model.name])
-    GroupService.invite_to_group(sender=group_chat_manager, agent_name=user_model.name, group_chat="group_chat", invite_message=f"Hello {user_model.name}, please join our group")
-    GroupService.join_group(sender=agents[0], group_chat="group_chat", hello_message=agents[0]._default_auto_reply)
-    GroupService.join_group(sender=agents[1], group_chat="group_chat", hello_message=agents[1]._default_auto_reply)
-    agents[0].initiate_chat(group_chat_manager, message=input.query)
+    response, group_manager = GroupService.create_or_update_group(sender=agents[0], group="group_name", description="Management group", agents_to_add=["UserProxyAgent", "user_assistant"])
+    agents[0].initiate_chat(group_manager, message=input.query)
     
     

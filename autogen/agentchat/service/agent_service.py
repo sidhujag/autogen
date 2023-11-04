@@ -1,4 +1,4 @@
-from .. import GroupChatManager, ConversableAgent
+from .. import ConversableAgent
 from typing import List
 
 class AgentService:
@@ -21,11 +21,6 @@ class AgentService:
         to_agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=recipient))
         if to_agent is None:
             return "Could not send message: recipient not found"
-        if isinstance(to_agent, GroupChatManager):
-            # group manager should get a response so he can delegate further
-            request_reply = True
-            if sender.name not in to_agent.agent_names:
-                return "Could not send message: Trying to send to a group that you are not in"
         sender.send(message=message, recipient=to_agent, request_reply=request_reply, silent=True)
         return "Sent message!"
 
@@ -40,18 +35,19 @@ class AgentService:
         return response
 
     @staticmethod
-    def create_or_update_agent(sender: ConversableAgent, agent_name: str, agent_description: str = None, system_message: str = None, function_names: List[str] = None, category: str = None) -> str: 
+    def create_or_update_agent(sender: ConversableAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None) -> str: 
         from . import MakeService, UpsertAgentModel
         if sender is None:
             return "Sender not found"
         agent, err = MakeService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
-            name=agent_name,
-            description=agent_description,
+            name=name,
+            description=description,
             system_message=system_message,
-            function_names=function_names,
+            functions_to_add=functions_to_add,
+            functions_to_remove=functions_to_remove,
             category=category
         )])
         if err is not None:
             return f"Could not create or update agent: {err}"
-        return "Agent created or updated successfully"
+        return "Agent updated! If new agent you can message or invite it to groups now"

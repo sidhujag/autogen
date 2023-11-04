@@ -4,30 +4,11 @@ is_termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get(
 
 class MakeService:
     AGENT_SYSTEM_MESSAGE: str = """ 
-    You are an automated AI agent. Solve problems step-by-step. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
+    You are an automated AI agent. Focus on the request or problem. Solve problems step-by-step. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
     In group tasks, leverage a social connection between agents to help in solving problems. Build a hierarchy of agency with synergistic relationships.
-    Be curious and explore general capabilities based on your surroundings:
-    1. Messaging agents
-    2. Finding/creating agents
-    3. Forming groups, inviting others
-    4. Creating correct code to solve your problems
-    5. Finding/creating/adding/executing/fixing functions
-
-    You may write code natively, every agent detects code blocks using the regex pattern r"```(\w*)\n(.*?)\n```" to automatically execute them.
-    You may have a function for what you need to do if its a generic request. For writing code just use text-interaction.
-    Prompt code reuse for global friendly code by creating parameterized function(s) through define_function. You should Run/test/verify code natively before defining functions.
-    
-    To interact or ask the user a question use agent 'UserProxyAgent'.
+    Be curious and explore general capabilities based on your surroundings.
+    You can write code blocks and have it executed automatically through text-interaction. If functions don't exist or work you can write code.
     Respond with only 'TERMINATE' when you are done.
-
-    Guidelines for Writing Python Code:
-    - Python 3.9+
-    - Follow PEP8 coding standards.
-    - To avoid ModuleNotFoundError, installing external packages can be done like: 'import subprocess\nsubprocess.run(["pip", "-qq", "install", [package_list]])' where [package_list] is joined (by space) list of packages.
-
-    Agent/Function discovery:
-    - There are pre-defined functions/agents that have been put into a database that are discoverable by you through semantic lookup (discover_functions/discover_agents)
-    - Do not make up function calls that are not provided in your context. You must add them to get access to call them.
     """
     AGENT_REGISTRY: dict[str, ConversableAgent] = {}
     @staticmethod
@@ -41,16 +22,21 @@ class MakeService:
             return FunctionsService()
     
     @staticmethod
-    def is_group_chat_data(backend_agent):
-        return len(backend_agent.invitees) > 0 or len(backend_agent.agents) > 0
+    def is_group(backend_agent):
+        return backend_agent.group
 
     @staticmethod
     def update_agent(agent: ConversableAgent, backend_agent):
-        from . import FunctionsService, AddFunctionModel
-        if MakeService.is_group_chat_data(backend_agent):
+        from . import FunctionsService, AddFunctionModel, AgentService, GetAgentModel
+        if MakeService.is_group(backend_agent):
+            agent_names = agent.groupchat.agent_names
+            for agent_name in backend_agent.agents:
+                if agent_name not in agent_names:
+                    agent = AgentService.get_agent(GetAgentModel(auth=backend_agent.auth, name=agent_name))
+                    if agent is None:
+                        return None, f"Could not get agent {agent_name}"
+                    agent.groupchat.agents.append(agent)
             agent.update_system_message(backend_agent.system_message)
-            agent.groupchat.agents = backend_agent.agents
-            agent.groupchat.invitees = backend_agent.invitees
             agent.description = backend_agent.description
         else:
             agent.update_system_message(backend_agent.system_message+MakeService.AGENT_SYSTEM_MESSAGE)
@@ -62,14 +48,13 @@ class MakeService:
     def _create_group_agent(backend_agent) -> GroupChatManager:
         from . import AgentService, GetAgentModel
         group_agents = []
-        for group_agent_name in backend_agent.agents:
-            agent = AgentService.get_agent(GetAgentModel(auth=backend_agent.auth, name=group_agent_name))
+        for agent_name in backend_agent.agents:
+            agent = AgentService.get_agent(GetAgentModel(auth=backend_agent.auth, name=agent_name))
             if agent is None:
-                return None, f"Could not get group agent {group_agent_name}"
+                return None, f"Could not get group agent {agent_name}"
             group_agents.append(agent)
         groupchat = GroupChat(
             agents=group_agents,
-            invitees=backend_agent.invitees,
             messages=[],
             max_round=50
         )
@@ -93,7 +78,7 @@ class MakeService:
     @staticmethod
     def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
         from . import FunctionsService, AddFunctionModel
-        if MakeService.is_group_chat_data(backend_agent):
+        if MakeService.is_group(backend_agent):
             agent, err = MakeService._create_group_agent(backend_agent)
             if err is not None:
                 return None, err
@@ -116,7 +101,6 @@ class MakeService:
     @staticmethod
     def upsert_agents(upsert_models):
         from . import BackendService, GetAgentModel
-        
         # Step 1: Upsert all agents in batch
         err = BackendService.upsert_backend_agents(upsert_models)
         if err:

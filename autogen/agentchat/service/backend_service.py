@@ -34,11 +34,12 @@ class UpsertAgentModel(BaseModel):
     default_auto_reply: Optional[str] = None
     description: Optional[str] = None
     system_message: Optional[str] = None
-    base_system_message: Optional[str] = None
-    function_names: Optional[List[str]] = None # cumulative
+    functions_to_add: Optional[List[str]] = None
+    functions_to_remove: Optional[List[str]] = None
     category: Optional[str] = None
-    agents: Optional[List[str]] = None
-    invitees: Optional[List[str]] = None
+    agents_to_add: Optional[List[str]] = None # agents in group
+    agents_to_remove: Optional[List[str]] = None # agents in group
+    group: Optional[bool] = None
     
 class BaseAgent(BaseModel):
     name: str = Field(default="")
@@ -47,10 +48,9 @@ class BaseAgent(BaseModel):
     human_input_mode: str = Field(default="TERMINATE")
     default_auto_reply: str = Field(default="")
     system_message: str = Field(default="")
-    base_system_message: str = Field(default="")
     category: str = Field(default="")
     agents: list = Field(default_factory=list)
-    invitees: list = Field(default_factory=list)
+    group: bool = Field(default=False)
 
 class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)
@@ -67,7 +67,6 @@ class AddFunctionModel(BaseModel):
     category: str
     class_name: str = None
     parameters: OpenAIParameter = None
-    packages: Optional[List[str]] = None
     code: Optional[str] = None
 
 class BackendService:
