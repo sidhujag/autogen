@@ -19,9 +19,9 @@ class FunctionsService:
         return response
     
     @staticmethod
-    def execute_func(pycode: str, **args):
+    def execute_func(code: str, **args):
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
-        str_code = f"{global_vars_code}{pycode}"
+        str_code = f"{global_vars_code}{code}"
         exitcode, logs, env = execute_code(str_code)
         exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
         return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"

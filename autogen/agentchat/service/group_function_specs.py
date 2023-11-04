@@ -141,7 +141,7 @@ define_function = {
                 "type": "string",
                 "description": "JSON schema of the parameters object encoded as a string. Use the standard OpenAPI 2.0 specification for parameters in function calling, and examples of functions already attached to see format. These are injected as global variables.",
             },
-            "pycode": {
+            "code": {
                 "type": "string",
                 "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables."
             },
@@ -151,7 +151,7 @@ define_function = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming"]
             },
         },
-        "required": ["name", "description", "pycode", "category"],
+        "required": ["name", "description", "code", "category"],
     },
 }
 
