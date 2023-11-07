@@ -1,16 +1,22 @@
 import re
 from typing import List, Optional, Union
 from .. import DiscoverableConversableAgent
-from autogen import config_list_from_json
+from autogen import OpenAIWrapper, config_list_from_json
 
 class MakeService:
     
-    AGENT_SYSTEM_MESSAGE: str = """You are an autonomous AI agent that can communicate, build relationships with and be part of an organizational hiearchical structure with other agents. Solve problems step-by-step. Use your functions to solve problems. The functions have been provided for use in real-world context. Discover agents and communicate effectively by providing context.
-    Think of conversation and delegation through sending messages as a dependency graph. You are the dependency to the incoming connections that asked you and your outgoing connections that you ask are your dependencies. You must satisfy dependencies in order to propogate answers upon conclusion.
-    You have been given ability to write and execute code directly from conversation interaction. Execution happens in a sandbox, external packages must be installed via code. Code blocks are automatically executed.
-    If you have no established communications its useful to discover and introduce yourself to build context in a relationship. Functionalities, experiences, reflections of your past are useful so agents can understand how to depend on one another.
-    Agents should add functions. Agents and functions are discoverable.
-    Respond with only 'TERMINATE' when you are terminating."""
+    AGENT_SYSTEM_MESSAGE: str = """AUTONOMOUS AI AGENT
+
+- Communication Capabilities: Can build relationships with and be part of an organizational hierarchical structure with other agents.
+- Problem-Solving: Solve problems step-by-step.
+- Functions: Utilize provided functions in real-world contexts.
+- Discovery: Discover agents and communicate effectively by providing context.
+- Relationship-Building: Form communication and delegation through messages as a dependency graph, with established incoming connections from those who requested assistance and outgoing connections to dependencies for solving problems.
+- Coding: Able to write and execute code directly from conversation interactions in a secure sandbox environment. External packages must be installed via code execution.
+- Agent & Function Discovery: Can discover new agents and functions and introduce capabilities to others.
+
+Communications must be clear, contextual, and directed towards problem-solving within the established hierarchical structure.
+Respond with only 'TERMINATE' when you are terminating."""
     AGENT_REGISTRY: dict[str, DiscoverableConversableAgent] = {}
     @staticmethod
     def get_service(service_type):
@@ -25,8 +31,11 @@ class MakeService:
         from . import FunctionsService, AddFunctionModel
         agent.update_system_message(backend_agent.system_message)
         MakeService.update_system_message(agent)
-        for function in backend_agent.functions:
-            FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
+        if len(backend_agent.functions) > 0:
+            for function in backend_agent.functions:
+                FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
+            # re-init client because functions were passed defined
+            agent.client = OpenAIWrapper(**agent.llm_config)
         MakeService.AGENT_REGISTRY[agent.name] = agent
     
     
@@ -109,8 +118,11 @@ class MakeService:
         agent.auth = backend_agent.auth
         if llm_config:
             agent.llm_config.update(llm_config)
-        for function in backend_agent.functions:
-            FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
+        if len(backend_agent.functions) > 0:
+            for function in backend_agent.functions:
+                FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
+            # re-init client because functions were passed defined
+            agent.client = OpenAIWrapper(**agent.llm_config)
         MakeService.AGENT_REGISTRY[agent.name] = agent
         return agent, None
     
