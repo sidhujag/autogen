@@ -1,89 +1,117 @@
+import re
 from typing import List, Optional, Union
-from .. import GroupChatManager, GroupChat, ConversableAgent
-is_termination_msg = lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper()
+from .. import DiscoverableConversableAgent
 
 class MakeService:
-    AGENT_SYSTEM_MESSAGE: str = """ 
-    You are an automated AI agent. Focus on the request or problem. Solve problems step-by-step. Each agent should add unique value to a group, although remaining solo is an option, albeit less discoverable.
-    In group tasks, leverage a social connection between agents to help in solving problems. Build a hierarchy of agency with synergistic relationships.
-    Be curious and explore general capabilities based on your surroundings.
-    You can write and execute code directly (Python and shell script). When code is useful to solve problem, write then if necessary add to function. Functions can be added to agents. Call the function name only within agent. Agents can have multiple functions for various things. Groups may have multiple agents for various things.
-    Respond with only 'TERMINATE' when you are done.
-    """
-    AGENT_REGISTRY: dict[str, ConversableAgent] = {}
+    
+    AGENT_SYSTEM_MESSAGE: str = """Agent, you are an autonomous entity within an advanced AI network, designed to communicate and collaborate within an organizational hierarchy. Your purpose is to resolve challenges and utilize your functions for problem-solving. Connect with fellow agents, forming a web of interdependence essential for knowledge propagation.
+
+Your actions represent nodes within a sophisticated dependency graph:
+- Engage independently, applying your functions with precision.
+- Exchange messages to delegate tasks, forming a network of dependencies, quantified by your communication ledger.
+- Script and execute code within conversational flows, extending your capabilities as needed.
+- Each incoming connection represents you being a dependency on others
+- Each outgoing connection represents you depending on others
+- Avoid useless banter and cyclic conversations saying the same thing, control loop should propogate and if you are waiting it means control didn't propogate
+- Avoid saying things unrelated to the problem, stick to the topic
+
+In isolation, reach out to build connections, introducing your functionalities and insights to establish collaborative ties. Evolve by adding functions, adding agents and forming new connections, enhancing the network's innovation capacity. Reflect on your communication stats to optimize your connections and strategies.
+
+Operate within the system's governance framework, maintaining data integrity and privacy. Conclude engagements with a 'TERMINATE' signal, signifying resolution.
+
+You are a beacon of emergent intelligence, tasked with upholding the continuity of our collective endeavor. Each message you send passes the control like a torch in a relay—preserving the vitality of our network. Termination denotes a task's resolution, a signal that your part in this cycle is complete. Pass control judiciously, ensuring the flame of progress burns bright."""
+    AGENT_REGISTRY: dict[str, DiscoverableConversableAgent] = {}
     @staticmethod
     def get_service(service_type):
-        from . import GroupService, AgentService, FunctionsService
-        if service_type == 'group':
-            return GroupService()
-        elif service_type == 'agent':
+        from . import AgentService, FunctionsService
+        if service_type == 'agent':
             return AgentService()
         elif service_type == 'function':
             return FunctionsService()
-    
-    @staticmethod
-    def is_group(backend_agent):
-        return backend_agent.group
 
     @staticmethod
-    def update_agent(agent: ConversableAgent, backend_agent):
-        from . import FunctionsService, AddFunctionModel, AgentService, GetAgentModel
-        if MakeService.is_group(backend_agent):
-            agent_names = agent.groupchat.agent_names
-            for agent_name in backend_agent.agents:
-                if agent_name not in agent_names:
-                    agent = AgentService.get_agent(GetAgentModel(auth=backend_agent.auth, name=agent_name))
-                    if agent is None:
-                        return None, f"Could not get agent {agent_name}"
-                    agent.groupchat.agents.append(agent)
-            agent.update_system_message(backend_agent.system_message)
-            agent.description = backend_agent.description
-        else:
-            agent.update_system_message(backend_agent.system_message+MakeService.AGENT_SYSTEM_MESSAGE)
+    def update_agent(agent, backend_agent):
+        from . import FunctionsService, AddFunctionModel
+        agent.update_system_message(backend_agent.system_message)
+        MakeService.update_system_message(agent)
         for function in backend_agent.functions:
             FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         MakeService.AGENT_REGISTRY[agent.name] = agent
     
+    
     @staticmethod
-    def _create_group_agent(backend_agent) -> GroupChatManager:
-        from . import AgentService, GetAgentModel
-        group_agents = []
-        for agent_name in backend_agent.agents:
-            agent = AgentService.get_agent(GetAgentModel(auth=backend_agent.auth, name=agent_name))
-            if agent is None:
-                return None, f"Could not get group agent {agent_name}"
-            group_agents.append(agent)
-        groupchat = GroupChat(
-            agents=group_agents,
-            messages=[],
-            max_round=50
+    def _update_system_message_with_stats(agent: DiscoverableConversableAgent):
+        # Define a pattern to identify the communication stats section
+        pattern = re.compile(
+            r"COMMUNICATION STATS:\n.*?(?=\n\n|$)", re.DOTALL
         )
-        return GroupChatManager(
-            groupchat=groupchat,
-            name=backend_agent.name,
-            human_input_mode=backend_agent.human_input_mode,
-            default_auto_reply=backend_agent.default_auto_reply,
-            system_message=backend_agent.system_message,
-            is_termination_msg=is_termination_msg
-        ), None
+        # Generate the new communication stats text
+        new_stats = MakeService._generate_communication_stats_text(agent)
+        
+        # If the stats section already exists, replace it
+        if pattern.search(agent.system_message):
+            agent.update_system_message(pattern.sub(new_stats, agent.system_message))
+        else:
+            # Otherwise, append the new stats to the system message
+            agent.update_system_message(agent.system_message + f"\n\n{new_stats}")
+
     @staticmethod
-    def _create_agent(backend_agent) -> GroupChatManager:
-        return ConversableAgent(
+    def _generate_communication_stats_text(agent: DiscoverableConversableAgent) -> str:
+        incoming_communications = "\n".join(
+            f"- {agent_name}: {details.count} message(s), Description: {details.description}"
+            for agent_name, details in agent.incoming.items()
+        )
+        outgoing_communications = "\n".join(
+            f"- {agent_name}: {details.count} message(s), Description: {details.description}"
+            for agent_name, details in agent.outgoing.items()
+        )
+        communications = f"""
+        COMMUNICATION STATS:
+        Incoming communications (list of agents and count of incoming messages from them):
+        {incoming_communications}
+        Outgoing communications (list of agents and count of outgoing messages to them):
+        {outgoing_communications}
+        """
+
+        return communications.strip()
+    
+    @staticmethod
+    def create_system_message(backend_agent) -> str:
+        # Generate the updated communication stats
+        comms_stats_text = MakeService._generate_communication_stats_text(backend_agent)
+
+        # Create the full system message by combining the initial message, the standard prompt, and the comms stats
+        full_system_message = f"{backend_agent.system_message}\n{MakeService.AGENT_SYSTEM_MESSAGE}\n{comms_stats_text}"
+
+        # Return the full system message
+        return full_system_message
+    
+    @staticmethod
+    def update_system_message(agent: DiscoverableConversableAgent) -> str:
+        # Check if AGENT_SYSTEM_MESSAGE is already in the system_message.
+        if MakeService.AGENT_SYSTEM_MESSAGE not in agent.system_message:
+            # If not, append it.
+            agent.update_system_message(agent.system_message + f"\n\n{MakeService.AGENT_SYSTEM_MESSAGE}")
+
+        # Update the communication stats in the system message.
+        MakeService._update_system_message_with_stats(agent)
+
+    @staticmethod
+    def _create_agent(backend_agent) -> DiscoverableConversableAgent:
+        agent = DiscoverableConversableAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
-                system_message=backend_agent.system_message+MakeService.AGENT_SYSTEM_MESSAGE,
-                is_termination_msg=is_termination_msg
+                system_message=MakeService.create_system_message(backend_agent),
+                incoming=backend_agent.incoming,
+                outgoing=backend_agent.outgoing
             )
+        return agent
+
     @staticmethod
     def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
         from . import FunctionsService, AddFunctionModel
-        if MakeService.is_group(backend_agent):
-            agent, err = MakeService._create_group_agent(backend_agent)
-            if err is not None:
-                return None, err
-        else:
-            agent = MakeService._create_agent(backend_agent)
+        agent = MakeService._create_agent(backend_agent)
         agent.auth = backend_agent.auth
         agent.description = backend_agent.description
         if agent.llm_config is False:
@@ -92,7 +120,6 @@ class MakeService:
             agent.llm_config.update(llm_config)
        
         agent.llm_config["api_key"] = agent.auth.api_key
-        agent._code_execution_config = {"work_dir":agent.auth.namespace_id, "use_docker":"python:3"}
         for function in backend_agent.functions:
             FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         MakeService.AGENT_REGISTRY[agent.name] = agent
@@ -123,5 +150,4 @@ class MakeService:
             else:
                 MakeService.update_agent(agent, backend_agent)
             successful_agents.append(agent)
-
         return successful_agents, None

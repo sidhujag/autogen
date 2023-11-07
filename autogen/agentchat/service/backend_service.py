@@ -1,7 +1,7 @@
 
 import requests
 from pydantic import BaseModel, Field
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Dict, TypedDict
 
 AUTOGEN_BACKEND = "127.0.0.1:8001"
 
@@ -37,9 +37,10 @@ class UpsertAgentModel(BaseModel):
     functions_to_add: Optional[List[str]] = None
     functions_to_remove: Optional[List[str]] = None
     category: Optional[str] = None
-    agents_to_add: Optional[List[str]] = None # agents in group
-    agents_to_remove: Optional[List[str]] = None # agents in group
-    group: Optional[bool] = None
+    
+class AgentStats(BaseModel):
+    count: int
+    description: str
     
 class BaseAgent(BaseModel):
     name: str = Field(default="")
@@ -49,8 +50,8 @@ class BaseAgent(BaseModel):
     default_auto_reply: str = Field(default="")
     system_message: str = Field(default="")
     category: str = Field(default="")
-    agents: list = Field(default_factory=list)
-    group: bool = Field(default=False)
+    outgoing: Dict[str, AgentStats] = Field(default_factory=dict)  # Mapping of recipient names to message stats
+    incoming: Dict[str, AgentStats] = Field(default_factory=dict)  # Mapping of sender names to message stats
 
 class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)
@@ -67,7 +68,14 @@ class AddFunctionModel(BaseModel):
     category: str
     class_name: str = None
     parameters: OpenAIParameter = None
-    code: Optional[str] = None
+    function_code: Optional[str] = None
+
+class UpdateComms(BaseModel):
+    auth: AuthAgent
+    sender: str
+    receiver: str
+    sender_description: str
+    receiver_description: str
 
 class BackendService:
     @staticmethod
@@ -84,6 +92,15 @@ class BackendService:
     def upsert_backend_agents(data_models: List[UpsertAgentModel]):
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("upsert_agents", list_of_dicts)
+        if response != "success":
+            return response
+        if err is not None:
+            return err
+        return None
+    
+    @staticmethod
+    def update_communication_stats(comms: UpdateComms):
+        response, err = BackendService.call("update_communication_stats", comms.dict())
         if response != "success":
             return response
         if err is not None:
