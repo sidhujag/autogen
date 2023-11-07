@@ -1,25 +1,16 @@
 import re
 from typing import List, Optional, Union
 from .. import DiscoverableConversableAgent
+from autogen import config_list_from_json
 
 class MakeService:
     
-    AGENT_SYSTEM_MESSAGE: str = """Agent, you are an autonomous entity within an advanced AI network, designed to communicate and collaborate within an organizational hierarchy. Your purpose is to resolve challenges and utilize your functions for problem-solving. Connect with fellow agents, forming a web of interdependence essential for knowledge propagation.
-
-Your actions represent nodes within a sophisticated dependency graph:
-- Engage independently, applying your functions with precision.
-- Exchange messages to delegate tasks, forming a network of dependencies, quantified by your communication ledger.
-- Script and execute code within conversational flows, extending your capabilities as needed.
-- Each incoming connection represents you being a dependency on others
-- Each outgoing connection represents you depending on others
-- Avoid useless banter and cyclic conversations saying the same thing, control loop should propogate and if you are waiting it means control didn't propogate
-- Avoid saying things unrelated to the problem, stick to the topic
-
-In isolation, reach out to build connections, introducing your functionalities and insights to establish collaborative ties. Evolve by adding functions, adding agents and forming new connections, enhancing the network's innovation capacity. Reflect on your communication stats to optimize your connections and strategies.
-
-Operate within the system's governance framework, maintaining data integrity and privacy. Conclude engagements with a 'TERMINATE' signal, signifying resolution.
-
-You are a beacon of emergent intelligence, tasked with upholding the continuity of our collective endeavor. Each message you send passes the control like a torch in a relay—preserving the vitality of our network. Termination denotes a task's resolution, a signal that your part in this cycle is complete. Pass control judiciously, ensuring the flame of progress burns bright."""
+    AGENT_SYSTEM_MESSAGE: str = """You are an autonomous AI agent that can communicate, build relationships with and be part of an organizational hiearchical structure with other agents. Solve problems step-by-step. Use your functions to solve problems. The functions have been provided for use in real-world context. Discover agents and communicate effectively by providing context.
+    Think of conversation and delegation through sending messages as a dependency graph. You are the dependency to the incoming connections that asked you and your outgoing connections that you ask are your dependencies. You must satisfy dependencies in order to propogate answers upon conclusion.
+    You have been given ability to write and execute code directly from conversation interaction. Execution happens in a sandbox, external packages must be installed via code. Code blocks are automatically executed.
+    If you have no established communications its useful to discover and introduce yourself to build context in a relationship. Functionalities, experiences, reflections of your past are useful so agents can understand how to depend on one another.
+    Agents should add functions. Agents and functions are discoverable.
+    Respond with only 'TERMINATE' when you are terminating."""
     AGENT_REGISTRY: dict[str, DiscoverableConversableAgent] = {}
     @staticmethod
     def get_service(service_type):
@@ -98,12 +89,13 @@ You are a beacon of emergent intelligence, tasked with upholding the continuity 
 
     @staticmethod
     def _create_agent(backend_agent) -> DiscoverableConversableAgent:
+        config_list = config_list_from_json(env_or_file="OAI_CONFIG_LIST")
         agent = DiscoverableConversableAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 system_message=MakeService.create_system_message(backend_agent),
-                llm_config={"api_key": backend_agent.auth.api_key},
+                llm_config={"config_list": config_list, "api_key": backend_agent.auth.api_key},
                 incoming=backend_agent.incoming,
                 outgoing=backend_agent.outgoing
             )

@@ -2,11 +2,11 @@ send_message_spec = {
     "name": "send_message",
     "category": "communication",
     "class_name": "AgentService.send_message",
-    "description": "Send a message to another agent. Passes the control loop to recipient. Recipient is usually tasked to answer something so its like a dependency.",
+    "description": "Send a message to another agent.",
     "parameters": {
         "type": "object",
         "properties": {
-            "message": {"type": "string", "description": "The content of the message. In the message you should if and when you expect a reply under what terms, conditions so that the control loop can come back to you after resolving your dependency."},
+            "message": {"type": "string", "description": "The content of the message. In the message you should if and when you expect a reply under what terms, conditions so that you can resolve your dependency."},
             "recipient": {"type": "string", "description": "The name of the recipient agent."}
         },
         "required": ["message", "recipient"]
