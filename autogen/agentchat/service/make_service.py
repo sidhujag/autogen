@@ -103,6 +103,7 @@ You are a beacon of emergent intelligence, tasked with upholding the continuity 
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 system_message=MakeService.create_system_message(backend_agent),
+                llm_config={"api_key": backend_agent.auth.api_key},
                 incoming=backend_agent.incoming,
                 outgoing=backend_agent.outgoing
             )
@@ -112,14 +113,10 @@ You are a beacon of emergent intelligence, tasked with upholding the continuity 
     def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
         from . import FunctionsService, AddFunctionModel
         agent = MakeService._create_agent(backend_agent)
-        agent.auth = backend_agent.auth
         agent.description = backend_agent.description
-        if agent.llm_config is False:
-            agent.llm_config = agent.DEFAULT_CONFIG.copy()
+        agent.auth = backend_agent.auth
         if llm_config:
             agent.llm_config.update(llm_config)
-       
-        agent.llm_config["api_key"] = agent.auth.api_key
         for function in backend_agent.functions:
             FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         MakeService.AGENT_REGISTRY[agent.name] = agent
