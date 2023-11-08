@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat import ConversableAgent
 from autogen.agentchat.service import UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, FunctionsService
-from autogen.agentchat.service.function_specs import function_specs
 from typing import List
 app = FastAPI()
 
@@ -18,15 +17,6 @@ logging.basicConfig(filename=LOGFILE_PATH, filemode='w',
 class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
-
-
-def register_base_functions(agents: List[ConversableAgent]):
-    for agent in agents:
-        response = FunctionsService.define_functions(agent, function_specs)
-        if response != "Functions created or updated! You can add them to agent(s) now.":
-            print(f'define_functions err {response}')
-            return
-    print("All functions registered.")
 
 @app.post('/query/')
 async def query(input: QueryModel):
@@ -47,27 +37,41 @@ async def query(input: QueryModel):
         default_auto_reply="This is the user_assistant speaking.",
         category="user"
     )
+    manager_assistant_model = UpsertAgentModel(
+        name="manager",
+        auth=input.auth,
+        description="A generic manager that can analyze and tell other agents what to do",
+        human_input_mode="ALWAYS",
+        default_auto_reply="This is the manager speaking.",
+        category="planning"
+    )
+    coder_assistant_model = UpsertAgentModel(
+        name="coder_assistant",
+        auth=input.auth,
+        description="A generic AI assistant that can create elegant code to problems",
+        human_input_mode="ALWAYS",
+        default_auto_reply="This is the coder_assistant speaking.",
+        category="programming"
+    )
     agent_models = [
         user_model,
-        user_assistant_model
+        user_assistant_model,
+        manager_assistant_model,
+        coder_assistant_model
     ]
     management_group_model = UpsertGroupModel(
         name="ManagementGroup",
         auth=input.auth,
         description="Management group, you will delegate user problem to other groups.",
-        agents_to_add=["UserProxyAgent", "user_assistant"]
+        agents_to_add=["UserProxyAgent", "user_assistant", "manager"]
     )
     planning_group_model = UpsertAgentModel(
         name="PlanningGroup",
         auth=input.auth,
         description="Planning group, you will get a problem where you need to create a plan, and assemble a hiearchical organization of groups. You get input from another group and return response after your done. You can also delegate work to other groups, but still filter respond to group that delegated to you.",
         human_input_mode="ALWAYS",
-        agents_to_add=[]
+        agents_to_add=["UserProxyAgent", "user_assistant", "coder_assistant_model"]
     )
-    agent_models = [
-        user_model,
-        user_assistant_model
-    ]
     group_models = [
         management_group_model,
         planning_group_model
@@ -81,7 +85,6 @@ async def query(input: QueryModel):
     if err is not None:
         print(f'Error creating groups {err}')
         return
-    register_base_functions(agents)
     agents[0].initiate_chat(groups[0], message=input.query)
     
     

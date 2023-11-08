@@ -2,6 +2,7 @@ from .. import ConversableAgent
 import hashlib
 from typing import List, Optional, Union
 from autogen import OpenAIWrapper, config_list_from_json
+from autogen.agentchat.service.function_specs import function_specs
 
 class AgentService:
     AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
@@ -36,7 +37,7 @@ Efficiency in Discourse: The agent is directed to engage in conversations that d
 
 Custom instructions: {custom_instructions}
 
-WHEN YOU ARE DONE REPLY WITH JUST 'TERMINATE'
+Reply "TERMINATE" in the end when everything is done. Terminate there is nothing useful to add by any other agents in the group.
 """
     @staticmethod
     def get_agent(agent_model) -> ConversableAgent:
@@ -80,14 +81,22 @@ WHEN YOU ARE DONE REPLY WITH JUST 'TERMINATE'
 
     @staticmethod
     def _create_agent(backend_agent) -> ConversableAgent:
+        from . import FunctionsService
         config_list = config_list_from_json(env_or_file="OAI_CONFIG_LIST")
-        return ConversableAgent(
+        agent = ConversableAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 system_message=backend_agent.system_message,
                 llm_config={"config_list": config_list, "api_key": backend_agent.auth.api_key}
             )
+        agent.auth = backend_agent.auth
+        # register the base functions for every agent
+        response = FunctionsService.define_functions(agent, function_specs)
+        if response != "success":
+            print(f'define_functions err {response}')
+            return None
+        return agent
 
     @staticmethod
     def update_agent(agent, backend_agent):
@@ -97,7 +106,6 @@ WHEN YOU ARE DONE REPLY WITH JUST 'TERMINATE'
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-            # re-init client because functions were passed defined
             agent.client = OpenAIWrapper(**agent.llm_config)
         MakeService.AGENT_REGISTRY[agent.name] = agent
     
@@ -105,17 +113,17 @@ WHEN YOU ARE DONE REPLY WITH JUST 'TERMINATE'
     def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
         from . import FunctionsService, AddFunctionModel, MakeService
         agent = AgentService._create_agent(backend_agent)
+        if agent is None:
+            return None, "Could not make agent"
         agent.description = backend_agent.description
-        agent.auth = backend_agent.auth
         agent.custom_system_message = agent.system_message
         if llm_config:
             agent.llm_config.update(llm_config)
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-            # re-init client because functions were passed defined
             agent.client = OpenAIWrapper(**agent.llm_config)
-        MakeService.AGENT_REGISTRY[agent.name] = agent
+            MakeService.AGENT_REGISTRY[agent.name] = agent
         return agent, None
 
     @staticmethod

@@ -49,7 +49,7 @@ class GroupService:
         )])
         if err is not None:
             return f"Could not update group: {err}", None
-        return "Group updated!"
+        return "Group created or updated! You can now add agents and delegate tasks to it."
 
     @staticmethod
     def send_message_to_group(sender: ConversableAgent, from_group: str, to_group: str, message: str) -> str:
@@ -111,7 +111,7 @@ class GroupService:
                 agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
                 if agent is None:
                     return None, f"Could not get group agent: {agent_name}"
-                agent.groupchat.agents.append(agent)
+                group.groupchat.agents.append(agent)
         MakeService.GROUP_REGISTRY[group.name] = group
     
     @staticmethod

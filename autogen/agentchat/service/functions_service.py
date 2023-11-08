@@ -128,7 +128,7 @@ class FunctionsService:
             FunctionsService.define_function_internal(agent, function_model)
         agent.client = OpenAIWrapper(**agent.llm_config)
         MakeService.AGENT_REGISTRY[agent.name] = agent
-        return "Functions created or updated! You can add them to agent(s) now."
+        return "success"
 
     @staticmethod
     def define_function(agent: ConversableAgent, **kwargs: Any) -> str:
