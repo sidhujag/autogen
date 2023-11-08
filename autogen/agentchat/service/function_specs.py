@@ -1,15 +1,16 @@
 send_message_spec = {
-    "name": "send_message",
+    "name": "send_message_to_group",
     "category": "communication",
-    "class_name": "AgentService.send_message",
-    "description": "Send a message to another agent.",
+    "class_name": "GroupService.send_message_to_group",
+    "description": "Send a message to another group to resolve a dependency.",
     "parameters": {
         "type": "object",
         "properties": {
-            "message": {"type": "string", "description": "The content of the message. In the message you should if and when you expect a reply under what terms, conditions so that you can resolve your dependency."},
-            "recipient": {"type": "string", "description": "The name of the recipient agent."}
+            "from_group": {"type": "string", "description": "The name of the sending group you are sending message from. Useful for response purposes."},
+            "to_group": {"type": "string", "description": "The name of the recipient group. It must be a valid existing group and have more than 2 agents inside it."},
+            "message": {"type": "string", "description": "The content of the message. In the message you should include full context of what your dependency is and when and what format the response to the 'from_group' should be."},
         },
-        "required": ["message", "recipient"]
+        "required": ["from_group", "to_group", "message"]
     }
 }
 
@@ -36,11 +37,45 @@ discover_agents_spec = {
     },
 }
 
+get_group_info_spec = {
+    "name": "get_group_info",
+    "category": "communication",
+    "class_name": "GroupService.get_group_info",
+    "description": "Get group info: Which agents are in the group and stats in the group.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "group": {
+                "type": "string",
+                "description": "The group name."
+            }
+        },
+        "required": ["group"]
+    },
+}
+
+discover_groups_spec = {
+    "name": "discover_groups",
+    "category": "communication",
+    "class_name": "GroupService.discover_groups",
+    "description": "Discover groups based on specific queries.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "A natural language query describing the desired features, functions, or functionalities of the group being searched for."
+            }
+        },
+        "required": ["query"]
+    },
+}
+
 create_or_update_agent = {
     "name": "create_or_update_agent",
     "category": "communication",
     "class_name": "AgentService.create_or_update_agent",
-    "description": "Create or update an agent. If you are creating an agent for purpose of adding functions to run code, consider for simple tasks just to create code and agents will execute it. Creating an agent means it will be reusable in other contexts widely. You can not update other agents, caller is authenticated.",
+    "description": "Create or update an agent. Create an agent only for reusable isolated usecases.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -55,7 +90,7 @@ create_or_update_agent = {
             "functions_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Function(s) names to add to agent. Functions must already exist. Functions are looked up when agents are recreated from database upon resynchronization."
+                "description": "Function(s) names to add to agent. This gives the groups the agent is in the ability to see the function. Functions must already exist."
             },
             "functions_to_remove": {
                 "type": "array",
@@ -64,7 +99,7 @@ create_or_update_agent = {
             },
             "category": {
                 "type": "string",
-                "description": "A category to sort agent based on predefined categories. Set this if creating a new agent.",
+                "description": "A category to sort agent based on predefined categories. Only used when creating agent.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "user"]
             }
         },
@@ -72,11 +107,36 @@ create_or_update_agent = {
     },
 }
 
+create_or_update_group_spec = {
+    "name": "create_or_update_group",
+    "category": "communication",
+    "class_name": "GroupService.create_or_update_group",
+    "description": "Create or update a group.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "group": {"type": "string", "description": "The name of group. Acts as an indentifier."},
+            "description": {"type": "string", "description": "Concise description of group. Is used when discovering groups so make sure it covers feautures, functions and roles within the group. You can also update it as you add/remove agents. When calling function in a group the agent must be existing in the group otherwise you will get a function not found error."},
+            "agents_to_add": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Agent(s) to invite to group."
+            },
+            "agents_to_remove": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Agent(s) to remove from group."
+            },
+        },
+        "required": ["group", "description"],
+    },
+}
+
 discover_functions = {
     "name": "discover_functions",
     "category": "programming",
     "class_name": "FunctionsService.discover_functions",
-    "description": "Allows agents to discover other agents based on specific queries.",
+    "description": "Discover general purpose functions available using natural query.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -87,7 +147,7 @@ discover_functions = {
             },
             "query": {
                 "type": "string",
-                "description": "A natural language query describing the desired features/functionalities of the agent being searched for. This can be left empty if not sure. If empty it will look for up to the first 10 functions in the category specified."
+                "description": "A natural language query describing the desired features/functionalities. This can be left empty if not sure. If empty it will look for up to the first 10 functions in the category specified."
             }
         },
         "required": ["category"]
@@ -98,7 +158,7 @@ define_function = {
     "name": "define_function",
     "category": "programming",
     "class_name": "FunctionsService.define_function",
-    "description": "Create or update a function with code. Upon creation only use code that has been validated/tested additionally modifying and validating changes as needed related to using the 'parameters' field for general purpose applicability. ",
+    "description": "Create or update a function with code. Upon creation only use code that has been validated/tested additionally modifying and validating changes as needed related to using the 'parameters' field for general purpose applicability. Functions may be added to agents and called within groups if those agents are part of that group.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -128,10 +188,13 @@ define_function = {
     },
 }
 
-agent_function_specs = [
+function_specs = [
+    get_group_info_spec,
     send_message_spec,
     discover_agents_spec,
     create_or_update_agent,
+    discover_groups_spec,
+    create_or_update_group_spec,
     discover_functions,
     define_function, 
 ]

@@ -2,7 +2,7 @@
 import json
 import sys
 
-from .. import DiscoverableConversableAgent
+from .. import ConversableAgent
 from typing import List, Any, Optional, Dict, Tuple
 from pydantic import ValidationError
 from autogen.code_utils import (
@@ -11,7 +11,7 @@ from autogen.code_utils import (
 
 class FunctionsService:
     @staticmethod
-    def discover_functions(sender: DiscoverableConversableAgent, category: str, query: str = None) -> str:
+    def discover_functions(sender: ConversableAgent, category: str, query: str = None) -> str:
         from . import BackendService, DiscoverFunctionsModel
         response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
         if err is not None:
@@ -38,7 +38,7 @@ class FunctionsService:
 
     @staticmethod
     def define_function_internal(
-        agent: DiscoverableConversableAgent, 
+        agent: ConversableAgent, 
         function
         ) -> str:
         function_config = {
@@ -91,7 +91,7 @@ class FunctionsService:
         return None
 
     @staticmethod
-    def _create_function_model(agent: DiscoverableConversableAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
+    def _create_function_model(agent: ConversableAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
         from . import AddFunctionModel
         # for now only validate parameters through JSON string field, add to this list if other fields come up
         for field in ['parameters']:
@@ -106,7 +106,7 @@ class FunctionsService:
             return None, f"Validation error when defining function {func_spec.get('name', '')}: {e}"
 
     @staticmethod
-    def define_functions(agent: DiscoverableConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
+    def define_functions(agent: ConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
         from . import BackendService
         function_models = []
         function_names = []
@@ -121,10 +121,10 @@ class FunctionsService:
         if err is not None:
             return f"Could not define functions: {err}"
 
-        return "Functions created or updated! If you want to use the functions now, you may want to add to an agent"
+        return "Functions created or updated! You can add them to agent(s) now."
 
     @staticmethod
-    def define_function(agent: DiscoverableConversableAgent, **kwargs: Any) -> str:
+    def define_function(agent: ConversableAgent, **kwargs: Any) -> str:
         from . import BackendService
 
         function, error_message = FunctionsService._create_function_model(agent, kwargs)
@@ -135,4 +135,4 @@ class FunctionsService:
         if err is not None:
             return f"Could not define function: {err}"
 
-        return "Function created or updated! If you want to use the function now, you may want to it add to an agent"
+        return "Function created or updated! You can add it to an agent now."

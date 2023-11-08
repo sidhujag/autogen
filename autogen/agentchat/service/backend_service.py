@@ -17,11 +17,19 @@ class GetAgentModel(BaseModel):
     name: str
     auth: AuthAgent
 
+class GetGroupModel(BaseModel):
+    name: str
+    auth: AuthAgent
+
 class DiscoverAgentsModel(BaseModel):
     query: str
     category: Optional[str] = None
     auth: AuthAgent
 
+class DiscoverGroupsModel(BaseModel):
+    query: str
+    auth: AuthAgent
+    
 class DiscoverFunctionsModel(BaseModel):
     query: Optional[str] = None
     category: str
@@ -37,10 +45,13 @@ class UpsertAgentModel(BaseModel):
     functions_to_add: Optional[List[str]] = None
     functions_to_remove: Optional[List[str]] = None
     category: Optional[str] = None
-    
-class AgentStats(BaseModel):
-    count: int
-    description: str
+
+class UpsertGroupModel(BaseModel):
+    name: str
+    auth: AuthAgent
+    description: Optional[str] = None
+    agents_to_add: Optional[List[str]] = None
+    agents_to_remove: Optional[List[str]] = None
     
 class BaseAgent(BaseModel):
     name: str = Field(default="")
@@ -50,8 +61,14 @@ class BaseAgent(BaseModel):
     default_auto_reply: str = Field(default="")
     system_message: str = Field(default="")
     category: str = Field(default="")
-    outgoing: Dict[str, AgentStats] = Field(default_factory=dict)  # Mapping of recipient names to message stats
-    incoming: Dict[str, AgentStats] = Field(default_factory=dict)  # Mapping of sender names to message stats
+
+class BaseGroup(BaseModel):
+    name: str = Field(default="")
+    auth: AuthAgent
+    description: str = Field(default="")
+    agent_names: List[str] = Field(default_factory=list)
+    outgoing: Dict[str, int] = Field(default_factory=dict)
+    incoming: Dict[str, int] = Field(default_factory=dict)
 
 class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)
@@ -74,8 +91,6 @@ class UpdateComms(BaseModel):
     auth: AuthAgent
     sender: str
     receiver: str
-    sender_description: str
-    receiver_description: str
 
 class BackendService:
     @staticmethod
@@ -92,6 +107,16 @@ class BackendService:
     def upsert_backend_agents(data_models: List[UpsertAgentModel]):
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("upsert_agents", list_of_dicts)
+        if response != "success":
+            return response
+        if err is not None:
+            return err
+        return None
+    
+    @staticmethod
+    def upsert_backend_groups(data_models: List[UpsertGroupModel]):
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("upsert_groups", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -116,6 +141,17 @@ class BackendService:
         if not isinstance(response, list):
             return None, "Unexpected response format: backend response is not a list"
         return [BackendAgent(**agent) for agent in response], None
+
+    @staticmethod
+    def get_backend_groups(data_models: List[GetGroupModel]) -> Tuple[Optional[List[BaseGroup]], Optional[str]]:
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("get_groups", list_of_dicts)
+        if err is not None:
+            return None, err
+        if not isinstance(response, list):
+            return None, "Unexpected response format: backend response is not a list"
+        return [BaseGroup(**agent) for agent in response], None
+
 
     @staticmethod
     def add_backend_functions(list_data_model: List[AddFunctionModel]):
@@ -143,6 +179,13 @@ class BackendService:
             return None, err
         return response, None
 
+    @staticmethod
+    def discover_backend_groups(data_model: DiscoverGroupsModel):
+        response, err = BackendService.call("discover_groups", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+    
     @staticmethod
     def call(endpoint, json):   
         try:

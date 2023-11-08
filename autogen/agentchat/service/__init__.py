@@ -1,6 +1,7 @@
 from .agent_service import AgentService
 from .functions_service import FunctionsService
 from .make_service import MakeService
+from .group_service import GroupService
 from .backend_service import (
     BackendService,
     AuthAgent, 
@@ -13,7 +14,9 @@ from .backend_service import (
     AddFunctionModel,
     BackendAgent,
     UpdateComms,
-    AgentStats
+    UpsertGroupModel,
+    GetGroupModel,
+    DiscoverGroupsModel
 )
 __all__ = [
     "UpdateComms",
@@ -30,6 +33,9 @@ __all__ = [
     "UpsertAgentModel",
     "AddFunctionModel",
     "BaseAgent",
-    "BackendAgent"  ,
-    "AgentStats"      
+    "BackendAgent",
+    "GroupService",
+    "UpsertGroupModel",
+    "GetGroupModel",
+    "DiscoverGroupsModel"
 ]

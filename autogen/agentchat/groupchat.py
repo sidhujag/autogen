@@ -135,7 +135,7 @@ class GroupChatManager(ConversableAgent):
         self.register_reply(Agent, GroupChatManager.run_chat, config=groupchat, reset_config=GroupChat.reset)
         # Allow async chat if initiated using a_initiate_chat
         self.register_reply(Agent, GroupChatManager.a_run_chat, config=groupchat, reset_config=GroupChat.reset)
-
+        self.groupchat = groupchat
         # self._random = random.Random(seed)
 
     def run_chat(
@@ -145,9 +145,11 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ) -> Union[str, Dict, None]:
         """Run a group chat."""
+        from autogen.agentchat.service import AgentService
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
+        message["content"] = f'{message["content"]}[Speaking Agent: {sender.name}. Group: {self.name}]'
         speaker = sender
         groupchat = config
         for i in range(groupchat.max_round):
@@ -165,6 +167,7 @@ class GroupChatManager(ConversableAgent):
             try:
                 # select the next speaker
                 speaker = groupchat.select_speaker(speaker, self)
+                AgentService.update_agent_system_message(speaker, self.name)
                 # let the speaker speak
                 reply = speaker.generate_reply(sender=self)
             except KeyboardInterrupt:
@@ -172,6 +175,7 @@ class GroupChatManager(ConversableAgent):
                 if groupchat.admin_name in groupchat.agent_names:
                     # admin agent is one of the participants
                     speaker = groupchat.agent_by_name(groupchat.admin_name)
+                    AgentService.update_agent_system_message(speaker, self.name)
                     reply = speaker.generate_reply(sender=self)
                 else:
                     # admin agent is not found in the participants
@@ -181,6 +185,7 @@ class GroupChatManager(ConversableAgent):
             # The speaker sends the message without requesting a reply
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
+            message["content"] = f'{message["content"]}[Speaking Agent: {speaker.name}. Group: {self.name}]'
         return True, None
 
     async def a_run_chat(
