@@ -176,7 +176,7 @@ define_function = {
             },
             "function_code": {
                 "type": "string",
-                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables."
+                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names."
             },
             "category": {
                 "type": "string",

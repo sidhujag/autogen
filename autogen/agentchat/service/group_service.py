@@ -1,5 +1,6 @@
 
 from .. import ConversableAgent, GroupChatManager, GroupChat
+from autogen import config_list_from_json
 from typing import List
 import json
 
@@ -17,11 +18,11 @@ class GroupService:
         return manager
 
     @staticmethod
-    def get_group_info(sender: ConversableAgent, query: str) -> str:
+    def get_group_info(sender: ConversableAgent, group: str) -> str:
         from . import BackendService, GetGroupModel
         if sender is None:
             return "Sender not found"
-        backend_groups, err = BackendService.get_backend_groups([GetGroupModel(auth=sender.auth, query=query)])
+        backend_groups, err = BackendService.get_backend_groups([GetGroupModel(auth=sender.auth, name=group)])
         if err is not None or len(backend_groups) == 0:
             return f"Could not discover groups: {err}"
         return json.dumps(backend_groups[0])
@@ -79,6 +80,7 @@ class GroupService:
     @staticmethod
     def _create_group(backend_group) -> GroupChatManager:
         from . import GetAgentModel, AgentService
+        config_list = config_list_from_json(env_or_file="OAI_CONFIG_LIST")
         group_agents = []
         for agent_name in backend_group.agent_names:
             agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
@@ -94,7 +96,7 @@ class GroupService:
         return GroupChatManager(
                 groupchat=groupchat,
                 name=backend_group.name,
-                llm_config=False,
+                llm_config={"config_list": config_list, "api_key": backend_group.auth.api_key}
             )
 
     @staticmethod

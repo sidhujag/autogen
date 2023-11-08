@@ -5,6 +5,7 @@ import sys
 from .. import ConversableAgent
 from typing import List, Any, Optional, Dict, Tuple
 from pydantic import ValidationError
+from autogen import OpenAIWrapper
 from autogen.code_utils import (
     execute_code
 )
@@ -21,7 +22,7 @@ class FunctionsService:
     @staticmethod
     def execute_func(function_code: str, **args):
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
-        str_code = f"{global_vars_code}{function_code}"
+        str_code = f"{global_vars_code}\n\n{function_code}"
         exitcode, logs, env = execute_code(str_code)
         exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
         if logs == "" and exitcode2str == "execution succeeded":
@@ -41,6 +42,8 @@ class FunctionsService:
         agent: ConversableAgent, 
         function
         ) -> str:
+        from .backend_service import OpenAIParameter
+        function.parameters = function.parameters or OpenAIParameter()
         function_config = {
             "name": function.name,
             "description": function.description,
@@ -107,7 +110,7 @@ class FunctionsService:
 
     @staticmethod
     def define_functions(agent: ConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
-        from . import BackendService
+        from . import BackendService, MakeService
         function_models = []
         function_names = []
         for func_spec in function_specs:
@@ -116,23 +119,31 @@ class FunctionsService:
                 return error_message
             function_models.append(function)
             function_names.append(function.name)
-
+        
         err = BackendService.add_backend_functions(function_models)
         if err is not None:
             return f"Could not define functions: {err}"
 
+        for function_model in function_models:
+            FunctionsService.define_function_internal(agent, function_model)
+        agent.client = OpenAIWrapper(**agent.llm_config)
+        MakeService.AGENT_REGISTRY[agent.name] = agent
         return "Functions created or updated! You can add them to agent(s) now."
 
     @staticmethod
     def define_function(agent: ConversableAgent, **kwargs: Any) -> str:
-        from . import BackendService
+        from . import BackendService, MakeService
 
-        function, error_message = FunctionsService._create_function_model(agent, kwargs)
+        function_model, error_message = FunctionsService._create_function_model(agent, kwargs)
         if error_message:
             return error_message
 
-        err = BackendService.add_backend_functions([function])
+        err = BackendService.add_backend_functions([function_model])
         if err is not None:
             return f"Could not define function: {err}"
 
+        FunctionsService.define_function_internal(agent, function_model)
+        agent.client = OpenAIWrapper(**agent.llm_config)
+        MakeService.AGENT_REGISTRY[agent.name] = agent
+        
         return "Function created or updated! You can add it to an agent now."

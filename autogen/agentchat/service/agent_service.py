@@ -35,6 +35,8 @@ Emergence and Innovation: The agent is considered an integral part of the networ
 Efficiency in Discourse: The agent is directed to engage in conversations that directly address the task at hand, staying on point and avoiding tangential discussions.
 
 Custom instructions: {custom_instructions}
+
+WHEN YOU ARE DONE REPLY WITH JUST 'TERMINATE'
 """
     @staticmethod
     def get_agent(agent_model) -> ConversableAgent:

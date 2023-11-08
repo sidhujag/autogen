@@ -20,14 +20,12 @@ class QueryModel(BaseModel):
     query: str
 
 
-def register_base_functions(agent_models: List[UpsertAgentModel]):
-    list_fn_names = [fn_spec["name"] for fn_spec in function_specs]
-    for agent_model in agent_models:
-        response = FunctionsService.define_functions(agent_model, function_specs)
+def register_base_functions(agents: List[ConversableAgent]):
+    for agent in agents:
+        response = FunctionsService.define_functions(agent, function_specs)
         if response != "Functions created or updated! You can add them to agent(s) now.":
             print(f'define_functions err {response}')
             return
-        agent_model.functions_to_add = list_fn_names
     print("All functions registered.")
 
 @app.post('/query/')
@@ -74,7 +72,6 @@ async def query(input: QueryModel):
         management_group_model,
         planning_group_model
     ]
-    register_base_functions(agent_models)
     agents: List[ConversableAgent] = None
     agents, err = AgentService.upsert_agents(agent_models)
     if err is not None:
@@ -84,6 +81,7 @@ async def query(input: QueryModel):
     if err is not None:
         print(f'Error creating groups {err}')
         return
+    register_base_functions(agents)
     agents[0].initiate_chat(groups[0], message=input.query)
     
     
