@@ -120,6 +120,11 @@ class GroupChatManager(ConversableAgent):
         # Allow async chat if initiated using a_initiate_chat
         self.register_reply(Agent, GroupChatManager.a_run_chat, config=groupchat, reset_config=GroupChat.reset)
         self.groupchat = groupchat
+        self.auth = None
+        self.description = ""
+        self.delegator = None
+        self.incoming = {}
+        self.outgoing = {}
         # self._random = random.Random(seed)
 
     def run_chat(
