@@ -62,8 +62,8 @@ class GroupService:
         if sender.name not in group_manager.groupchat.agent_names:
             return "Could not send message: Only agents in the group can terminate it"
         if group_manager.delegator:
-            group_manager.delegator = None
             group_manager.send(response, group_manager.delegator)
+            group_manager.delegator = None
         return "TERMINATE"
 
     def send_message_to_group(sender: ConversableAgent, from_group: str, to_group: str, message: str) -> str:
@@ -101,7 +101,7 @@ class GroupService:
         if err:
             return err
         to_group_manager.delegator = from_group_manager
-        from_group_manager.send(message, to_group_manager)
+        from_group_manager.send(message, to_group_manager, request_reply=True)
         return "TERMINATE"
     
     @staticmethod
