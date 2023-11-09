@@ -69,10 +69,10 @@ async def query(input: QueryModel):
         description="Management group, you will delegate user problem to other groups.",
         agents_to_add=["UserProxyAgent", "user_assistant", "manager"]
     )
-    planning_group_model = UpsertAgentModel(
+    planning_group_model = UpsertGroupModel(
         name="PlanningGroup",
         auth=input.auth,
-        description="Planning group, you will get a problem where you need to create a plan, and assemble a hiearchical organization of groups. You get input from another group and return response after your done. You can also delegate work to other groups, but still filter respond to group that delegated to you.",
+        description="Planning group, you will get a problem where you need to create a plan, and assemble a hiearchical organization of groups.",
         human_input_mode="ALWAYS",
         agents_to_add=["UserProxyAgent", "user_assistant", "coder_assistant"]
     )
