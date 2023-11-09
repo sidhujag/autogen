@@ -62,7 +62,7 @@ class GroupService:
         if sender.name not in group_manager.groupchat.agent_names:
             return "Could not send message: Only agents in the group can terminate it"
         if group_manager.delegator:
-            group_manager.send(response, group_manager.delegator)
+            group_manager.send(response, group_manager.delegator, request_reply=True)
             group_manager.delegator = None
         return "TERMINATE"
 
