@@ -73,7 +73,6 @@ async def query(input: QueryModel):
         name="PlanningGroup",
         auth=input.auth,
         description="Planning group, you will get a problem where you need to create a plan, and assemble a hiearchical organization of groups.",
-        human_input_mode="ALWAYS",
         agents_to_add=["UserProxyAgent", "user_assistant", "coder_assistant"]
     )
     group_models = [
