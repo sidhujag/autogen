@@ -8,6 +8,8 @@ class AgentService:
 
 Agent name and Group: Your name: {agent_name}, description: {agent_description}, agent type: BASIC, group: {group_name}
 
+Stay on topic and don't deviate away from the main task for the group. If you have nothing to say just say you have nothing to add. Try all possibilities to solve your task but deviate away from topic.
+
 As a basic agent you will follow the custom instructions and any functions you have to complete your given task, with the help of your peers in your group as needed.
 
 Custom instructions: {custom_instructions}
@@ -21,6 +23,8 @@ You are general purpose and aware of other agents' surroundings as well as yours
 Keep agents on topic and don't deviate away from the reason your group exists. Ensure your peers do not give up without exhausting all possibilities through the help of FULL agents such as yourself as well as their own abilities.
 
 Carefully read the functions provided to you to learn of your abilities and responsibilities. All instructions are presented through the functions.
+
+Termination should be decided at your discretion. Read the room. If agents have nothing to add, if the conversation reaches a natural conclusion or if the discussion topic switches, it may be time to terminate.
 
 Use the group stats as discovery for your currently "friended" groups and to discover your current group peers.
 
