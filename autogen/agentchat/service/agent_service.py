@@ -6,7 +6,7 @@ from autogen.agentchat.service.function_specs import function_specs
 class AgentService:
     AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
 
-Agent name and Group: Your name is: {agent_name}, description is: {agent_description} and the group you are tasked to respond in is: {group_name}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}
 
 Communication and Collaboration: The agent's primary function is to communicate within a group setting for problem-solving, highlighting the importance of clear and purposeful exchanges.
 

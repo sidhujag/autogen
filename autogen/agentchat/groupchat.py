@@ -149,8 +149,6 @@ class GroupChatManager(ConversableAgent):
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
-        if not self._is_termination_msg(message):
-            message["content"] = f'[Speaking Agent: {sender.name}. Group: {self.name}]{message["content"]}'
         speaker = sender
         groupchat = config
         for i in range(groupchat.max_round):
@@ -186,8 +184,6 @@ class GroupChatManager(ConversableAgent):
             # The speaker sends the message without requesting a reply
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
-            if not self._is_termination_msg(message):
-                message["content"] = f'[Speaking Agent: {speaker.name}. Group: {self.name}]{message["content"]}'
         return True, None
 
     async def a_run_chat(
