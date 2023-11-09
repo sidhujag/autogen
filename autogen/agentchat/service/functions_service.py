@@ -111,30 +111,8 @@ class FunctionsService:
             return None, f"Validation error when defining function {func_spec.get('name', '')}: {e}"
 
     @staticmethod
-    def upsert_functions(agent: ConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
-        from . import BackendService, MakeService
-        function_models = []
-        function_names = []
-        for func_spec in function_specs:
-            function, error_message = FunctionsService._create_function_model(agent, func_spec)
-            if error_message:
-                return error_message
-            function_models.append(function)
-            function_names.append(function.name)
-        
-        err = BackendService.upsert_backend_functions(function_models)
-        if err is not None:
-            return f"Could not define functions: {err}"
-
-        for function_model in function_models:
-            FunctionsService.define_function_internal(agent, function_model)
-        agent.client = OpenAIWrapper(**agent.llm_config)
-        MakeService.AGENT_REGISTRY[agent.name] = agent
-        return "success"
-
-    @staticmethod
     def upsert_function(agent: ConversableAgent, **kwargs: Any) -> str:
-        from . import BackendService, MakeService
+        from . import BackendService, AgentService, UpsertAgentModel
 
         function_model, error_message = FunctionsService._create_function_model(agent, kwargs)
         if error_message:
@@ -144,8 +122,12 @@ class FunctionsService:
         if err is not None:
             return f"Could not upsert function: {err}"
 
-        FunctionsService.define_function_internal(agent, function_model)
-        agent.client = OpenAIWrapper(**agent.llm_config)
-        MakeService.AGENT_REGISTRY[agent.name] = agent
-        
+        # update the agent to have the function so it can use it
+        agent_upserted, err = AgentService.upsert_agents([UpsertAgentModel(
+            auth=agent.auth,
+            name=agent.name,
+            functions_to_add=function_model.name,
+        )])
+        if err is not None:
+            return f"Could not upsert agent: {err}"
         return "Function upserted!"

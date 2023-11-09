@@ -39,7 +39,7 @@ Custom instructions: {custom_instructions}
 GROUP STATS
 {group_stats}
 
-Reply with only "TERMINATE" on success condition. Try not to give up, you can solve almost anything through coding. Only terminate on failure condition if you are really sure you can't solve through existing functions, groups, agents or creating custom code with multiple tries.
+Reply with only "TERMINATE" on success condition. Try not to give up, you can solve almost anything through coding. Only terminate on failure condition if you are really sure you can't solve through existing functions, groups, agents or creating custom code with multiple tries. When doing so stay on topic though, don't change focus. If you have nothing to say about the topic just say so.
 """
     @staticmethod
     def get_agent(agent_model) -> ConversableAgent:
@@ -93,10 +93,11 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
             )
         agent.auth = backend_agent.auth
         # register the base functions for every agent
-        response = FunctionsService.upsert_functions(agent, function_specs)
-        if response != "success":
-            print(f'upsert_functions err {response}')
-            return None
+        for func_spec in function_specs:
+            function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+            if error_message:
+                return error_message
+            FunctionsService.define_function_internal(agent, function_model)
         return agent
 
     @staticmethod
@@ -123,8 +124,8 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-            agent.client = OpenAIWrapper(**agent.llm_config)
-            MakeService.AGENT_REGISTRY[agent.name] = agent
+        agent.client = OpenAIWrapper(**agent.llm_config)
+        MakeService.AGENT_REGISTRY[agent.name] = agent
         return agent, None
 
     @staticmethod
