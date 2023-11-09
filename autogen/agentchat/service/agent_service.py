@@ -39,7 +39,7 @@ Custom instructions: {custom_instructions}
 GROUP STATS
 {group_stats}
 
-Reply with only "TERMINATE" when there is nothing useful to add by you or any other agents and if query is not solved you have exhausted all known possibilities to do so. 
+Reply with only "TERMINATE" on success condition. Try not to give up, you can solve almost anything through coding. Only terminate on failure condition if you are really sure you can't solve through existing functions, groups, agents or creating custom code with multiple tries.
 """
     @staticmethod
     def get_agent(agent_model) -> ConversableAgent:
