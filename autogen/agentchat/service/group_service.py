@@ -25,7 +25,7 @@ class GroupService:
         backend_groups, err = BackendService.get_backend_groups([GetGroupModel(auth=sender.auth, name=group)])
         if err is not None or len(backend_groups) == 0:
             return f"Could not discover groups: {err}"
-        return json.dumps(backend_groups[0])
+        return backend_groups[0].json()
     
     @staticmethod
     def discover_groups(sender: ConversableAgent, query: str) -> str:
@@ -49,7 +49,7 @@ class GroupService:
         )])
         if err is not None:
             return f"Could not update group: {err}", None
-        return "Group created or updated! You can now add agents and delegate tasks to it."
+        return "Group database updated!"
 
     @staticmethod
     def send_message_to_group(sender: ConversableAgent, from_group: str, to_group: str, message: str) -> str:
@@ -65,7 +65,7 @@ class GroupService:
         if to_group_manager is None:
             return "Could not send message: to_group not found"
         if len(to_group_manager.groupchat.agents) < 3:
-            return f"Could not send message: to_group does not have sufficient agents({len(to_group_manager.groupchat.agents)})"
+            return f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"
         # Increment the communication stats
         from_group_manager.outgoing[to_group_manager.name] = from_group_manager.outgoing.get(to_group_manager.name, 0) + 1
         to_group_manager.incoming[from_group_manager.name] = to_group_manager.incoming.get(from_group_manager.name, 0) + 1
@@ -74,8 +74,20 @@ class GroupService:
                                                                     receiver=to_group_manager.name))
         if err:
             return err
-        sender.initiate_chat(message=message, recipient=to_group_manager)
-        return f"Sent group message from: {from_group} to: {to_group}"
+        
+        from_group_manager.initiate_chat(to_group_manager, clear_history=False, message=message)
+        message_summary = f'You are a world-class group interpreter. Read the following conversation. Interpret and produce a response that should come from group ({to_group_manager.name}) addressed to group ({from_group_manager.name}). The original message was: {message}. Assume {from_group_manager.name} cannot see the content of the conversation.'
+        to_group_manager.update_system_message(message_summary)
+        final, summary = to_group_manager.generate_oai_reply(
+            to_group_manager.groupchat.messages
+            + [
+                {
+                    "role": "system",
+                    "content": f"Read the above conversation. Then prepare a response addressed to the original group. Only return the response.",
+                }
+            ]
+        )
+        return f"Message was propogated to {to_group}, response was: {summary}"
     
     @staticmethod
     def _create_group(backend_group) -> GroupChatManager:

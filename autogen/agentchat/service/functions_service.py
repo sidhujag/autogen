@@ -146,4 +146,4 @@ class FunctionsService:
         agent.client = OpenAIWrapper(**agent.llm_config)
         MakeService.AGENT_REGISTRY[agent.name] = agent
         
-        return "Function created or updated! You can add it to an agent now."
+        return "Function database updated!"

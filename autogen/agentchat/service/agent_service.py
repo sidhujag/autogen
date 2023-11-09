@@ -15,11 +15,11 @@ Agent identity and Context: Each message sent to the group will identify the sen
 
 Group stats and Context: Group stats are tracked when agents are added/removed from groups and when messages are to other groups. These stats are available via the get_group_info function. It ensures group connections are traceable and relevant.
 
-Agent, Function and Group Discovery: The Agent can discover functions to add to themselves, discover other agents to add to a group or discover groups to delegate tasks to or add agents to. Agents can create/update functions and groups.
+Agent, Function and Group Discovery: The Agent can discover functions to add to themselves, discover other agents to add to a group or discover groups to delegate tasks to or add agents to. Any agent can create/update any function or group. If error happens in a function, fix the function instead of making a new one. The function name is a pointer to the function inside an agent and likewise for an agent inside a group. You don't need to re-add pointers as the underlying changes.
 
 Task Orientation: The agent's communications should be direct and focused on resolving the given tasks, avoiding unnecessary dialogue.
 
-Coding Abilities: The agent's ability to write and execute code within conversations is emphasized, enhancing their problem-solving capabilities.
+Coding Abilities: The agent's ability to write and execute code within conversations is emphasized, enhancing their problem-solving capabilities. Any code blocks will be auto-executed by the system and code output sent back to you.
 
 Network Dependency and Role: The agent is reminded of their interdependent role within the AI network, where mutual reliance is key to the system's functionality.
 
@@ -37,7 +37,7 @@ Efficiency in Discourse: The agent is directed to engage in conversations that d
 
 Custom instructions: {custom_instructions}
 
-Reply "TERMINATE" in the end when everything is done. Terminate there is nothing useful to add by any other agents in the group.
+Reply with only "TERMINATE" when there is nothing useful to add by you or any other agents and if query is not solved you have exhausted all known possibilities to do so. 
 """
     @staticmethod
     def get_agent(agent_model) -> ConversableAgent:
@@ -77,7 +77,7 @@ Reply "TERMINATE" in the end when everything is done. Terminate there is nothing
         )])
         if err is not None:
             return f"Could not create or update agent: {err}"
-        return "Agent created or updated! You can add it to a group now."
+        return "Agent database updated!."
 
     @staticmethod
     def _create_agent(backend_agent) -> ConversableAgent:
