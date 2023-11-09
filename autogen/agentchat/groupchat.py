@@ -61,24 +61,8 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
 
     def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
         """Select the next speaker."""
-        if self.func_call_filter and self.messages and "function_call" in self.messages[-1]:
-            # find agents with the right function_map which contains the function name
-            agents = [
-                agent for agent in self.agents if agent.can_execute_function(self.messages[-1]["function_call"]["name"])
-            ]
-            if len(agents) == 1:
-                # only one agent can execute the function
-                return agents[0]
-            elif not agents:
-                # find all the agents with function_map
-                agents = [agent for agent in self.agents if agent.function_map]
-                if len(agents) == 1:
-                    return agents[0]
-                elif not agents:
-                    raise ValueError(
-                        f"No agent can execute the function {self.messages[-1]['name']}. "
-                        "Please check the function_map of the agents."
-                    )
+        if self.func_call_filter and self.messages and ("function_call" in self.messages[-1] or self.messages[-1]["role"] == "function"):
+            return last_speaker
         else:
             agents = self.agents
             # Warn if GroupChat is underpopulated
