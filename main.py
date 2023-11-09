@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from autogen.agentchat import ConversableAgent
 from autogen.agentchat.service import UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, FunctionsService
 from typing import List
+from hanging_threads import start_monitoring
+monitoring_thread = start_monitoring()
 app = FastAPI()
 
 # Initialize logging
@@ -23,8 +25,8 @@ async def query(input: QueryModel):
     user_model = UpsertAgentModel(
         name="UserProxyAgent",
         auth=input.auth,
-        system_message="I am the proxy between agents and the user.",
-        description="The proxy to the user to get input or relay response",
+        system_message="I am the proxy between agents and the user. Don't make up questions or topics, it has to come from the user through manual input.",
+        description="The proxy to the user to get manual input from user or relay response to the user",
         human_input_mode="ALWAYS",
         default_auto_reply="This is UserProxyAgent speaking.",
         category="user",
