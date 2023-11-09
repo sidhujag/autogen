@@ -193,6 +193,7 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ):
         """Run a group chat asynchronously."""
+        from autogen.agentchat.service import AgentService
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
@@ -213,6 +214,7 @@ class GroupChatManager(ConversableAgent):
             try:
                 # select the next speaker
                 speaker = groupchat.select_speaker(speaker, self)
+                AgentService.update_agent_system_message(speaker, self)
                 # let the speaker speak
                 reply = await speaker.a_generate_reply(sender=self)
             except KeyboardInterrupt:
@@ -220,6 +222,7 @@ class GroupChatManager(ConversableAgent):
                 if groupchat.admin_name in groupchat.agent_names:
                     # admin agent is one of the participants
                     speaker = groupchat.agent_by_name(groupchat.admin_name)
+                    AgentService.update_agent_system_message(speaker, self)
                     reply = await speaker.a_generate_reply(sender=self)
                 else:
                     # admin agent is not found in the participants
