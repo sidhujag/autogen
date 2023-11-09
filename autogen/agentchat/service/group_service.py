@@ -1,6 +1,5 @@
 
 from .. import ConversableAgent, GroupChatManager, GroupChat
-from autogen import config_list_from_json
 from typing import List
 import json
 
@@ -38,7 +37,7 @@ class GroupService:
         return response
 
     @staticmethod
-    def create_or_update_group(sender: ConversableAgent, group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None) -> str:
+    def upsert_group(sender: ConversableAgent, group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None) -> str:
         from . import UpsertGroupModel
         group_managers, err = GroupService.upsert_groups([UpsertGroupModel(
             auth=sender.auth,
@@ -49,7 +48,7 @@ class GroupService:
         )])
         if err is not None:
             return f"Could not update group: {err}", None
-        return "Group database updated!"
+        return "Group upserted!"
 
     @staticmethod
     def send_message_to_group(sender: ConversableAgent, from_group: str, to_group: str, message: str) -> str:
@@ -92,7 +91,6 @@ class GroupService:
     @staticmethod
     def _create_group(backend_group) -> GroupChatManager:
         from . import GetAgentModel, AgentService
-        config_list = config_list_from_json(env_or_file="OAI_CONFIG_LIST")
         group_agents = []
         for agent_name in backend_group.agent_names:
             agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
@@ -108,7 +106,7 @@ class GroupService:
         return GroupChatManager(
                 groupchat=groupchat,
                 name=backend_group.name,
-                llm_config={"config_list": config_list, "api_key": backend_group.auth.api_key}
+                llm_config={"api_key": backend_group.auth.api_key}
             )
 
     @staticmethod

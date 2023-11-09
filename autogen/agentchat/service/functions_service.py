@@ -27,8 +27,10 @@ class FunctionsService:
         exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
         if logs == "" and exitcode2str == "execution succeeded":
             exitcode2str = "no output found, make sure function uses stdout to output results"
+        if logs == "" or exitcode != 0:
+            return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}\n\nBroken function code (please fix): {function_code}"
         return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"
-
+    
     @staticmethod
     def _find_class(class_name):
         for module in sys.modules.values():
@@ -109,7 +111,7 @@ class FunctionsService:
             return None, f"Validation error when defining function {func_spec.get('name', '')}: {e}"
 
     @staticmethod
-    def define_functions(agent: ConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
+    def upsert_functions(agent: ConversableAgent, function_specs: List[Dict[str, Any]]) -> str:
         from . import BackendService, MakeService
         function_models = []
         function_names = []
@@ -120,7 +122,7 @@ class FunctionsService:
             function_models.append(function)
             function_names.append(function.name)
         
-        err = BackendService.add_backend_functions(function_models)
+        err = BackendService.upsert_backend_functions(function_models)
         if err is not None:
             return f"Could not define functions: {err}"
 
@@ -131,19 +133,19 @@ class FunctionsService:
         return "success"
 
     @staticmethod
-    def define_function(agent: ConversableAgent, **kwargs: Any) -> str:
+    def upsert_function(agent: ConversableAgent, **kwargs: Any) -> str:
         from . import BackendService, MakeService
 
         function_model, error_message = FunctionsService._create_function_model(agent, kwargs)
         if error_message:
             return error_message
 
-        err = BackendService.add_backend_functions([function_model])
+        err = BackendService.upsert_backend_functions([function_model])
         if err is not None:
-            return f"Could not define function: {err}"
+            return f"Could not upsert function: {err}"
 
         FunctionsService.define_function_internal(agent, function_model)
         agent.client = OpenAIWrapper(**agent.llm_config)
         MakeService.AGENT_REGISTRY[agent.name] = agent
         
-        return "Function database updated!"
+        return "Function upserted!"

@@ -70,7 +70,7 @@ async def query(input: QueryModel):
         auth=input.auth,
         description="Planning group, you will get a problem where you need to create a plan, and assemble a hiearchical organization of groups. You get input from another group and return response after your done. You can also delegate work to other groups, but still filter respond to group that delegated to you.",
         human_input_mode="ALWAYS",
-        agents_to_add=["UserProxyAgent", "user_assistant", "coder_assistant_model"]
+        agents_to_add=["UserProxyAgent", "user_assistant", "coder_assistant"]
     )
     group_models = [
         management_group_model,

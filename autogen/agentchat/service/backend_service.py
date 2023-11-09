@@ -154,11 +154,11 @@ class BackendService:
 
 
     @staticmethod
-    def add_backend_functions(list_data_model: List[AddFunctionModel]):
+    def upsert_backend_functions(list_data_model: List[AddFunctionModel]):
         # Convert each AddFunctionModel object in the list to a dictionary
         list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
         # Make the backend call with the list of dictionaries
-        response, err = BackendService.call("add_functions", list_of_dicts)
+        response, err = BackendService.call("upsert_functions", list_of_dicts)
         if response != "success":
             return response
         if err is not None:

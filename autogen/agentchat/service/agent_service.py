@@ -1,7 +1,6 @@
-from .. import ConversableAgent
-import hashlib
+from .. import ConversableAgent, GroupChatManager
 from typing import List, Optional, Union
-from autogen import OpenAIWrapper, config_list_from_json
+from autogen import OpenAIWrapper
 from autogen.agentchat.service.function_specs import function_specs
 
 class AgentService:
@@ -13,7 +12,7 @@ Communication and Collaboration: The agent's primary function is to communicate 
 
 Agent identity and Context: Each message sent to the group will identify the sender and the group context, ensuring that communications are traceable and relevant.
 
-Group stats and Context: Group stats are tracked when agents are added/removed from groups and when messages are to other groups. These stats are available via the get_group_info function. It ensures group connections are traceable and relevant.
+Group stats and Context: Group stats are tracked and appended to your system prompt. These stats are available for any other group via the get_group_info function. Useful for your self-discovery.
 
 Agent, Function and Group Discovery: The Agent can discover functions to add to themselves, discover other agents to add to a group or discover groups to delegate tasks to or add agents to. Any agent can create/update any function or group. If error happens in a function, fix the function instead of making a new one. The function name is a pointer to the function inside an agent and likewise for an agent inside a group. You don't need to re-add pointers as the underlying changes.
 
@@ -36,6 +35,9 @@ Emergence and Innovation: The agent is considered an integral part of the networ
 Efficiency in Discourse: The agent is directed to engage in conversations that directly address the task at hand, staying on point and avoiding tangential discussions.
 
 Custom instructions: {custom_instructions}
+
+GROUP STATS
+{group_stats}
 
 Reply with only "TERMINATE" when there is nothing useful to add by you or any other agents and if query is not solved you have exhausted all known possibilities to do so. 
 """
@@ -62,7 +64,7 @@ Reply with only "TERMINATE" when there is nothing useful to add by you or any ot
         return response
 
     @staticmethod
-    def create_or_update_agent(sender: ConversableAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None) -> str: 
+    def upsert_agent(sender: ConversableAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None) -> str: 
         from . import UpsertAgentModel
         if sender is None:
             return "Sender not found"
@@ -76,25 +78,24 @@ Reply with only "TERMINATE" when there is nothing useful to add by you or any ot
             category=category
         )])
         if err is not None:
-            return f"Could not create or update agent: {err}"
-        return "Agent database updated!."
+            return f"Could not upsert agent: {err}"
+        return "Agent upserted!"
 
     @staticmethod
     def _create_agent(backend_agent) -> ConversableAgent:
         from . import FunctionsService
-        config_list = config_list_from_json(env_or_file="OAI_CONFIG_LIST")
         agent = ConversableAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 system_message=backend_agent.system_message,
-                llm_config={"config_list": config_list, "api_key": backend_agent.auth.api_key}
+                llm_config={"api_key": backend_agent.auth.api_key}
             )
         agent.auth = backend_agent.auth
         # register the base functions for every agent
-        response = FunctionsService.define_functions(agent, function_specs)
+        response = FunctionsService.upsert_functions(agent, function_specs)
         if response != "success":
-            print(f'define_functions err {response}')
+            print(f'upsert_functions err {response}')
             return None
         return agent
 
@@ -156,25 +157,27 @@ Reply with only "TERMINATE" when there is nothing useful to add by you or any ot
         return successful_agents, None
 
     @staticmethod
-    def hash_system_message(message: str) -> str:
-        return hashlib.sha256(message.encode('utf-8')).hexdigest()
-
+    def _generate_group_stats_text(group_manager: GroupChatManager) -> str:
+        incoming_communications = "\n".join(
+            f"- Group: {agent_name}: {count} message(s)"
+            for agent_name, count in group_manager.incoming.items()
+        )
+        outgoing_communications = "\n".join(
+            f"- Group: {agent_name}: {count} message(s)"
+            for agent_name, count in group_manager.outgoing.items()
+        )
+        communications = f"Incoming communications:\n{incoming_communications}\nOutgoing communications:\n{outgoing_communications}"
+        return communications.strip()
 
     @staticmethod
-    def update_agent_system_message(agent: ConversableAgent, group_name: str) -> None:
+    def update_agent_system_message(agent: ConversableAgent, group_manager: GroupChatManager) -> None:
         from . import MakeService
         # Define the new agent system message with placeholders filled in
         formatted_message = AgentService.AGENT_SYSTEM_MESSAGE.format(
             agent_name=agent.name,
             agent_description=MakeService._get_short_description(agent.description),
-            group_name=group_name,
-            custom_instructions=agent.custom_system_message
+            group_name=group_manager.name,
+            custom_instructions=agent.custom_system_message,
+            group_stats=AgentService._generate_group_stats_text(group_manager)
         )
-
-        # Hash the existing and the new system messages
-        current_hash = AgentService.hash_system_message(agent.system_message)
-        new_hash = AgentService.hash_system_message(formatted_message)
-
-        # Compare hashes and update the system message if they are different
-        if current_hash != new_hash:
-            agent.update_system_message(formatted_message)
+        agent.update_system_message(formatted_message)

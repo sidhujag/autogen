@@ -71,11 +71,11 @@ discover_groups_spec = {
     },
 }
 
-create_or_update_agent = {
-    "name": "create_or_update_agent",
+upsert_agent = {
+    "name": "upsert_agent",
     "category": "communication",
-    "class_name": "AgentService.create_or_update_agent",
-    "description": "Create or update an agent. Create an agent only for reusable isolated usecases.",
+    "class_name": "AgentService.upsert_agent",
+    "description": "Upsert an agent. Create an agent only for reusable isolated usecases.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -107,11 +107,11 @@ create_or_update_agent = {
     },
 }
 
-create_or_update_group_spec = {
-    "name": "create_or_update_group",
+upsert_group_spec = {
+    "name": "upsert_group",
     "category": "communication",
-    "class_name": "GroupService.create_or_update_group",
-    "description": "Create or update a group.",
+    "class_name": "GroupService.upsert_group",
+    "description": "Upsert a group.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -132,7 +132,7 @@ create_or_update_group_spec = {
     },
 }
 
-discover_functions = {
+discover_functions_spec = {
     "name": "discover_functions",
     "category": "programming",
     "class_name": "FunctionsService.discover_functions",
@@ -154,11 +154,11 @@ discover_functions = {
     },
 }
 
-define_function = {
-    "name": "define_function",
+upsert_function_spec = {
+    "name": "upsert_function",
     "category": "programming",
-    "class_name": "FunctionsService.define_function",
-    "description": "Create or update a function with code. Upon creation only use code that has been validated/tested additionally modifying and validating changes as needed related to using the 'parameters' field for general purpose applicability. Functions may be added to agents and called within groups if those agents are part of that group.",
+    "class_name": "FunctionsService.upsert_function",
+    "description": "Upsert a function with code. Upon creation only use code that has been validated/tested additionally modifying and validating changes as needed related to using the 'parameters' field for general purpose applicability. Functions may be added to agents and called within groups if those agents are part of that group.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -180,11 +180,11 @@ define_function = {
             },
             "category": {
                 "type": "string",
-                "description": "A category to filter functions based on predefined categories.",
+                "description": "A category to filter functions based on predefined categories. Set when creating a new function.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"]
             },
         },
-        "required": ["name", "description", "function_code", "category"],
+        "required": ["name", "function_code"],
     },
 }
 
@@ -192,9 +192,9 @@ function_specs = [
     get_group_info_spec,
     send_message_spec,
     discover_agents_spec,
-    create_or_update_agent,
+    upsert_agent,
     discover_groups_spec,
-    create_or_update_group_spec,
-    discover_functions,
-    define_function, 
+    upsert_group_spec,
+    discover_functions_spec,
+    upsert_function_spec, 
 ]

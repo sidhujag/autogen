@@ -150,7 +150,7 @@ class GroupChatManager(ConversableAgent):
             messages = self._oai_messages[sender]
         message = messages[-1]
         if not self._is_termination_msg(message):
-            message["content"] = f'{message["content"]}[Speaking Agent: {sender.name}. Group: {self.name}]'
+            message["content"] = f'[Speaking Agent: {sender.name}. Group: {self.name}]{message["content"]}'
         speaker = sender
         groupchat = config
         for i in range(groupchat.max_round):
@@ -168,7 +168,7 @@ class GroupChatManager(ConversableAgent):
             try:
                 # select the next speaker
                 speaker = groupchat.select_speaker(speaker, self)
-                AgentService.update_agent_system_message(speaker, self.name)
+                AgentService.update_agent_system_message(speaker, self)
                 # let the speaker speak
                 reply = speaker.generate_reply(sender=self)
             except KeyboardInterrupt:
@@ -176,7 +176,7 @@ class GroupChatManager(ConversableAgent):
                 if groupchat.admin_name in groupchat.agent_names:
                     # admin agent is one of the participants
                     speaker = groupchat.agent_by_name(groupchat.admin_name)
-                    AgentService.update_agent_system_message(speaker, self.name)
+                    AgentService.update_agent_system_message(speaker, self)
                     reply = speaker.generate_reply(sender=self)
                 else:
                     # admin agent is not found in the participants
@@ -187,7 +187,7 @@ class GroupChatManager(ConversableAgent):
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
             if not self._is_termination_msg(message):
-                message["content"] = f'{message["content"]}[Speaking Agent: {speaker.name}. Group: {self.name}]'
+                message["content"] = f'[Speaking Agent: {speaker.name}. Group: {self.name}]{message["content"]}'
         return True, None
 
     async def a_run_chat(
