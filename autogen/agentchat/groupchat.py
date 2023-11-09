@@ -57,7 +57,7 @@ class GroupChat:
 {self._participant_roles()}.
 
 Read the following conversation.
-Then select the next role from {[agent.name for agent in agents]} to play. Only return the role."""
+Then select the next role from {[agent.name for agent in agents]} to play. BASIC agents are isolated workers and FULL agents are full-service and more aware (more managerial). Only return the role."""
 
     def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
         """Select the next speaker."""
@@ -90,7 +90,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
             return self.next_agent(last_speaker, agents)
 
     def _participant_roles(self):
-        return "\n".join([f"{agent.name}: {agent.description}" for agent in self.agents])
+        return "\n".join([f"{agent.name}: {agent.description} (Type: {agent.type})" for agent in self.agents])
 
 
 class GroupChatManager(ConversableAgent):

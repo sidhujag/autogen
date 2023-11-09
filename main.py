@@ -27,7 +27,7 @@ async def query(input: QueryModel):
         description="The proxy to the user to get input or relay response",
         human_input_mode="ALWAYS",
         default_auto_reply="This is UserProxyAgent speaking.",
-        category="user"
+        category="user",
     )
     user_assistant_model = UpsertAgentModel(
         name="user_assistant",
@@ -35,7 +35,8 @@ async def query(input: QueryModel):
         description="A generic AI assistant that can solve problems",
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
-        category="user"
+        category="user",
+        type="FULL"
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager",
@@ -43,15 +44,16 @@ async def query(input: QueryModel):
         description="A generic manager that can analyze and tell other agents what to do",
         human_input_mode="ALWAYS",
         default_auto_reply="This is the manager speaking.",
-        category="planning"
+        category="planning",
+        type="FULL"
     )
     coder_assistant_model = UpsertAgentModel(
         name="coder_assistant",
         auth=input.auth,
-        description="A generic AI assistant that can create elegant code to problems",
+        description="A generic AI assistant that can create elegant code to problems.",
         human_input_mode="ALWAYS",
         default_auto_reply="This is the coder_assistant speaking.",
-        category="programming"
+        category="programming",
     )
     agent_models = [
         user_model,

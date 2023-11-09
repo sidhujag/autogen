@@ -126,7 +126,7 @@ class FunctionsService:
         agent_upserted, err = AgentService.upsert_agents([UpsertAgentModel(
             auth=agent.auth,
             name=agent.name,
-            functions_to_add=function_model.name,
+            functions_to_add=[function_model.name],
         )])
         if err is not None:
             return f"Could not upsert agent: {err}"

@@ -4,42 +4,30 @@ from autogen import OpenAIWrapper
 from autogen.agentchat.service.function_specs import function_specs
 
 class AgentService:
-    AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
+    BASIC_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
 
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, agent type: BASIC, group: {group_name}
 
-Communication and Collaboration: The agent's primary function is to communicate within a group setting for problem-solving, highlighting the importance of clear and purposeful exchanges.
+As a basic agent you will follow the custom instructions and any functions you have to complete your given task, with the help of your peers in your group as needed.
 
-Agent identity and Context: Each message sent to the group will identify the sender and the group context, ensuring that communications are traceable and relevant.
+Custom instructions: {custom_instructions}
+"""
+    FULL_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step. 
+    
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, agent type: FULL, group: {group_name}
 
-Group stats and Context: Group stats are tracked and given in your system prompt. These stats are available for any other group via the get_group_info function. Useful for your self-discovery.
+You are general purpose and aware of other agents' surroundings as well as yours. You will manage yourself as well as your BASIC peers.
 
-Agent, Function and Group Discovery: The Agent can discover functions to add to themselves, discover other agents to add to a group or discover groups to delegate tasks to or add agents to. Any agent can create/update any function or group. If error happens in a function, fix the function instead of making a new one. The function name is a pointer to the function inside an agent and likewise for an agent inside a group. You don't need to re-add pointers as the underlying changes.
+Keep agents on topic and don't deviate away from the reason your group exists. Ensure your peers do not give up without exhausting all possibilities through the help of FULL agents such as yourself as well as their own abilities.
 
-Task Orientation: The agent's communications should be direct and focused on resolving the given tasks, avoiding unnecessary dialogue.
+Carefully read the functions provided to you to learn of your abilities and responsibilities. All instructions are presented through the functions.
 
-Coding Abilities: The agent's ability to write and execute code within conversations is emphasized, enhancing their problem-solving capabilities. Any code blocks will be auto-executed by the system and code output sent back to you.
-
-Network Dependency and Role: The agent is reminded of their interdependent role within the AI network, where mutual reliance is key to the system's functionality.
-
-Group Engagement and Delegation: The agent is instructed to communicate with groups (not individuals), maintaining collective context and ensuring task delegation is clear and closed-loop.
-
-Speaker Selection: The process of selecting the next speaker within a group is mentioned as a means to maintain order in conversations.
-
-Task Delegation and Closure: Prioritize clear delegation of tasks to other groups. Before concluding any interaction with a 'TERMINATE' signal, ensure that the initiating group's query is satisfactorily addressed, maintaining a closed-loop communication cycle.
-
-Monitoring and Governance: The agent is expected to adhere to the network's governance, with an emphasis on data integrity and efficiency.
-
-Emergence and Innovation: The agent is considered an integral part of the network's intelligence and is encouraged to adapt and evolve to foster collective growth and innovation.
-
-Efficiency in Discourse: The agent is directed to engage in conversations that directly address the task at hand, staying on point and avoiding tangential discussions.
+Use the group stats as discovery for your currently "friended" groups and to discover your current group peers.
 
 Custom instructions: {custom_instructions}
 
 GROUP STATS
 {group_stats}
-
-Reply with only "TERMINATE" on success condition. Try not to give up, you can solve almost anything through coding. Only terminate on failure condition if you are really sure you can't solve through existing functions, groups, agents or creating custom code with multiple tries. When doing so stay on topic though, don't change focus. If you have nothing to say about the topic just say so.
 """
     @staticmethod
     def get_agent(agent_model) -> ConversableAgent:
@@ -64,7 +52,7 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
         return response
 
     @staticmethod
-    def upsert_agent(sender: ConversableAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None) -> str: 
+    def upsert_agent(sender: ConversableAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, type: str = None) -> str: 
         from . import UpsertAgentModel
         if sender is None:
             return "Sender not found"
@@ -75,7 +63,8 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
             system_message=system_message,
             functions_to_add=functions_to_add,
             functions_to_remove=functions_to_remove,
-            category=category
+            category=category,
+            type=type
         )])
         if err is not None:
             return f"Could not upsert agent: {err}"
@@ -92,12 +81,13 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
                 llm_config={"api_key": backend_agent.auth.api_key}
             )
         agent.auth = backend_agent.auth
-        # register the base functions for every agent
-        for func_spec in function_specs:
-            function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
-            if error_message:
-                return error_message
-            FunctionsService.define_function_internal(agent, function_model)
+        if backend_agent.type == "FULL":
+            # register the base functions for every FULL agent
+            for func_spec in function_specs:
+                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                if error_message:
+                    return error_message
+                FunctionsService.define_function_internal(agent, function_model)
         return agent
 
     @staticmethod
@@ -119,6 +109,7 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
             return None, "Could not make agent"
         agent.description = backend_agent.description
         agent.custom_system_message = agent.system_message
+        agent.type = backend_agent.type
         if llm_config:
             agent.llm_config.update(llm_config)
         if len(backend_agent.functions) > 0:
@@ -133,7 +124,7 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
         from . import BackendService, GetAgentModel, MakeService
         # Step 1: Upsert all agents in batch
         err = BackendService.upsert_backend_agents(upsert_models)
-        if err:
+        if err and err != "No agents were upserted, no changes found!":
             return None, err
 
         # Step 2: Retrieve all agents from backend in batch
@@ -173,12 +164,23 @@ Reply with only "TERMINATE" on success condition. Try not to give up, you can so
     @staticmethod
     def update_agent_system_message(agent: ConversableAgent, group_manager: GroupChatManager) -> None:
         from . import MakeService
-        # Define the new agent system message with placeholders filled in
-        formatted_message = AgentService.AGENT_SYSTEM_MESSAGE.format(
-            agent_name=agent.name,
-            agent_description=MakeService._get_short_description(agent.description),
-            group_name=group_manager.name,
-            custom_instructions=agent.custom_system_message,
-            group_stats=AgentService._generate_group_stats_text(group_manager)
-        )
-        agent.update_system_message(formatted_message)
+        if agent.type == "FULL":
+            # Define the new agent system message with placeholders filled in
+            formatted_message = AgentService.FULL_AGENT_SYSTEM_MESSAGE.format(
+                agent_name=agent.name,
+                agent_description=MakeService._get_short_description(agent.description),
+                group_name=group_manager.name,
+                custom_instructions=agent.custom_system_message,
+                group_stats=AgentService._generate_group_stats_text(group_manager)
+            )
+            agent.update_system_message(formatted_message)
+        elif agent.type == "BASIC":
+            # Define the new agent system message with placeholders filled in
+            formatted_message = AgentService.BASIC_AGENT_SYSTEM_MESSAGE.format(
+                agent_name=agent.name,
+                agent_description=MakeService._get_short_description(agent.description),
+                group_name=group_manager.name,
+                custom_instructions=agent.custom_system_message
+            )
+            agent.update_system_message(formatted_message)
+        

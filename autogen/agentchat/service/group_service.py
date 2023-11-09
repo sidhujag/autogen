@@ -50,21 +50,48 @@ class GroupService:
             return f"Could not update group: {err}", None
         return "Group upserted!"
 
+
     @staticmethod
+    def terminate_group(sender: ConversableAgent, group: str, response: str) -> str:
+        from . import GetGroupModel
+        if sender is None:
+            return "Could not send message: sender not found"
+        group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=group))
+        if group_manager is None:
+            return "Could not send message: group not found"
+        if sender.name not in group_manager.groupchat.agent_names:
+            return "Could not send message: Only agents in the group can terminate it"
+        if group_manager.delegator:
+            group_manager.delegator = None
+            group_manager.send(response, group_manager.delegator)
+        return "TERMINATE"
+
     def send_message_to_group(sender: ConversableAgent, from_group: str, to_group: str, message: str) -> str:
         from . import GetGroupModel, BackendService, UpdateComms
         if sender is None:
             return "Could not send message: sender not found"
-    
         from_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=from_group))
         if from_group_manager is None:
             return "Could not send message: from_group not found"
 
+        if sender.name not in from_group_manager.groupchat.agent_names:
+            return "Could not send message: Only agents in the from_group can send a message to another group"
+            
         to_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=to_group))
         if to_group_manager is None:
             return "Could not send message: to_group not found"
+        if to_group_manager.delegator is not None:
+            return f"Could not send message: to_group has already been given a task by group: {to_group_manager.delegator.name}. A group can only work on on task at a time. Wait until it concludes."
         if len(to_group_manager.groupchat.agents) < 3:
             return f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"
+        found_full = False
+        for agent in to_group_manager.groupchat.agents:
+            if agent.type == "FULL":
+                found_full = True
+                break
+        if not found_full:
+            return f"Could not send message: to_group does not have a FULL agent to manage it. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"
+            
         # Increment the communication stats
         from_group_manager.outgoing[to_group_manager.name] = from_group_manager.outgoing.get(to_group_manager.name, 0) + 1
         to_group_manager.incoming[from_group_manager.name] = to_group_manager.incoming.get(from_group_manager.name, 0) + 1
@@ -73,20 +100,9 @@ class GroupService:
                                                                     receiver=to_group_manager.name))
         if err:
             return err
-        
-        from_group_manager.initiate_chat(to_group_manager, clear_history=False, message=message)
-        message_summary = f'You are a world-class group interpreter. Read the following conversation. Interpret and produce a response that should come from group ({to_group_manager.name}) addressed to group ({from_group_manager.name}). The original message was: {message}. Assume {from_group_manager.name} cannot see the content of the conversation.'
-        to_group_manager.update_system_message(message_summary)
-        final, summary = to_group_manager.generate_oai_reply(
-            to_group_manager.groupchat.messages
-            + [
-                {
-                    "role": "system",
-                    "content": f"Read the above conversation. Then prepare a response addressed to the original group. Only return the response.",
-                }
-            ]
-        )
-        return f"Message was propogated to {to_group}, response was: {summary}"
+        to_group_manager.delegator = from_group_manager
+        from_group_manager.send(message, to_group_manager)
+        return "TERMINATE"
     
     @staticmethod
     def _create_group(backend_group) -> GroupChatManager:
@@ -140,7 +156,7 @@ class GroupService:
         from . import BackendService, GetGroupModel, MakeService
         # Step 1: Upsert all groups in batch
         err = BackendService.upsert_backend_groups(upsert_models)
-        if err:
+        if err and err != "No groups were upserted, no changes found!":
             return None, err
 
         # Step 2: Retrieve all groups from backend in batch

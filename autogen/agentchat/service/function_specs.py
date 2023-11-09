@@ -2,18 +2,32 @@ send_message_spec = {
     "name": "send_message_to_group",
     "category": "communication",
     "class_name": "GroupService.send_message_to_group",
-    "description": "Send a message to another group to resolve a dependency.",
+    "description": "Send a message to another group to delegate a task. When you send a message to another group your current group will terminate and upon termination of the recipient group a response will be sent back to you so your group can continue.",
     "parameters": {
         "type": "object",
         "properties": {
-            "from_group": {"type": "string", "description": "The name of the sending group you are sending message from. Useful for response purposes."},
-            "to_group": {"type": "string", "description": "The name of the recipient group. It must be a valid existing group and have more than 2 agents inside it."},
-            "message": {"type": "string", "description": "The content of the message. In the message you should include full context of what your dependency is and when and what format the response to the 'from_group' should be."},
+            "from_group": {"type": "string", "description": "The name of the sending group you are sending message from. A reference will be stored so a group can respond back to this group upon termination."},
+            "to_group": {"type": "string", "description": "The name of the recipient group. It must be a valid existing group and have 3 or more agents inside it with atleast 1 being a FULL agent."},
+            "message": {"type": "string", "description": "The content of the message. In the message you should include full context of what your task is for the recipient group."},
         },
         "required": ["from_group", "to_group", "message"]
     }
 }
 
+terminate_group_spec = {
+    "name": "terminate_group",
+    "category": "communication",
+    "class_name": "GroupService.terminate_group",
+    "description": "Terminate and conclude a group. The groupchat has loop that continues to select a next speaker until it is terminated. This will let give control back to the caller with a summary. If another group sent you a task, from_group was saved as a reference which will be sent the response.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "group": {"type": "string", "description": "The group you are terminating."},
+            "response": {"type": "string", "description": "Summary of group discussion and response back to the group delegating to you or if no delegation then the user."},
+        },
+        "required": ["response"]
+    }
+}
 
 discover_agents_spec = {
     "name": "discover_agents",
@@ -75,7 +89,7 @@ upsert_agent = {
     "name": "upsert_agent",
     "category": "communication",
     "class_name": "AgentService.upsert_agent",
-    "description": "Upsert an agent. Create an agent only for reusable isolated usecases.",
+    "description": "Upsert an agent. Create an agent only for reusable isolated usecases. BASIC agents on their own do not have the base functions so do not possess ability to modify themselves without the help of FULL agents. Think of BASIC agents as isolated workers with specific custom functions and FULL agents as general purpose and more aware.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -101,6 +115,11 @@ upsert_agent = {
                 "type": "string",
                 "description": "A category to sort agent based on predefined categories. Only used when creating agent.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "user"]
+            },
+            "type": {
+                "type": "string",
+                "description": "What type of agent to create. BASIC for basic agent without the base functions included - useful for isolated jobs. FULL to automatically include base functions(send_message_to_group, discover_agents, get_group_info, discover_groups, upsert_agent, upsert_group, discover_functions, upsert_function, terminate_group) - useful for more strategic or managerial agents. Defaults to BASIC.",
+                "enum": ["BASIC", "FULL"]
             }
         },
         "required": ["name"]
@@ -116,7 +135,7 @@ upsert_group_spec = {
         "type": "object",
         "properties": {
             "group": {"type": "string", "description": "The name of group. Acts as an indentifier."},
-            "description": {"type": "string", "description": "Concise description of group. Is used when discovering groups so make sure it covers feautures, functions and roles within the group. You can also update it as you add/remove agents. When calling function in a group the agent must be existing in the group otherwise you will get a function not found error."},
+            "description": {"type": "string", "description": "Concise description of group. Is used when discovering groups so make sure it covers feautures, functions and roles within the group. You can also update it as you add/remove agents. When calling function in a group the agent must be existing in the group otherwise you will get a function not found error. A group should have atleast 1 FULL agent to manage and be able to terminate it."},
             "agents_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -197,4 +216,5 @@ function_specs = [
     upsert_group_spec,
     discover_functions_spec,
     upsert_function_spec, 
+    terminate_group_spec
 ]

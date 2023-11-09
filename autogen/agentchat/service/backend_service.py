@@ -45,6 +45,7 @@ class UpsertAgentModel(BaseModel):
     functions_to_add: Optional[List[str]] = None
     functions_to_remove: Optional[List[str]] = None
     category: Optional[str] = None
+    type: Optional[str] = None
 
 class UpsertGroupModel(BaseModel):
     name: str
@@ -61,6 +62,7 @@ class BaseAgent(BaseModel):
     default_auto_reply: str = Field(default="")
     system_message: str = Field(default="")
     category: str = Field(default="")
+    type: str = Field(default="BASIC")
 
 class BaseGroup(BaseModel):
     name: str = Field(default="")
