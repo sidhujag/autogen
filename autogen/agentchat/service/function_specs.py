@@ -25,7 +25,7 @@ terminate_group_spec = {
             "group": {"type": "string", "description": "The group you are terminating."},
             "response": {"type": "string", "description": "Summary of group discussion and response back to the group delegating to you or if no delegation then the user."},
         },
-        "required": ["response"]
+        "required": ["group", "response"]
     }
 }
 
