@@ -51,13 +51,16 @@ class GroupChat:
                 if self.agents[(offset + i) % len(self.agents)] in agents:
                     return self.agents[(offset + i) % len(self.agents)]
 
-    def select_speaker_msg(self, agents: List[Agent]):
+    def select_speaker_msg(self, agents: List[Agent], last_speaker: Agent):
         """Return the message for selecting the next speaker."""
-        return f"""You are in a role play game. The following roles are available:
+        return f"""You are a speaker selector in a chat group. The following speakers are available:
 {self._participant_roles()}.
 
+Current speaker:
+{last_speaker.name}
+
 Read the following conversation.
-Then select the next role from {[agent.name for agent in agents]} to play. BASIC agents are isolated workers and FULL agents are full-service and more aware (more managerial). Only return the role."""
+Then select the next speaker from {[agent.name for agent in agents]}. You can keep the same speaker if he should continue on his task. BASIC agents are isolated workers and FULL agents are full-service and more aware (more managerial). Only return the speaker name."""
 
     def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
         """Select the next speaker."""
@@ -71,13 +74,13 @@ Then select the next role from {[agent.name for agent in agents]} to play. BASIC
                 logger.warning(
                     f"GroupChat is underpopulated with {n_agents} agents. Direct communication would be more efficient."
                 )
-        selector.update_system_message(self.select_speaker_msg(agents))
+        selector.update_system_message(self.select_speaker_msg(agents, last_speaker))
         final, name = selector.generate_oai_reply(
             self.messages
             + [
                 {
                     "role": "system",
-                    "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Only return the role.",
+                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Only return the speaker name.",
                 }
             ]
         )
@@ -90,7 +93,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. BASIC
             return self.next_agent(last_speaker, agents)
 
     def _participant_roles(self):
-        return "\n".join([f"{agent.name}: {agent.description} (Type: {agent.type})" for agent in self.agents])
+        return "\n".join([f"Name {agent.name}, Description: {agent.description}, Type: {agent.type}" for agent in self.agents])
 
 
 class GroupChatManager(ConversableAgent):
