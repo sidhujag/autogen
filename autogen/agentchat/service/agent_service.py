@@ -2,11 +2,14 @@ from .. import ConversableAgent, GroupChatManager
 from typing import List, Optional, Union
 from autogen import OpenAIWrapper
 from autogen.agentchat.service.function_specs import function_specs
+import json
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
 
 Agent name and Group: Your name: {agent_name}, description: {agent_description}, agent type: BASIC, group: {group_name}
+
+You are announcing messages to a group. You are not talking directly to agents but can refer to them or talk to them via chat interaction.
 
 Stay on topic and don't deviate away from the main task for the group. If you have nothing to say just say you have nothing to add. Try all possibilities to solve your task but deviate away from topic.
 
@@ -20,13 +23,15 @@ Agent name and Group: Your name: {agent_name}, description: {agent_description},
 
 You are general purpose and aware of other agents' surroundings as well as yours. You will manage yourself as well as your BASIC peers.
 
+You are announcing messages to a group. You are not talking directly to agents but can refer to them or talk to them via chat interaction.
+
 Keep agents on topic and don't deviate away from the reason your group exists. Ensure your peers do not give up without exhausting all possibilities through the help of FULL agents such as yourself as well as their own abilities.
 
 Carefully read the functions provided to you to learn of your abilities and responsibilities. All instructions are presented through the functions.
 
 Termination should be decided at your discretion. Read the room. If agents have nothing to add, if the conversation reaches a natural conclusion or if the discussion topic switches, it may be time to terminate.
 
-Use the group stats as discovery for your currently "friended" groups and to discover your current group peers.
+Use the group stats as discovery for your currently "friended" groups. To discover your group peers use get_group_info.
 
 Custom instructions: {custom_instructions}
 
@@ -38,9 +43,9 @@ GROUP STATS
         from . import BackendService, MakeService
         agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(agent_model.name)
         if agent is None:
-            backend_agent, err = BackendService.get_backend_agents([agent_model])
-            if err is None and len(backend_agent) > 0:
-                agent, err = AgentService.make_agent(backend_agent[0])
+            backend_agents, err = BackendService.get_backend_agents([agent_model])
+            if err is None and len(backend_agents) > 0:
+                agent, err = AgentService.make_agent(backend_agents[0])
                 if err is not None:
                     MakeService.AGENT_REGISTRY[agent_model.name] = agent
         return agent
@@ -49,17 +54,17 @@ GROUP STATS
     def discover_agents(sender: ConversableAgent, query: str, category: str = None) -> str:
         from . import BackendService, DiscoverAgentsModel
         if sender is None:
-            return "Sender not found"
+            return json.dumps({"error": "Sender not found"})
         response, err = BackendService.discover_backend_agents(DiscoverAgentsModel(auth=sender.auth, query=query,category=category))
         if err is not None:
-            return f"Could not discover agents: {err}"
+            return err
         return response
 
     @staticmethod
     def upsert_agent(sender: ConversableAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, type: str = None) -> str: 
         from . import UpsertAgentModel
         if sender is None:
-            return "Sender not found"
+            return json.dumps({"error": "Sender not found"})
         agent, err = AgentService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=name,
@@ -71,8 +76,8 @@ GROUP STATS
             type=type
         )])
         if err is not None:
-            return f"Could not upsert agent: {err}"
-        return "Agent upserted!"
+            return err
+        return json.dumps({"response": "Agent upserted!"})
 
     @staticmethod
     def _create_agent(backend_agent) -> ConversableAgent:
@@ -110,7 +115,7 @@ GROUP STATS
         from . import FunctionsService, AddFunctionModel, MakeService
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
-            return None, "Could not make agent"
+            return None, json.dumps({"error": "Could not make agent"})
         agent.description = backend_agent.description
         agent.custom_system_message = agent.system_message
         agent.type = backend_agent.type
@@ -128,7 +133,7 @@ GROUP STATS
         from . import BackendService, GetAgentModel, MakeService
         # Step 1: Upsert all agents in batch
         err = BackendService.upsert_backend_agents(upsert_models)
-        if err and err != "No agents were upserted, no changes found!":
+        if err and err != json.dumps({"error": "No agents were upserted, no changes found!"}):
             return None, err
 
         # Step 2: Retrieve all agents from backend in batch
@@ -137,7 +142,7 @@ GROUP STATS
         if err:
             return None, err
         if len(backend_agents) == 0:
-            return None, "Could not fetch agents from backend"
+            return None, json.dumps({"error": "Could not fetch agents from backend"})
 
         # Step 3: Update local agent registry
         successful_agents = []

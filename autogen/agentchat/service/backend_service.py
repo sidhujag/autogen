@@ -1,7 +1,8 @@
 
 import requests
+import json
 from pydantic import BaseModel, Field
-from typing import Any, List, Optional, Tuple, Dict, TypedDict
+from typing import Any, List, Optional, Tuple, Dict
 
 AUTOGEN_BACKEND = "127.0.0.1:8001"
 
@@ -141,7 +142,7 @@ class BackendService:
         if err is not None:
             return None, err
         if not isinstance(response, list):
-            return None, "Unexpected response format: backend response is not a list"
+            return None, json.dumps({"error": "Unexpected response format: backend response is not a list"})
         return [BackendAgent(**agent) for agent in response], None
 
     @staticmethod
@@ -151,7 +152,7 @@ class BackendService:
         if err is not None:
             return None, err
         if not isinstance(response, list):
-            return None, "Unexpected response format: backend response is not a list"
+            return None, json.dumps({"error": "Unexpected response format: backend response is not a list"})
         return [BaseGroup(**agent) for agent in response], None
 
 
@@ -189,15 +190,15 @@ class BackendService:
         return response, None
     
     @staticmethod
-    def call(endpoint, json):   
+    def call(endpoint, json_input):   
         try:
             response = requests.post(
                 url=f'http://{AUTOGEN_BACKEND}/{endpoint}/',
-                json=json
+                json=json_input
             )
             response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
         except requests.HTTPError as e:
-            return None, f"Error making call: {e}"
+            return None, json.dumps({"error": f"Error making call: {str(e)}"})
         if response.status_code == 200:
             return response.json()["response"], None
-        return None, "invalid response"
+        return None, json.dumps({"error": "invalid response"})

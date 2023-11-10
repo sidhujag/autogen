@@ -16,7 +16,7 @@ class FunctionsService:
         from . import BackendService, DiscoverFunctionsModel
         response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
         if err is not None:
-            return f"Could not discover functions: {err}"
+            return err
         return response
     
     @staticmethod
@@ -72,19 +72,19 @@ class FunctionsService:
                         }
                     )
                 else:
-                    return f"Method {module_name} not found in class {class_name}"
+                    return json.dumps({"error": f"Method {module_name} not found in class {class_name}"})
             else:
-                return f"Class {class_name} not found"
+                return json.dumps({"error": f"Class {class_name} not found"})
         else:
             if not function.function_code or function.function_code == "":
-                return "function code was empty unexpectedly, either define a class_name or function_code"
+                return json.dumps({"error": "function code was empty unexpectedly, either define a class_name or function_code"})
             agent.register_function(
                 function_map={
                     function.name: lambda **args: FunctionsService.execute_func(function.function_code, **args)
                 }
             )
             
-        return "Function added!"
+        return json.dumps({"response": "Function added!"})
  
     @staticmethod
     def _load_json_field(func_spec: Dict[str, Any], field: str) -> Optional[str]:
@@ -92,7 +92,7 @@ class FunctionsService:
             try:
                 func_spec[field] = json.loads(func_spec[field])
             except json.JSONDecodeError as e:
-                return f"Error parsing JSON for {field} in function {func_spec.get('name', '')}: {e}"
+                return json.dumps({"error": f"Error parsing JSON for {field} in function {func_spec.get('name', '')}: {str(e)}"})
         return None
 
     @staticmethod
@@ -108,7 +108,7 @@ class FunctionsService:
             function = AddFunctionModel(**func_spec, auth=agent.auth)
             return function, None
         except ValidationError as e:
-            return None, f"Validation error when defining function {func_spec.get('name', '')}: {e}"
+            return None, json.dumps({"error": f"Validation error when defining function {func_spec.get('name', '')}: {str(e)}"})
 
     @staticmethod
     def upsert_function(agent: ConversableAgent, **kwargs: Any) -> str:
@@ -120,7 +120,7 @@ class FunctionsService:
 
         err = BackendService.upsert_backend_functions([function_model])
         if err is not None:
-            return f"Could not upsert function: {err}"
+            return err
 
         # update the agent to have the function so it can use it
         agent_upserted, err = AgentService.upsert_agents([UpsertAgentModel(
@@ -129,5 +129,5 @@ class FunctionsService:
             functions_to_add=[function_model.name],
         )])
         if err is not None:
-            return f"Could not upsert agent: {err}"
-        return "Function upserted!"
+            return err
+        return json.dumps({"response": "Function upserted!"})
