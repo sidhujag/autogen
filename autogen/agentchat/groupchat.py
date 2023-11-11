@@ -38,7 +38,7 @@ class GroupChat:
         self.messages.clear()
 
     def agent_by_name(self, name: str) -> Agent:
-        """Find the next speaker based on the message."""
+        """Returns the agent with a given name."""
         return self.agents[self.agent_names.index(name)]
 
     def next_agent(self, agent: Agent, agents: List[Agent]) -> Agent:
@@ -90,10 +90,20 @@ Then select the next speaker from {[agent.name for agent in agents]}. You can ke
         try:
             return self.agent_by_name(name)
         except ValueError:
+            logger.warning(
+                f"GroupChat select_speaker failed to resolve the next speaker's name. Speaker selection will default to the next speaker in the list. This is because the speaker selection OAI call returned:\n{name}"
+            )
             return self.next_agent(last_speaker, agents)
 
     def _participant_roles(self):
-        return "\n".join([f"Name {agent.name}, Description: {agent.description}, Type: {agent.type}" for agent in self.agents])
+        roles = []
+        for agent in self.agents:
+            if agent.system_message.strip() == "":
+                logger.warning(
+                    f"The agent '{agent.name}' has an empty system_message, and may not work well with GroupChat."
+                )
+            roles.append(f"Name {agent.name}, Description: {agent.description}, Type: {agent.type}")
+        return "\n".join(roles)
 
 
 class GroupChatManager(ConversableAgent):
@@ -107,7 +117,6 @@ class GroupChatManager(ConversableAgent):
         max_consecutive_auto_reply: Optional[int] = sys.maxsize,
         human_input_mode: Optional[str] = "NEVER",
         system_message: Optional[str] = "Group chat manager.",
-        # seed: Optional[int] = 4,
         **kwargs,
     ):
         super().__init__(
@@ -128,7 +137,6 @@ class GroupChatManager(ConversableAgent):
         self.delegator = None
         self.incoming = {}
         self.outgoing = {}
-        # self._random = random.Random(seed)
 
     def run_chat(
         self,
