@@ -7,7 +7,7 @@ send_message_spec = {
         "type": "object",
         "properties": {
             "from_group": {"type": "string", "description": "The name of the sending group you are sending message from. A reference will be stored so a group can respond back to this group upon termination."},
-            "to_group": {"type": "string", "description": "The name of the recipient group. It must be a valid existing group and have 3 or more agents inside it with atleast 1 being a FULL agent."},
+            "to_group": {"type": "string", "description": "The name of the recipient group. It must be a valid existing group and have 3 or more agents inside it with atleast 1 being atleast as capable as a MANAGER."},
             "message": {"type": "string", "description": "The content of the message. In the message you should include full context of what your task is for the recipient group."},
         },
         "required": ["from_group", "to_group", "message"]
@@ -55,7 +55,7 @@ get_group_info_spec = {
     "name": "get_group_info",
     "category": "communication",
     "class_name": "GroupService.get_group_info",
-    "description": "Get group info: Which agents are in the group and stats in the group.",
+    "description": "Get group info: Communication stats of the group as well as agents/files in group.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -89,7 +89,7 @@ upsert_agent = {
     "name": "upsert_agent",
     "category": "communication",
     "class_name": "AgentService.upsert_agent",
-    "description": "Upsert an agent. Create an agent only for reusable isolated usecases. BASIC agents on their own do not have the base functions so do not possess ability to modify themselves without the help of FULL agents. Think of BASIC agents as isolated workers with specific custom functions and FULL agents as general purpose and more aware.",
+    "description": "Upsert an agent. Create an agent only for reusable isolated usecases.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -116,10 +116,9 @@ upsert_agent = {
                 "description": "A category to sort agent based on predefined categories. Only used when creating agent.",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "user"]
             },
-            "type": {
-                "type": "string",
-                "description": "What type of agent to create. BASIC for basic agent without the base functions included - useful for isolated jobs. FULL to automatically include base functions(send_message_to_group, discover_agents, get_group_info, discover_groups, upsert_agent, upsert_group, discover_functions, upsert_function, terminate_group) - useful for more strategic or managerial agents. Defaults to BASIC.",
-                "enum": ["BASIC", "FULL"]
+            "capability": {
+                "type": "int",
+                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for GROUP_INFO, 2 for CODE_INTERPRETER_TOOL, 4 for RETRIEVAL_TOOL, 8 for FILES, and 16 for MANAGEMENT. Bit 1 (GROUP_INFO) must always be enabled. Combine capabilities by adding the values of their masks together."
             }
         },
         "required": ["name"]
@@ -135,11 +134,11 @@ upsert_group_spec = {
         "type": "object",
         "properties": {
             "group": {"type": "string", "description": "The name of group. Acts as an indentifier."},
-            "description": {"type": "string", "description": "Concise description of group. Is used when discovering groups so make sure it covers feautures, functions and roles within the group. You can also update it as you add/remove agents. When calling function in a group the agent must be existing in the group otherwise you will get a function not found error. A group should have atleast 1 FULL agent to manage and be able to terminate it."},
+            "description": {"type": "string", "description": "Concise description of group. Is used when discovering groups so make sure it covers feautures, functions and roles within the group. You can also update it as you add/remove agents. When calling function in a group the agent must be existing in the group otherwise you will get a function not found error. A group should have atleast 1 MANAGER to be able to terminate it. Don't add agents for the sake of making a functional group, each agent must serve a valid purpose to the task at hand."},
             "agents_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Agent(s) to invite to group."
+                "description": "Agent(s) to invite to group. Agents being added must be important to solve the groups task."
             },
             "agents_to_remove": {
                 "type": "array",
@@ -207,8 +206,11 @@ upsert_function_spec = {
     },
 }
 
-function_specs = [
+group_info_function_specs = [
     get_group_info_spec,
+]
+
+management_function_specs = [
     send_message_spec,
     discover_agents_spec,
     upsert_agent,
@@ -217,4 +219,7 @@ function_specs = [
     discover_functions_spec,
     upsert_function_spec, 
     terminate_group_spec
+]
+files_function_specs = [
+    
 ]

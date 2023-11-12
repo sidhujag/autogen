@@ -1,7 +1,13 @@
 
-from .. import ConversableAgent, GroupChatManager, GroupChat
+from .. import GroupChatManager, GroupChat
+from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
 import json
+GROUP_INFO = 1
+CODE_INTERPRETER_TOOL = 2
+RETRIEVAL_TOOL = 4
+FILES = 8
+MANAGEMENT = 16
 
 class GroupService:
     @staticmethod
@@ -17,7 +23,7 @@ class GroupService:
         return manager
     
     @staticmethod
-    async def get_group_info(sender: ConversableAgent, group: str) -> str:
+    async def get_group_info(sender: GPTAssistantAgent, group: str) -> str:
         from . import BackendService, GetGroupModel, AgentService, MakeService, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
@@ -52,7 +58,7 @@ class GroupService:
         return json.dumps(groups_info)
 
     @staticmethod
-    def discover_groups(sender: ConversableAgent, query: str) -> str:
+    def discover_groups(sender: GPTAssistantAgent, query: str) -> str:
         from . import BackendService, DiscoverGroupsModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
@@ -62,7 +68,7 @@ class GroupService:
         return response
 
     @staticmethod
-    def upsert_group(sender: ConversableAgent, group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None) -> str:
+    def upsert_group(sender: GPTAssistantAgent, group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None) -> str:
         from . import UpsertGroupModel
         group_managers, err = GroupService.upsert_groups([UpsertGroupModel(
             auth=sender.auth,
@@ -77,7 +83,7 @@ class GroupService:
 
 
     @staticmethod
-    def terminate_group(sender: ConversableAgent, group: str, response: str) -> str:
+    def terminate_group(sender: GPTAssistantAgent, group: str, response: str) -> str:
         from . import GetGroupModel
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
@@ -91,7 +97,7 @@ class GroupService:
             group_manager.delegator = None
         return "TERMINATE"
 
-    def send_message_to_group(sender: ConversableAgent, from_group: str, to_group: str, message: str) -> str:
+    def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
         from . import GetGroupModel, BackendService, UpdateComms
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
@@ -107,13 +113,13 @@ class GroupService:
             return json.dumps({"error": f"Could not send message: to_group has already been given a task by group: {to_group_manager.delegator.name}. A group can only work on on task at a time. Wait until it concludes."})
         if len(to_group_manager.groupchat.agents) < 3:
             return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
-        found_full = False
+        found_mgr = False
         for agent in to_group_manager.groupchat.agents:
-            if agent.type == "FULL":
-                found_full = True
+            if agent.capability & MANAGEMENT:
+                found_mgr = True
                 break
-        if not found_full:
-            return json.dumps({"error": f"Could not send message: to_group does not have a FULL agent to manage it. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
+        if not found_mgr:
+            return json.dumps({"error": f"Could not send message: to_group does not have a MANAGER. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
         # Increment the communication stats
         from_group_manager.outgoing[to_group_manager.name] = from_group_manager.outgoing.get(to_group_manager.name, 0) + 1
         to_group_manager.incoming[from_group_manager.name] = to_group_manager.incoming.get(from_group_manager.name, 0) + 1

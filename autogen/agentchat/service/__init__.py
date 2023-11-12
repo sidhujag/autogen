@@ -1,7 +1,7 @@
 from .agent_service import AgentService
 from .functions_service import FunctionsService
 from .make_service import MakeService
-from .group_service import GroupService
+from .group_service import GroupService, GROUP_INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
 from .backend_service import (
     BackendService,
     AuthAgent, 
@@ -37,5 +37,10 @@ __all__ = [
     "GroupService",
     "UpsertGroupModel",
     "GetGroupModel",
-    "DiscoverGroupsModel"
+    "DiscoverGroupsModel",
+    "GROUP_INFO",
+    "CODE_INTERPRETER_TOOL",
+    "RETRIEVAL_TOOL",
+    "FILES",
+    "MANAGEMENT"
 ]

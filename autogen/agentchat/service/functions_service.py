@@ -2,17 +2,13 @@
 import json
 import sys
 
-from .. import ConversableAgent
+from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List, Any, Optional, Dict, Tuple
 from pydantic import ValidationError
-from autogen import OpenAIWrapper
-from autogen.code_utils import (
-    execute_code
-)
 
 class FunctionsService:
     @staticmethod
-    def discover_functions(sender: ConversableAgent, category: str, query: str = None) -> str:
+    def discover_functions(sender: GPTAssistantAgent, category: str, query: str = None) -> str:
         from . import BackendService, DiscoverFunctionsModel
         response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
         if err is not None:
@@ -23,13 +19,7 @@ class FunctionsService:
     def execute_func(function_code: str, **args):
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
         str_code = f"{global_vars_code}\n\n{function_code}"
-        exitcode, logs, env = execute_code(str_code)
-        exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
-        if logs == "" and exitcode2str == "execution succeeded":
-            exitcode2str = "no output found, make sure function uses stdout to output results"
-        if logs == "" or exitcode != 0:
-            return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}\n\nBroken function code (please fix): {function_code}"
-        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"
+        return f"Please execute the following code with the code interpreter tool: {str_code}"
     
     @staticmethod
     def _find_class(class_name):
@@ -41,7 +31,7 @@ class FunctionsService:
 
     @staticmethod
     def define_function_internal(
-        agent: ConversableAgent, 
+        agent: GPTAssistantAgent, 
         function
         ) -> str:
         from .backend_service import OpenAIParameter
@@ -96,7 +86,7 @@ class FunctionsService:
         return None
 
     @staticmethod
-    def _create_function_model(agent: ConversableAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
+    def _create_function_model(agent: GPTAssistantAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
         from . import AddFunctionModel
         # for now only validate parameters through JSON string field, add to this list if other fields come up
         for field in ['parameters']:
@@ -111,7 +101,7 @@ class FunctionsService:
             return None, json.dumps({"error": f"Validation error when defining function {func_spec.get('name', '')}: {str(e)}"})
 
     @staticmethod
-    def upsert_function(agent: ConversableAgent, **kwargs: Any) -> str:
+    def upsert_function(agent: GPTAssistantAgent, **kwargs: Any) -> str:
         from . import BackendService, AgentService, UpsertAgentModel
 
         function_model, error_message = FunctionsService._create_function_model(agent, kwargs)

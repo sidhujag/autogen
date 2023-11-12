@@ -53,14 +53,17 @@ class GroupChat:
 
     def select_speaker_msg(self, agents: List[Agent], last_speaker: Agent):
         """Return the message for selecting the next speaker."""
+        from autogen.agentchat.service import AgentService
         return f"""You are a speaker selector in a chat group. The following speakers are available:
 {self._participant_roles()}.
 
 Current speaker:
 {last_speaker.name}
 
+{AgentService.CAPABILITY_SYSTEM_MESSAGE}
+
 Read the following conversation.
-Then select the next speaker from {[agent.name for agent in agents]}. You can keep the same speaker if he should continue on his task. BASIC agents are isolated workers and FULL agents are full-service and more aware (more managerial). Only return the speaker name."""
+Then select the next speaker from {[agent.name for agent in agents]}. You can keep the same speaker if he should continue on his task. Take note of agents' capabilities. Only return the speaker name."""
 
     def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
         """Select the next speaker."""
@@ -80,7 +83,7 @@ Then select the next speaker from {[agent.name for agent in agents]}. You can ke
             + [
                 {
                     "role": "system",
-                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Only return the speaker name.",
+                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Note the capability of each agent. Only return the speaker name.",
                 }
             ]
         )
@@ -96,13 +99,16 @@ Then select the next speaker from {[agent.name for agent in agents]}. You can ke
             return self.next_agent(last_speaker, agents)
 
     def _participant_roles(self):
+        from autogen.agentchat.service import AgentService
         roles = []
         for agent in self.agents:
             if agent.system_message.strip() == "":
                 logger.warning(
                     f"The agent '{agent.name}' has an empty system_message, and may not work well with GroupChat."
                 )
-            roles.append(f"Name {agent.name}, Description: {agent.description}, Type: {agent.type}")
+            capability_names = AgentService.get_capability_names(agent.capability)
+            capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
+            roles.append(f"Name: {agent.name}, Description: {agent.description}, Capabilities: {capability_text}")
         return "\n".join(roles)
 
 

@@ -1,13 +1,16 @@
-from .. import ConversableAgent, GroupChatManager
+from .. import GroupChatManager
+from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List, Optional, Union
 from autogen import OpenAIWrapper
-from autogen.agentchat.service.function_specs import function_specs
+from autogen.agentchat.service.function_specs import management_function_specs, group_info_function_specs, files_function_specs
 import json
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
 
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, agent type: BASIC, group: {group_name}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}, capabilities: {capabilities}
+
+{capability_instruction}
 
 You are announcing messages to a group. You are not talking directly to agents but can refer to them or talk to them via chat interaction.
 
@@ -17,31 +20,39 @@ As a basic agent you will follow the custom instructions and any functions you h
 
 Custom instructions: {custom_instructions}
 """
-    FULL_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step. 
+    MANAGER_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step. 
     
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, agent type: FULL, group: {group_name}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}, capabilities: {capabilities}
+
+{capability_instruction}
+
+Carefully read the functions provided to you as well as your capabilities above to learn of your abilities and responsibilities. All instructions are presented through the functions.
+
+Termination should be decided at your discretion. Read the room. If agents have nothing to add, if the conversation reaches a natural conclusion or if the discussion topic switches, it may be time to terminate.
 
 You are general purpose and aware of other agents' surroundings as well as yours. You will manage yourself as well as your BASIC peers.
 
 You are announcing messages to a group. You are not talking directly to agents but can refer to them or talk to them via chat interaction.
 
-Keep agents on topic and don't deviate away from the reason your group exists. Ensure your peers do not give up without exhausting all possibilities through the help of FULL agents such as yourself as well as their own abilities.
-
-Carefully read the functions provided to you to learn of your abilities and responsibilities. All instructions are presented through the functions.
-
-Termination should be decided at your discretion. Read the room. If agents have nothing to add, if the conversation reaches a natural conclusion or if the discussion topic switches, it may be time to terminate.
-
-Use the group stats as discovery for your currently "friended" groups. To discover your group peers use get_group_info.
+Keep agents on topic and don't deviate away from the reason your group exists. Ensure your peers do not give up without exhausting all possibilities through the help of MANAGEMENT agents such as yourself as well as their own abilities.
 
 Custom instructions: {custom_instructions}
 
 GROUP STATS
 {group_stats}
 """
+    CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
+    - GROUP_INFO: Able to get group information (list group agents, list group files, stats) on demand via get_group_info function.
+    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. Interpreter can natively work with files for advanced coding usecases.
+    - RETRIEVAL_TOOL: Expands the agent's knowledge base with external documents and data. Uses files to create knowledge base.
+    - FILES: Provides the ability to manage files for data processing and sharing across groups.
+    - MANAGEMENT: Grants the agent the power to modify agents/functions/groups, communicate with other groups, discover entities, and manage group activities (including termination).
+"""
+
     @staticmethod
-    def get_agent(agent_model) -> ConversableAgent:
+    def get_agent(agent_model) -> GPTAssistantAgent:
         from . import BackendService, MakeService
-        agent: ConversableAgent = MakeService.AGENT_REGISTRY.get(agent_model.name)
+        agent: GPTAssistantAgent = MakeService.AGENT_REGISTRY.get(agent_model.name)
         if agent is None:
             backend_agents, err = BackendService.get_backend_agents([agent_model])
             if err is None and len(backend_agents) > 0:
@@ -51,7 +62,7 @@ GROUP STATS
         return agent
 
     @staticmethod
-    def discover_agents(sender: ConversableAgent, query: str, category: str = None) -> str:
+    def discover_agents(sender: GPTAssistantAgent, query: str, category: str = None) -> str:
         from . import BackendService, DiscoverAgentsModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
@@ -61,10 +72,12 @@ GROUP STATS
         return response
 
     @staticmethod
-    def upsert_agent(sender: ConversableAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, type: str = None) -> str: 
-        from . import UpsertAgentModel
+    def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
+        from . import UpsertAgentModel, GROUP_INFO
         if sender is None:
             return json.dumps({"error": "Sender not found"})
+        if not capability & GROUP_INFO:
+            return json.dumps({"error": "GROUP_INFO bit must be set for capability"})
         agent, err = AgentService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=name,
@@ -73,46 +86,69 @@ GROUP STATS
             functions_to_add=functions_to_add,
             functions_to_remove=functions_to_remove,
             category=category,
-            type=type
+            capability=capability
         )])
         if err is not None:
             return err
         return json.dumps({"response": "Agent upserted!"})
 
     @staticmethod
-    def _create_agent(backend_agent) -> ConversableAgent:
-        from . import FunctionsService
-        agent = ConversableAgent(
-                name=backend_agent.name,
-                human_input_mode=backend_agent.human_input_mode,
-                default_auto_reply=backend_agent.default_auto_reply,
-                system_message=backend_agent.system_message,
-                llm_config={"api_key": backend_agent.auth.api_key}
-            )
-        agent.auth = backend_agent.auth
-        if backend_agent.type == "FULL":
-            # register the base functions for every FULL agent
-            for func_spec in function_specs:
+    def _update_capability(agent, backend_agent):
+        from . import FunctionsService, MakeService, GROUP_INFO, MANAGEMENT, FILES, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL
+        agent.llm_config["tools"] = []
+        if backend_agent.capability & GROUP_INFO:
+            for func_spec in group_info_function_specs:
+                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                if error_message:
+                    return error_message
+                FunctionsService.define_function_internal(agent, function_model) 
+        if backend_agent.capability & CODE_INTERPRETER_TOOL:
+            agent.llm_config["tools"].append({"type": "code_interpreter"})
+        if backend_agent.capability & RETRIEVAL_TOOL:
+            agent.llm_config["tools"].append({"type": "retrieval"})
+        if backend_agent.capability & FILES:
+            for func_spec in files_function_specs:
+                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                if error_message:
+                    return error_message
+                FunctionsService.define_function_internal(agent, function_model)  
+        if backend_agent.capability & MANAGEMENT:
+            for func_spec in management_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model)
+        oai_wrapper = OpenAIWrapper(**agent.llm_config)
+        if len(oai_wrapper._clients) > 1:
+            print("GPT Assistant only supports one OpenAI client. Using the first client in the list.")
+        agent._openai_client = oai_wrapper._clients[0]
+        MakeService.AGENT_REGISTRY[agent.name] = agent
+
+    @staticmethod
+    def _create_agent(backend_agent) -> GPTAssistantAgent:
+        agent = GPTAssistantAgent(
+                name=backend_agent.name,
+                human_input_mode=backend_agent.human_input_mode,
+                default_auto_reply=backend_agent.default_auto_reply,
+                instructions=backend_agent.system_message,
+                llm_config={"api_key": backend_agent.auth.api_key}
+            )
+        agent.auth = backend_agent.auth
         return agent
 
     @staticmethod
     def update_agent(agent, backend_agent):
-        from . import FunctionsService, AddFunctionModel, MakeService
+        from . import FunctionsService, AddFunctionModel
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-            agent.client = OpenAIWrapper(**agent.llm_config)
-        MakeService.AGENT_REGISTRY[agent.name] = agent
-    
+        AgentService._update_capability(agent, backend_agent)
+
     @staticmethod
     def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
-        from . import FunctionsService, AddFunctionModel, MakeService
+        from . import FunctionsService, AddFunctionModel
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
@@ -124,8 +160,7 @@ GROUP STATS
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-        agent.client = OpenAIWrapper(**agent.llm_config)
-        MakeService.AGENT_REGISTRY[agent.name] = agent
+        AgentService._update_capability(agent, backend_agent)
         return agent, None
 
     @staticmethod
@@ -170,26 +205,46 @@ GROUP STATS
         communications = f"Incoming communications:\n{incoming_communications}\nOutgoing communications:\n{outgoing_communications}"
         return communications.strip()
 
+
     @staticmethod
-    def update_agent_system_message(agent: ConversableAgent, group_manager: GroupChatManager) -> None:
-        from . import MakeService
-        if agent.type == "FULL":
+    def get_capability_names(capability_number):
+        from . import GROUP_INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
+        capabilities = [
+            ("GROUP_INFO", GROUP_INFO),
+            ("CODE_INTERPRETER_TOOL", CODE_INTERPRETER_TOOL),
+            ("RETRIEVAL_TOOL", RETRIEVAL_TOOL),
+            ("FILES", FILES),
+            ("MANAGEMENT", MANAGEMENT),
+        ]
+        capability_names = [name for name, bit in capabilities if capability_number & bit]
+        return capability_names
+
+    @staticmethod
+    def update_agent_system_message(agent: GPTAssistantAgent, group_manager: GroupChatManager) -> None:
+        from . import MakeService, MANAGEMENT
+        capability_names = AgentService.get_capability_names(agent.capability)
+        capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
+        # Update the system message based on the agent type
+        if agent.capability & MANAGEMENT:
             # Define the new agent system message with placeholders filled in
-            formatted_message = AgentService.FULL_AGENT_SYSTEM_MESSAGE.format(
+            formatted_message = AgentService.MANAGER_AGENT_SYSTEM_MESSAGE.format(
                 agent_name=agent.name,
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_system_message,
-                group_stats=AgentService._generate_group_stats_text(group_manager)
+                capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
+                capabilities=capability_text,
+                group_stats=AgentService._generate_group_stats_text(group_manager),
             )
             agent.update_system_message(formatted_message)
-        elif agent.type == "BASIC":
+        else:
             # Define the new agent system message with placeholders filled in
             formatted_message = AgentService.BASIC_AGENT_SYSTEM_MESSAGE.format(
                 agent_name=agent.name,
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
-                custom_instructions=agent.custom_system_message
+                custom_instructions=agent.custom_system_message,
+                capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
+                capabilities=capability_text
             )
             agent.update_system_message(formatted_message)
-        

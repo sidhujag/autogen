@@ -23,6 +23,7 @@ class GPTAssistantAgent(ConversableAgent):
         name="GPT Assistant",
         instructions: Optional[str] = "You are a helpful GPT Assistant.",
         llm_config: Optional[Union[Dict, bool]] = None,
+        **kwargs,
     ):
         """
         Args:
@@ -34,12 +35,14 @@ class GPTAssistantAgent(ConversableAgent):
                 - tools: Give Assistants access to OpenAI-hosted tools like Code Interpreter and Knowledge Retrieval,
                         or build your own tools using Function calling. ref https://platform.openai.com/docs/assistants/tools
                 - file_ids: files used by retrieval in run
+                - assistant_id: pre-assigned assistant ID
         """
         super().__init__(
             name=name,
             system_message=instructions,
             human_input_mode="NEVER",
             llm_config=llm_config,
+            **kwargs,
         )
 
         # Use AutoGen OpenAIWrapper to create a client
@@ -138,10 +141,60 @@ class GPTAssistantAgent(ConversableAgent):
         """
         while True:
             run = self._wait_for_run(run.id, thread.id)
-            if run.status == "completed":
-                response_messages = self._openai_client.beta.threads.messages.list(thread.id, order="asc")
-
+            if run.status == "failed":
                 new_messages = []
+                print(f'Run: {run.id} Thread: {thread.id}: failed...')
+                if run.last_error:
+                    new_messages.append(
+                        {
+                            "role": msg.role,
+                            "content": f'Last error: {run.last_error}',
+                        }
+                    )
+                new_messages.append(
+                    {
+                        "role": msg.role,
+                        "content": 'Failed',
+                    }
+                )
+                return new_messages
+            elif run.status == "cancelling":
+                print(f'Run: {run.id} Thread: {thread.id}: cancelling...')
+            elif run.status == "expired":
+                print(f'Run: {run.id} Thread: {thread.id}: expired...')
+                new_messages = []
+                new_messages.append(
+                    {
+                        "role": msg.role,
+                        "content": 'Expired',
+                    }
+                )
+                return new_messages
+            elif run.status == "cancelled":
+                print(f'Run: {run.id} Thread: {thread.id}: cancelled...')
+                new_messages = []
+                new_messages.append(
+                    {
+                        "role": msg.role,
+                        "content": 'Cancelled',
+                    }
+                )
+                return new_messages
+            elif run.status == "in_progress":
+                print(f'Run: {run.id} Thread: {thread.id}: in progress...')
+            elif run.status == "queued":
+                print(f'Run: {run.id} Thread: {thread.id}: queued...')
+            elif run.status == "completed":
+                response_messages = self._openai_client.beta.threads.messages.list(thread.id, order="asc")
+                
+                new_messages = []
+                if run.last_error:
+                    new_messages.append(
+                        {
+                            "role": msg.role,
+                            "content": f'Last error: {run.last_error}',
+                        }
+                    )
                 for msg in response_messages:
                     if msg.run_id == run.id:
                         for content in msg.content:

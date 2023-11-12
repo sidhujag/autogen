@@ -1,8 +1,9 @@
-from .. import ConversableAgent, GroupChatManager
+from .. import GroupChatManager
+from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 
 class MakeService:
     
-    AGENT_REGISTRY: dict[str, ConversableAgent] = {}
+    AGENT_REGISTRY: dict[str, GPTAssistantAgent] = {}
     GROUP_REGISTRY: dict[str, GroupChatManager] = {}
     @staticmethod
     def get_service(service_type):

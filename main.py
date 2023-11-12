@@ -3,8 +3,8 @@ import logging
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from autogen.agentchat import ConversableAgent
-from autogen.agentchat.service import UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, FunctionsService
+from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
+from autogen.agentchat.service import UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT
 from typing import List
 from hanging_threads import start_monitoring
 monitoring_thread = start_monitoring()
@@ -38,7 +38,7 @@ async def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
         category="user",
-        type="FULL"
+        capability=MANAGEMENT
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager",
@@ -47,7 +47,7 @@ async def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the manager speaking.",
         category="planning",
-        type="FULL"
+        capability=MANAGEMENT
     )
     coder_assistant_model = UpsertAgentModel(
         name="coder_assistant",
@@ -79,7 +79,7 @@ async def query(input: QueryModel):
         management_group_model,
         planning_group_model
     ]
-    agents: List[ConversableAgent] = None
+    agents: List[GPTAssistantAgent] = None
     agents, err = AgentService.upsert_agents(agent_models)
     if err is not None:
         print(f'Error creating agents {err}')
