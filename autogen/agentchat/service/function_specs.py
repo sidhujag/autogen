@@ -206,6 +206,62 @@ upsert_function_spec = {
     },
 }
 
+
+upload_file_spec = {
+    "name": "upload_file",
+    "category": "programming",
+    "class_name": "AgentService.upload_file",
+    "description": "Upload a file to be used by assistant tools like code interpreter and retrieval.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "description": {
+                "type": "string",
+                "description": "A short description of the file.",
+            },
+            "data_or_url": {
+                "type": "string",
+                "description": "File data text, or a URL for where the file is which will be downloaded before uploading to OpenAI.",
+            },
+        },
+        "required": ["description", "data_or_url"],
+    },
+}
+
+delete_files_spec = {
+    "name": "delete_files",
+    "category": "programming",
+    "class_name": "AgentService.delete_files",
+    "description": "Delete file(s) linked to an agent.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "file_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "File(s) to delete from agent."
+            },
+        },
+        "required": ["file_ids"],
+    },
+}
+
+get_file_content_spec = {
+    "name": "get_file_content",
+    "category": "programming",
+    "class_name": "AgentService.get_file_content",
+    "description": "Get contents of a file.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "file_id": {
+                "type": "string",
+                "description": "File reference to get contents of.",
+            },
+        },
+        "required": ["file_id"],
+    },
+}
 group_info_function_specs = [
     get_group_info_spec,
 ]
@@ -220,6 +276,9 @@ management_function_specs = [
     upsert_function_spec, 
     terminate_group_spec
 ]
+
 files_function_specs = [
-    
+    upload_file_spec,
+    delete_files_spec,
+    get_file_content_spec
 ]

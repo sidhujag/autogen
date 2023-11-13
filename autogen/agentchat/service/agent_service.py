@@ -1,9 +1,10 @@
 from .. import GroupChatManager
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List, Optional, Union
-from autogen import OpenAIWrapper
 from autogen.agentchat.service.function_specs import management_function_specs, group_info_function_specs, files_function_specs
 import json
+import requests
+import openai
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
@@ -91,6 +92,89 @@ GROUP STATS
         if err is not None:
             return err
         return json.dumps({"response": "Agent upserted!"})
+
+    @staticmethod
+    def upload_file(sender: GPTAssistantAgent, description: str, data_or_url: str) -> str:
+        from . import UpsertAgentModel
+        if sender is None:
+            return json.dumps({"error": "Sender not found"})
+
+        # Step 1: Download the file if `data_or_url` is a URL
+        if data_or_url.startswith('http://') or data_or_url.startswith('https://'):
+            response = requests.get(data_or_url)
+            if response.status_code != 200:
+                return json.dumps({"error": f"Failed to download the file from URL: {data_or_url}"})
+            file_data = response.content
+        else:
+            file_data = data_or_url
+
+        # Step 2: Upload the file to OpenAI
+        response = sender._openai_client.files.upload(file=file_data, purpose='assistants')
+        if 'id' not in response:
+            return json.dumps({"error": "Failed to upload the file to OpenAI"})
+
+        file_id = response['id']
+
+        # Step 3: Update the agent's record to include the new file_id
+        agent, err = AgentService.upsert_agents([UpsertAgentModel(
+            auth=sender.auth,
+            name=sender.name,
+            files_to_add={file_id: description}
+        )])
+        if err is not None:
+            return err
+        return json.dumps({"response": "File uploaded and agent updated successfully!"})
+
+    @staticmethod
+    def delete_files(sender: GPTAssistantAgent, file_ids: List[str]) -> str:
+        from . import UpsertAgentModel
+        if sender is None:
+            return json.dumps({"error": "Sender not found"})
+
+        # Step 1: Delete each file using OpenAI File API
+        errors = []
+        for file_id in file_ids:
+            try:
+                response = sender._openai_client.files.delete(file_id)
+                if 'error' in response:
+                    errors.append(f"Failed to delete file {file_id}: {response['error']}")
+            except Exception as e:
+                errors.append(f"Exception occurred while deleting file {file_id}: {str(e)}")
+
+        if errors:
+            return json.dumps({"error": "Some or all files failed to delete.", "details": errors})
+
+        # Step 2: Update the agent's record to remove the file_ids
+        try:
+            agent, err = AgentService.upsert_agents([UpsertAgentModel(
+                auth=sender.auth,
+                name=sender.name,
+                files_to_remove=file_ids
+            )])
+            if err is not None:
+                return err
+        except Exception as e:
+            return json.dumps({"error": f"Failed to update the agent after file deletion: {str(e)}"})
+
+        return json.dumps({"response": "Files deleted and agent updated successfully!"})
+
+    @staticmethod
+    def get_file_content(sender: GPTAssistantAgent, file_id: str) -> str:
+        if sender is None:
+            return json.dumps({"error": "Sender not found"})
+
+        try:
+            # Use the OpenAI client to retrieve the file content directly
+            api_response = sender._openai_client.files.with_raw_response.retrieve_content(file_id)
+            
+            # Check if the request was successful
+            if api_response.status_code == 200:
+                content = api_response.content.decode('utf-8')  # Assuming the content is text
+                return json.dumps({"response": content})
+            else:
+                return json.dumps({"error": f"Failed to retrieve file content, status code: {api_response.status_code}"})
+        except Exception as e:
+            return json.dumps({"error": f"Failed to retrieve file content: {str(e)}"})
 
     @staticmethod
     def _update_capability(agent):

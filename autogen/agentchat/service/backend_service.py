@@ -36,10 +36,6 @@ class DiscoverFunctionsModel(BaseModel):
     category: str
     auth: AuthAgent
 
-class File(BaseModel):
-    file_id: str = Field(default="")
-    description: str = Field(default="")
-    
 class UpsertAgentModel(BaseModel):
     name: str
     auth: AuthAgent
@@ -52,8 +48,8 @@ class UpsertAgentModel(BaseModel):
     functions_to_remove: Optional[List[str]] = None
     category: Optional[str] = None
     capability: Optional[int] = None
-    files_to_add: Optional[List[File]] = None
-    files_to_remove: Optional[List[File]] = None
+    files_to_add: Optional[Dict[str, str]] = None
+    files_to_remove: Optional[List[str]] = None
 
 class UpsertGroupModel(BaseModel):
     name: str
@@ -72,7 +68,7 @@ class BaseAgent(BaseModel):
     system_message: str = Field(default="")
     category: str = Field(default="")
     capability: int = Field(default=1)
-    files: Dict[str, File] = Field(default_factory=dict)
+    files: Dict[str, str] = Field(default_factory=dict)
     
 class BaseGroup(BaseModel):
     name: str = Field(default="")
