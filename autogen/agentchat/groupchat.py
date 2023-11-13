@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import sys
 from typing import Dict, List, Optional, Union
 from .agent import Agent
-from .contrib.gpt_assistant_agent import GPTAssistantAgent
+from .conversable_agent import ConversableAgent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ Current speaker:
 Read the following conversation.
 Then select the next speaker from {[agent.name for agent in agents]}. Take note of agents' capabilities. Only return the speaker name. Agent's shouldn't talk to themselves."""
 
-    def select_speaker(self, last_speaker: Agent, selector: GPTAssistantAgent):
+    def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
         """Select the next speaker."""
         if self.func_call_filter and self.messages and ("function_call" in self.messages[-1] or self.messages[-1]["role"] == "function"):
             return last_speaker
@@ -112,7 +112,7 @@ Then select the next speaker from {[agent.name for agent in agents]}. Take note 
         return "\n".join(roles)
 
 
-class GroupChatManager(GPTAssistantAgent):
+class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
 
     def __init__(
@@ -129,7 +129,7 @@ class GroupChatManager(GPTAssistantAgent):
             name=name,
             max_consecutive_auto_reply=max_consecutive_auto_reply,
             human_input_mode=human_input_mode,
-            instructions=system_message,
+            system_message=system_message,
             **kwargs,
         )
         # Order of register_reply is important.
