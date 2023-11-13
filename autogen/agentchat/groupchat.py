@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import sys
 from typing import Dict, List, Optional, Union
 from .agent import Agent
-from .conversable_agent import ConversableAgent
+from .contrib.gpt_assistant_agent import GPTAssistantAgent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -63,9 +63,9 @@ Current speaker:
 {AgentService.CAPABILITY_SYSTEM_MESSAGE}
 
 Read the following conversation.
-Then select the next speaker from {[agent.name for agent in agents]}. You can keep the same speaker if he should continue on his task. Take note of agents' capabilities. Only return the speaker name."""
+Then select the next speaker from {[agent.name for agent in agents]}. Take note of agents' capabilities. Only return the speaker name. Agent's shouldn't talk to themselves."""
 
-    def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
+    def select_speaker(self, last_speaker: Agent, selector: GPTAssistantAgent):
         """Select the next speaker."""
         if self.func_call_filter and self.messages and ("function_call" in self.messages[-1] or self.messages[-1]["role"] == "function"):
             return last_speaker
@@ -83,7 +83,7 @@ Then select the next speaker from {[agent.name for agent in agents]}. You can ke
             + [
                 {
                     "role": "system",
-                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Note the capability of each agent. Only return the speaker name.",
+                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Note the capability of each agent. Only return the speaker name. Agent's shouldn't talk to themselves.",
                 }
             ]
         )
@@ -112,7 +112,7 @@ Then select the next speaker from {[agent.name for agent in agents]}. You can ke
         return "\n".join(roles)
 
 
-class GroupChatManager(ConversableAgent):
+class GroupChatManager(GPTAssistantAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
 
     def __init__(
@@ -129,7 +129,7 @@ class GroupChatManager(ConversableAgent):
             name=name,
             max_consecutive_auto_reply=max_consecutive_auto_reply,
             human_input_mode=human_input_mode,
-            system_message=system_message,
+            instructions=system_message,
             **kwargs,
         )
         # Order of register_reply is important.

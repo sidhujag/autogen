@@ -5,7 +5,7 @@ from autogen import OpenAIWrapper
 from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
-from autogen.agentchat.service import UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, GROUP_INFO
+from autogen.agentchat.service import UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, GROUP_INFO, CODE_INTERPRETER_TOOL, FILES, RETRIEVAL_TOOL
 from typing import List
 from hanging_threads import start_monitoring
 monitoring_thread = start_monitoring()
@@ -63,7 +63,7 @@ async def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
         category="user",
-        capability=MANAGEMENT | GROUP_INFO
+        capability=MANAGEMENT | GROUP_INFO | CODE_INTERPRETER_TOOL | FILES | RETRIEVAL_TOOL
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager",

@@ -83,7 +83,7 @@ GROUP STATS
         id = None
         if agent is None:
             # place holder to get assistant id
-            openai_assistant = sender._openai_client.beta.assistants.create(
+            openai_assistant = sender.openai_client.beta.assistants.create(
                 name=name,
                 instructions="",
                 tools=[],
@@ -124,7 +124,7 @@ GROUP STATS
             file_data = data_or_url
 
         # Step 2: Upload the file to OpenAI
-        response = sender._openai_client.files.upload(file=file_data, purpose='assistants')
+        response = sender.openai_client.files.upload(file=file_data, purpose='assistants')
         if 'id' not in response:
             return json.dumps({"error": "Failed to upload the file to OpenAI"})
 
@@ -150,7 +150,7 @@ GROUP STATS
         errors = []
         for file_id in file_ids:
             try:
-                response = sender._openai_client.files.delete(file_id)
+                response = sender.openai_client.files.delete(file_id)
                 if 'error' in response:
                     errors.append(f"Failed to delete file {file_id}: {response['error']}")
             except Exception as e:
@@ -180,7 +180,7 @@ GROUP STATS
 
         try:
             # Use the OpenAI client to retrieve the file content directly
-            api_response = sender._openai_client.files.with_raw_response.retrieve_content(file_id)
+            api_response = sender.openai_client.files.with_raw_response.retrieve_content(file_id)
             
             # Check if the request was successful
             if api_response.status_code == 200:
@@ -242,7 +242,7 @@ GROUP STATS
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-        agent._openai_assistant = agent._openai_client.beta.assistants.update(
+        agent._openai_assistant = agent.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
             description=agent.description,
@@ -263,7 +263,7 @@ GROUP STATS
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-        agent._openai_assistant = agent._openai_client.beta.assistants.update(
+        agent._openai_assistant = agent.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
             description=agent.description,
@@ -356,7 +356,7 @@ GROUP STATS
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text
             )
-        agent._openai_assistant = agent._openai_client.beta.assistants.update(
+        agent._openai_assistant = agent.openai_client.beta.assistants.update(
             assistant_id=agent.assistant_id,
             instructions=formatted_message,
         )

@@ -23,7 +23,7 @@ class GroupService:
         return manager
     
     @staticmethod
-    async def get_group_info(sender: GPTAssistantAgent, group: str) -> str:
+    def get_group_info(sender: GPTAssistantAgent, group: str) -> str:
         from . import BackendService, GetGroupModel, AgentService, MakeService, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
@@ -98,7 +98,7 @@ class GroupService:
         if group_manager.delegator:
             group_manager.send(response, group_manager.delegator, request_reply=True)
             group_manager.delegator = None
-        return "TERMINATE"
+        return "reply with only 'TERMINATE' to end the conversation"
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
         from . import GetGroupModel, BackendService, UpdateComms
@@ -133,7 +133,7 @@ class GroupService:
             return err
         to_group_manager.delegator = from_group_manager
         from_group_manager.send(message, to_group_manager, request_reply=True)
-        return "TERMINATE"
+        return "reply with only 'TERMINATE' to pause this group because you have delegated control to another group"
     
     @staticmethod
     def _create_group(backend_group):
