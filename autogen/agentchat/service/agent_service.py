@@ -231,15 +231,13 @@ GROUP STATS
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-        file_ids = []
-        if len(backend_agent.files) > 0:
-            file_ids = [file.file_id for file in backend_agent.files.values()]
         agent._openai_assistant = agent._openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
             description=agent.description,
             tools=agent.llm_config.get("tools", []),
-            file_ids=file_ids,
+            file_ids=list(backend_agent.files.keys())
+,
         )
 
     @staticmethod
@@ -256,15 +254,12 @@ GROUP STATS
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-        file_ids = []
-        if len(backend_agent.files) > 0:
-            file_ids = [file.file_id for file in backend_agent.files.values()]
         agent._openai_assistant = agent._openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
             description=agent.description,
             tools=agent.llm_config.get("tools", []),
-            file_ids=file_ids,
+            file_ids=list(backend_agent.files.keys())
         )
         return agent, None
 
