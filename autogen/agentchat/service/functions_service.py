@@ -31,25 +31,37 @@ class FunctionsService:
 
     @staticmethod
     def define_function_internal(
-        agent: GPTAssistantAgent, 
+        agent: GPTAssistantAgent,
         function
-        ) -> str:
+    ) -> str:
         from .backend_service import OpenAIParameter
         function.parameters = function.parameters or OpenAIParameter()
-        function_config = {
-            "name": function.name,
-            "description": function.description,
-            "parameters": function.parameters.dict(exclude_none=True),
+        
+        # Prepare the function tool configuration
+        function_tool_config = {
+            "type": "function",
+            "function": {
+                "name": function.name,
+                "description": function.description,
+                "parameters": function.parameters.dict(exclude_none=True)
+            }
         }
-        # Check if a function with the same name already exists
-        if 'functions' not in agent.llm_config:
-            agent.llm_config["functions"]= []
-        existing_function_index = next((index for (index, d) in enumerate(agent.llm_config["functions"]) if d["name"] == function.name), None)
+        
+        # Check if a tool with the same name already exists
+        if 'tools' not in agent.llm_config:
+            agent.llm_config["tools"] = []
+        existing_tool_index = next(
+            (index for (index, d) in enumerate(agent.llm_config["tools"]) if d["function"]["name"] == function.name),
+            None
+        )
+        
         # If it does, update that entry; if not, append a new entry
-        if existing_function_index is not None:
-            agent.llm_config["functions"][existing_function_index] = function_config
+        if existing_tool_index is not None:
+            agent.llm_config["tools"][existing_tool_index] = function_tool_config
         else:
-            agent.llm_config["functions"].append(function_config)
+            agent.llm_config["tools"].append(function_tool_config)
+        
+        # If the function has a class_name, find and register it
         if function.class_name and function.class_name != "":
             class_name, module_name = function.class_name.rsplit(".", 1)
             ServiceClass = FunctionsService._find_class(class_name)
@@ -66,6 +78,7 @@ class FunctionsService:
             else:
                 return json.dumps({"error": f"Class {class_name} not found"})
         else:
+            # For functions without class_name, prepare them for direct execution
             if not function.function_code or function.function_code == "":
                 return json.dumps({"error": "function code was empty unexpectedly, either define a class_name or function_code"})
             agent.register_function(
@@ -73,7 +86,6 @@ class FunctionsService:
                     function.name: lambda **args: FunctionsService.execute_func(function.function_code, **args)
                 }
             )
-            
         return json.dumps({"response": "Function added!"})
  
     @staticmethod

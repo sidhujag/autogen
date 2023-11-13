@@ -93,45 +93,46 @@ GROUP STATS
         return json.dumps({"response": "Agent upserted!"})
 
     @staticmethod
-    def _update_capability(agent, backend_agent):
+    def _update_capability(agent):
         from . import FunctionsService, MakeService, GROUP_INFO, MANAGEMENT, FILES, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL
         agent.llm_config["tools"] = []
-        if backend_agent.capability & GROUP_INFO:
+        if agent.capability & GROUP_INFO:
             for func_spec in group_info_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model) 
-        if backend_agent.capability & CODE_INTERPRETER_TOOL:
+        if agent.capability & CODE_INTERPRETER_TOOL:
             agent.llm_config["tools"].append({"type": "code_interpreter"})
-        if backend_agent.capability & RETRIEVAL_TOOL:
+        if agent.capability & RETRIEVAL_TOOL:
             agent.llm_config["tools"].append({"type": "retrieval"})
-        if backend_agent.capability & FILES:
+        if agent.capability & FILES:
             for func_spec in files_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model)  
-        if backend_agent.capability & MANAGEMENT:
+        if agent.capability & MANAGEMENT:
             for func_spec in management_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model)
-        oai_wrapper = OpenAIWrapper(**agent.llm_config)
-        if len(oai_wrapper._clients) > 1:
-            print("GPT Assistant only supports one OpenAI client. Using the first client in the list.")
-        agent._openai_client = oai_wrapper._clients[0]
         MakeService.AGENT_REGISTRY[agent.name] = agent
 
     @staticmethod
-    def _create_agent(backend_agent) -> GPTAssistantAgent:
+    def _create_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None) -> GPTAssistantAgent:
+        config = {"api_key": backend_agent.auth.api_key, "assistant_id": backend_agent.assistant_id}
+        if llm_config:
+            llm_config.update(config)
+        else:
+           llm_config = config
         agent = GPTAssistantAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 instructions=backend_agent.system_message,
-                llm_config={"api_key": backend_agent.auth.api_key}
+                llm_config=llm_config
             )
         agent.auth = backend_agent.auth
         return agent
@@ -141,26 +142,46 @@ GROUP STATS
         from . import FunctionsService, AddFunctionModel
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
+        agent.capability = backend_agent.capability
+        agent.llm_config["tools"] = AgentService._update_capability(agent)
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-        AgentService._update_capability(agent, backend_agent)
+        file_ids = []
+        if len(backend_agent.files) > 0:
+            file_ids = [file.file_id for file in backend_agent.files.values()]
+        agent._openai_assistant = agent._openai_client.beta.assistants.update(
+            assistant_id=agent.llm_config.get("assistant_id", None),
+            instructions=agent.system_message,
+            description=agent.description,
+            tools=agent.llm_config.get("tools", []),
+            file_ids=file_ids,
+        )
 
     @staticmethod
     def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
         from . import FunctionsService, AddFunctionModel
-        agent = AgentService._create_agent(backend_agent)
+        llm_config['assistant_id'] = backend_agent.assistant_id
+        agent = AgentService._create_agent(backend_agent, llm_config)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
         agent.description = backend_agent.description
         agent.custom_system_message = agent.system_message
-        agent.type = backend_agent.type
-        if llm_config:
-            agent.llm_config.update(llm_config)
+        agent.capability = backend_agent.capability
+        AgentService._update_capability(agent)
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
-        AgentService._update_capability(agent, backend_agent)
+        file_ids = []
+        if len(backend_agent.files) > 0:
+            file_ids = [file.file_id for file in backend_agent.files.values()]
+        agent._openai_assistant = agent._openai_client.beta.assistants.update(
+            assistant_id=agent.llm_config.get("assistant_id", None),
+            instructions=agent.system_message,
+            description=agent.description,
+            tools=agent.llm_config.get("tools", []),
+            file_ids=file_ids,
+        )
         return agent, None
 
     @staticmethod
@@ -224,6 +245,7 @@ GROUP STATS
         from . import MakeService, MANAGEMENT
         capability_names = AgentService.get_capability_names(agent.capability)
         capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
+        formatted_message = None
         # Update the system message based on the agent type
         if agent.capability & MANAGEMENT:
             # Define the new agent system message with placeholders filled in
@@ -236,7 +258,6 @@ GROUP STATS
                 capabilities=capability_text,
                 group_stats=AgentService._generate_group_stats_text(group_manager),
             )
-            agent.update_system_message(formatted_message)
         else:
             # Define the new agent system message with placeholders filled in
             formatted_message = AgentService.BASIC_AGENT_SYSTEM_MESSAGE.format(
@@ -247,4 +268,7 @@ GROUP STATS
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text
             )
-            agent.update_system_message(formatted_message)
+        agent._openai_assistant = agent._openai_client.beta.assistants.update(
+            assistant_id=agent.assistant_id,
+            instructions=formatted_message,
+        )

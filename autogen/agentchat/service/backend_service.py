@@ -36,6 +36,10 @@ class DiscoverFunctionsModel(BaseModel):
     category: str
     auth: AuthAgent
 
+class File(BaseModel):
+    file_id: str = Field(default="")
+    description: str = Field(default="")
+    
 class UpsertAgentModel(BaseModel):
     name: str
     auth: AuthAgent
@@ -48,10 +52,8 @@ class UpsertAgentModel(BaseModel):
     functions_to_remove: Optional[List[str]] = None
     category: Optional[str] = None
     capability: Optional[int] = None
-
-class File(BaseModel):
-    file_id: str = Field(default="")
-    description: str = Field(default="")
+    files_to_add: Optional[List[File]] = None
+    files_to_remove: Optional[List[File]] = None
 
 class UpsertGroupModel(BaseModel):
     name: str
@@ -59,18 +61,18 @@ class UpsertGroupModel(BaseModel):
     description: Optional[str] = None
     agents_to_add: Optional[List[str]] = None
     agents_to_remove: Optional[List[str]] = None
-    files_to_add: Optional[List[File]] = None
-    files_to_remove: Optional[List[File]] = None
       
 class BaseAgent(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent
+    assistant_id: str = Field(default="")
     description: str = Field(default="")
     human_input_mode: str = Field(default="TERMINATE")
     default_auto_reply: str = Field(default="")
     system_message: str = Field(default="")
     category: str = Field(default="")
     capability: int = Field(default=1)
+    files: Dict[str, File] = Field(default_factory=dict)
     
 class BaseGroup(BaseModel):
     name: str = Field(default="")
@@ -79,7 +81,6 @@ class BaseGroup(BaseModel):
     agent_names: List[str] = Field(default_factory=list)
     outgoing: Dict[str, int] = Field(default_factory=dict)
     incoming: Dict[str, int] = Field(default_factory=dict)
-    files: Dict[str, File] = Field(default_factory=dict)
 
 class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)
