@@ -117,7 +117,7 @@ upsert_agent = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "programming", "planning", "user"]
             },
             "capability": {
-                "type": "int",
+                "type": "number",
                 "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for GROUP_INFO, 2 for CODE_INTERPRETER_TOOL, 4 for RETRIEVAL_TOOL, 8 for FILES, and 16 for MANAGEMENT. Bit 1 (GROUP_INFO) must always be enabled. Combine capabilities by adding the values of their masks together."
             }
         },

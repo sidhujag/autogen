@@ -74,11 +74,25 @@ GROUP STATS
 
     @staticmethod
     def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
-        from . import UpsertAgentModel, GROUP_INFO
+        from . import UpsertAgentModel, GROUP_INFO, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
         if not capability & GROUP_INFO:
             return json.dumps({"error": "GROUP_INFO bit must be set for capability"})
+        agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
+        id = None
+        if agent is None:
+            # place holder to get assistant id
+            openai_assistant = sender._openai_client.beta.assistants.create(
+                name=name,
+                instructions="",
+                tools=[],
+                model="gpt-4-1106-preview",
+            )
+            id = openai_assistant.id
+        else:
+            id = agent._openai_assistant.id
+            
         agent, err = AgentService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=name,
@@ -87,7 +101,8 @@ GROUP STATS
             functions_to_add=functions_to_add,
             functions_to_remove=functions_to_remove,
             category=category,
-            capability=capability
+            capability=capability,
+            assistant_id=id
         )])
         if err is not None:
             return err
@@ -205,12 +220,8 @@ GROUP STATS
         MakeService.AGENT_REGISTRY[agent.name] = agent
 
     @staticmethod
-    def _create_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None) -> GPTAssistantAgent:
-        config = {"api_key": backend_agent.auth.api_key, "assistant_id": backend_agent.assistant_id}
-        if llm_config:
-            llm_config.update(config)
-        else:
-           llm_config = config
+    def _create_agent(backend_agent) -> GPTAssistantAgent:
+        llm_config = {"api_key": backend_agent.auth.api_key, "assistant_id": backend_agent.assistant_id}
         agent = GPTAssistantAgent(
                 name=backend_agent.name,
                 human_input_mode=backend_agent.human_input_mode,
@@ -227,7 +238,7 @@ GROUP STATS
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
-        agent.llm_config["tools"] = AgentService._update_capability(agent)
+        AgentService._update_capability(agent)
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
@@ -237,14 +248,12 @@ GROUP STATS
             description=agent.description,
             tools=agent.llm_config.get("tools", []),
             file_ids=list(backend_agent.files.keys())
-,
         )
 
     @staticmethod
-    def make_agent(backend_agent, llm_config: Optional[Union[dict, bool]] = None):
+    def make_agent(backend_agent):
         from . import FunctionsService, AddFunctionModel
-        llm_config['assistant_id'] = backend_agent.assistant_id
-        agent = AgentService._create_agent(backend_agent, llm_config)
+        agent = AgentService._create_agent(backend_agent)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
         agent.description = backend_agent.description

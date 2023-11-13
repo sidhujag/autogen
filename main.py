@@ -1,10 +1,11 @@
 import os
 import logging
 
+from autogen import OpenAIWrapper
 from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
-from autogen.agentchat.service import UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT
+from autogen.agentchat.service import UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, GROUP_INFO
 from typing import List
 from hanging_threads import start_monitoring
 monitoring_thread = start_monitoring()
@@ -20,8 +21,32 @@ class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
 
+def upsert_agents(models, auth, client):
+    for model in models:
+        agent = AgentService.get_agent(GetAgentModel(auth=auth, name=model.name))
+        id = None
+        if agent is None:
+            # place holder to get assistant id
+            openai_assistant = client.beta.assistants.create(
+                name=model.name,
+                instructions="",
+                tools=[],
+                model="gpt-4-1106-preview",
+            )
+            id = openai_assistant.id
+        else:
+            id = agent._openai_assistant.id
+        model.assistant_id = id
+    agents, err = AgentService.upsert_agents(models)
+    if err is not None:
+        return None, err
+    return agents, None
+
 @app.post('/query/')
 async def query(input: QueryModel):
+    oai_wrapper = OpenAIWrapper(api_key=input.auth.api_key)
+    openai_client = oai_wrapper._clients[0]
+            
     user_model = UpsertAgentModel(
         name="UserProxyAgent",
         auth=input.auth,
@@ -38,7 +63,7 @@ async def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
         category="user",
-        capability=MANAGEMENT
+        capability=MANAGEMENT | GROUP_INFO
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager",
@@ -47,7 +72,7 @@ async def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the manager speaking.",
         category="planning",
-        capability=MANAGEMENT
+        capability=MANAGEMENT | GROUP_INFO
     )
     coder_assistant_model = UpsertAgentModel(
         name="coder_assistant",
@@ -80,7 +105,7 @@ async def query(input: QueryModel):
         planning_group_model
     ]
     agents: List[GPTAssistantAgent] = None
-    agents, err = AgentService.upsert_agents(agent_models)
+    agents, err = upsert_agents(agent_models, input.auth, openai_client)
     if err is not None:
         print(f'Error creating agents {err}')
         return

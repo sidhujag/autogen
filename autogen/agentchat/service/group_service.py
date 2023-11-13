@@ -36,7 +36,7 @@ class GroupService:
         for backend_group in backend_groups:
             agents_list = []
             for agent_name in backend_group.agent_names:
-                agent = await AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
+                agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
                 if agent is None:
                     return json.dumps({"error": f"Could not get group agent: {agent_name}"})
 

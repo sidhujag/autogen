@@ -91,7 +91,6 @@ class GPTAssistantAgent(ConversableAgent):
         super().__init__(
             name=name,
             system_message=instructions,
-            human_input_mode="NEVER",
             llm_config=llm_config,
             **kwargs
         )
