@@ -41,10 +41,13 @@ class GroupService:
                     return json.dumps({"error": f"Could not get group agent: {agent_name}"})
 
                 short_description = MakeService._get_short_description(agent.description)
+                capability_names = AgentService.get_capability_names(agent.capability)
+                capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
                 agents_list.append({
                     "name": agent.name,
-                    "type": agent.type,
-                    "description": short_description
+                    "capabilities": capability_text,
+                    "description": short_description,
+                    "files": agent.files
                 })
 
             # Replace agent_names with agents objects
