@@ -2,11 +2,80 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://microsoft.github.io/autogen/blog</id>
     <title>AutoGen Blog</title>
-    <updated>2023-11-09T00:00:00.000Z</updated>
+    <updated>2023-11-13T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://microsoft.github.io/autogen/blog"/>
     <subtitle>AutoGen Blog</subtitle>
     <icon>https://microsoft.github.io/autogen/img/ag.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[AutoGen Meets GPTs]]></title>
+        <id>AutoGen Meets GPTs</id>
+        <link href="https://microsoft.github.io/autogen/blog/2023/11/13/OAI-assistants"/>
+        <updated>2023-11-13T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[OpenAI Assistant]]></summary>
+        <content type="html"><![CDATA[<p><img src="img/teaser.jpg" alt="OpenAI Assistant"/></p><p align="center"><em>AutoGen enables collaboration among multiple ChatGPTs for complex tasks.</em></p><h2>TLDR</h2><p>OpenAI assistants are now integrated into AutoGen via <a href="https://github.com/microsoft/autogen/blob/main/autogen/agentchat/contrib/gpt_assistant_agent.py"><code>GPTAssistantAgent</code></a>.
+This enables multiple OpenAI assistants, which form the backend of the now popular GPTs, to collaborate and tackle complex tasks.
+Checkout example notebooks for reference:</p><ul><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_oai_assistant_twoagents_basic.ipynb">Basic example</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_oai_code_interpreter.ipynb">Code interpreter</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_oai_assistant_function_call.ipynb">Function calls</a></li></ul><h2>Introduction</h2><p>Earlier last week, OpenAI introduced <a href="https://openai.com/blog/introducing-gpts">GPTs</a>, giving users ability to create custom ChatGPTs tailored for them.
+<em>But what if these individual GPTs could collaborate to do even more?</em>
+Fortunately, because of AutoGen, this is now a reality!
+AutoGen has been pioneering agents and supporting <a href="https://aka.ms/autogen-pdf">multi-agent workflows</a> since earlier this year, and now (starting with version 0.2.0b5) we are introducing compatibility with the <a href="https://openai.com/blog/introducing-gpts">Assistant API</a>, which is currently in beta preview.</p><p>To accomplish this, we&#x27;ve added a new (experimental) agent called the <code>GPTAssistantAgent</code> that
+lets you seamlessly add these new OpenAI assistants into AutoGen-based multi-agent workflows.
+This integration shows great potential and synergy, and we plan to continue enhancing it.</p><h2>Installation</h2><pre><code class="language-bash">pip install pyautogen
+</code></pre><h2>Basic Example</h2><p>Here&#x27;s a basic example that uses a <code>UserProxyAgent</code> to allow an interface
+with the <code>GPTAssistantAgent</code>.</p><p>First, import the new agent and setup <code>config_list</code>:</p><pre><code class="language-python">from autogen import config_list_from_json
+from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
+from autogen import UserProxyAgent
+
+config_list = config_list_from_json(&quot;OAI_CONFIG_LIST&quot;)
+</code></pre><p>Then simply define the OpenAI assistant agent and give it the task!</p><pre><code class="language-python"># creates new assistant using Assistant API
+gpt_assistant = GPTAssistantAgent(
+    name=&quot;assistant&quot;,
+    llm_config={
+        &quot;config_list&quot;: config_list,
+        &quot;assistant_id&quot;: None
+    })
+
+user_proxy = UserProxyAgent(name=&quot;user_proxy&quot;,
+    code_execution_config={
+        &quot;work_dir&quot;: &quot;coding&quot;
+    },
+    human_input_mode=&quot;NEVER&quot;)
+
+user_proxy.initiate_chat(gpt_assistant, message=&quot;Print hello world&quot;)
+</code></pre><p><code>GPTAssistantAgent</code> supports both creating new OpenAI assistants or reusing existsing assistants
+(e.g, by providing an <code>assistant_id</code>).</p><h2>Code Interpreter Example</h2><p><code>GPTAssistantAgent</code> allows you to specify an OpenAI tools
+(e.g., function calls, code interpreter, etc). The example below enables an assistant
+that can use OpenAI code interpreter to solve tasks.</p><pre><code class="language-python"># creates new assistant using Assistant API
+gpt_assistant = GPTAssistantAgent(
+    name=&quot;assistant&quot;,
+    llm_config={
+        &quot;config_list&quot;: config_list,
+        &quot;assistant_id&quot;: None,
+        &quot;tools&quot;: [
+            {
+                &quot;type&quot;: &quot;code_interpreter&quot;
+            }
+        ],
+    })
+
+user_proxy = UserProxyAgent(name=&quot;user_proxy&quot;,
+    code_execution_config={
+        &quot;work_dir&quot;: &quot;coding&quot;
+    },
+    human_input_mode=&quot;NEVER&quot;)
+
+user_proxy.initiate_chat(gpt_assistant, message=&quot;Print hello world&quot;)
+</code></pre><p>Checkout more examples <a href="https://github.com/microsoft/autogen/tree/main/notebook">here</a>.</p><h2>Limitations and Future Work</h2><ul><li>Group chat managers using GPT assistant are pending.</li><li>GPT assistants with multimodal capabilities haven&#x27;t been released yet but we are committed to support them.</li></ul><h2>Acknowledgements</h2><p><code>GPTAssistantAgent</code> was made possible through collaboration with
+<a href="https://github.com/IANTHEREAL">@IANTHEREAL</a>,
+<a href="https://leoljl.github.io">Jiale Liu</a>,
+<a href="https://github.com/kevin666aa">Yiran Wu</a>,
+<a href="https://qingyun-wu.github.io/">Qingyun Wu</a>,
+<a href="https://www.microsoft.com/en-us/research/people/chiw/">Chi Wang</a>, and many other AutoGen maintainers.</p>]]></content>
+        <author>
+            <name>Gagan Bansal</name>
+            <uri>https://www.linkedin.com/in/gagan-bansal/</uri>
+        </author>
+    </entry>
     <entry>
         <title type="html"><![CDATA[EcoAssistant - Using LLM Assistants More Accurately and Affordably]]></title>
         <id>EcoAssistant - Using LLM Assistants More Accurately and Affordably</id>
