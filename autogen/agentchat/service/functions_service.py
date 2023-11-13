@@ -51,9 +51,10 @@ class FunctionsService:
         if 'tools' not in agent.llm_config:
             agent.llm_config["tools"] = []
         existing_tool_index = next(
-            (index for (index, d) in enumerate(agent.llm_config["tools"]) if d["function"]["name"] == function.name),
+            (index for (index, d) in enumerate(agent.llm_config["tools"]) if d.get("function", {}).get("name") == function.name),
             None
         )
+
         
         # If it does, update that entry; if not, append a new entry
         if existing_tool_index is not None:
