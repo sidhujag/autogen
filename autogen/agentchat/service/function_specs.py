@@ -101,6 +101,10 @@ upsert_agent = {
                 "type": "string",
                 "description": "A description of the agent - features, roles, functionalities of the agent etc."
             },
+            "custom_instructions": {
+                "type": "string",
+                "description": "Agent instructions which go into system message, appended to the default agent instructions as custom instructions."
+            },
             "functions_to_add": {
                 "type": "array",
                 "items": {"type": "string"},

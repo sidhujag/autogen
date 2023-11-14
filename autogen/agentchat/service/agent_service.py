@@ -82,7 +82,7 @@ GROUP STATS
         return response
 
     @staticmethod
-    def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, system_message: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
+    def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
         from . import UpsertAgentModel, GROUP_INFO, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
@@ -106,7 +106,7 @@ GROUP STATS
             auth=sender.auth,
             name=name,
             description=description,
-            system_message=system_message,
+            system_message=custom_instructions,
             functions_to_add=functions_to_add,
             functions_to_remove=functions_to_remove,
             category=category,
@@ -267,7 +267,7 @@ GROUP STATS
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
         agent.description = backend_agent.description
-        agent.custom_system_message = agent.system_message
+        agent.custom_instructions = agent.system_message
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
         AgentService._update_capability(agent)
@@ -355,7 +355,7 @@ GROUP STATS
                 agent_name=agent.name,
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
-                custom_instructions=agent.custom_system_message,
+                custom_instructions=agent.custom_instructions,
                 delegator=delegator,
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text,
@@ -367,7 +367,7 @@ GROUP STATS
                 agent_name=agent.name,
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
-                custom_instructions=agent.custom_system_message,
+                custom_instructions=agent.custom_instructions,
                 delegator=delegator,
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text
