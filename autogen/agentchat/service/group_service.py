@@ -32,7 +32,6 @@ class GroupService:
         backend_groups, err = BackendService.get_backend_groups([GetGroupModel(auth=sender.auth, name=group)])
         if err is not None or not backend_groups:
             return json.dumps({"error": str(err) if err else "No groups found"})
-
         groups_info = []
         for backend_group in backend_groups:
             agents_dict = {}
@@ -49,12 +48,8 @@ class GroupService:
                     "description": short_description,
                     "files": agent.files
                 }
-            # Create a dictionary from backend_group without 'agent_names'
-            group_info_dict = backend_group.dict(exclude={'agent_names'})
-            # Create a new GroupInfo object using the modified dictionary
-            group_info = GroupInfo(**group_info_dict, agents=agents_dict)
-            # Add the GroupInfo dictionary to the list
-            groups_info.append(group_info.dict())
+            group_info = GroupInfo(**backend_group.dict(), agents=agents_dict)
+            groups_info.append(group_info.dict(exclude={'agent_names'}))
 
         # Return the JSON representation of the groups info
         return json.dumps(groups_info)
@@ -96,20 +91,17 @@ class GroupService:
         if sender.name not in group_manager.groupchat.agent_names:
             return json.dumps({"error": "Only agents in the group can terminate it"})
         if group_manager.delegator:
-            # Define a function to wrap the call to initiate_chat that will be run in a separate thread
-            def initiate_chat_in_thread():
-                group_manager.initiate_chat(group_manager.delegator, message=response)
-                group_manager.delegator = None
-
-            # Start a new thread to run the initiate_chat function
-            chat_thread = threading.Thread(target=initiate_chat_in_thread)
-            chat_thread.start()
-        return "reply with only 'TERMINATE' to end the conversation"
+            group_manager.send(response, group_manager.delegator, request_reply=False)
+            group_manager.delegator = None
+        group_manager.exiting = True
+        return json.dumps({"response": "Group terminating!"})
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
         from . import GetGroupModel, BackendService, UpdateComms
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
+        if from_group == to_group:
+            return json.dumps({"error": "Could not send message: cannot send message to the same group you are sending from"})
         from_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=from_group))
         if from_group_manager is None:
             return json.dumps({"error": "Could not send message: from_group not found"})
@@ -120,6 +112,10 @@ class GroupService:
             return json.dumps({"error": "Could not send message: to_group not found"})
         if to_group_manager.delegator is not None:
             return json.dumps({"error": f"Could not send message: to_group has already been given a task by group: {to_group_manager.delegator.name}. A group can only work on on task at a time. Wait until it concludes."})
+        if from_group_manager.delegator and to_group == from_group_manager.delegator.name:
+            return json.dumps({"error": "Could not send message: cannot send message to your delegating group, this would create cyclic dependency. Finish your task then your concluding response will be sent to the delegating group."})
+        if to_group_manager.delegator and from_group == to_group_manager.delegator.name:
+            return json.dumps({"error": "Could not send message: from_group already has delegated a task to to_group"})
         if len(to_group_manager.groupchat.agents) < 3:
             return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
         found_mgr = False
@@ -138,14 +134,9 @@ class GroupService:
         if err:
             return err
         to_group_manager.delegator = from_group_manager
-        # Define a function to wrap the call to initiate_chat that will be run in a separate thread
-        def initiate_chat_in_thread():
-            from_group_manager.initiate_chat(to_group_manager, message=message)
-
-        # Start a new thread to run the initiate_chat function
-        chat_thread = threading.Thread(target=initiate_chat_in_thread)
-        chat_thread.start()
-        return "reply with only 'TERMINATE' to pause this group because you have delegated control to another group"
+        from_group_manager.delegating = to_group_manager
+        from_group_manager.delegating_message = message
+        return json.dumps({"response": "Message sent!"})
     
     @staticmethod
     def _create_group(backend_group):

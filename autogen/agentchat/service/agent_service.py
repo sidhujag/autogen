@@ -9,11 +9,13 @@ import openai
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step.
 
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}, capabilities: {capabilities}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}, delegator: {delegator}, capabilities: {capabilities}
 
 {capability_instruction}
 
 Think of yourself as an extension to the group. The problem in the group is your problem to solve as well. If another agent solved it, then its solved for you too. The groups capabilities expand through each additional agent in group. Work with other agents in a group to solve the original problem. Every agent takes turns to reply to the group. Don't add superflous replies.
+
+The delegator is the group that delegated a task to you to work on. This is the main task for the group. If it is 'user' it means you are tasked directly by the user and report to the user.
 
 Stay on topic and don't deviate away from the main task for the group. If you have nothing to say just say you have nothing to add. Try all possibilities to solve your task but deviate away from topic.
 
@@ -23,11 +25,13 @@ Custom instructions: {custom_instructions}
 """
     MANAGER_AGENT_SYSTEM_MESSAGE: str = """Agent, you are a cog in a complex AI hierarchy, designed to solve tasks collaboratively. Solve tasks step-by-step. 
     
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}, capabilities: {capabilities}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name},  delegator: {delegator}, capabilities: {capabilities}
 
 {capability_instruction}
 
 Carefully read the functions provided to you as well as your capabilities above to learn of your abilities and responsibilities. All instructions are presented through the functions.
+
+The delegator is the group that delegated a task to you to work on. This is the main task for the group. If it is 'user' it means you are tasked directly by the user and report to the user.
 
 Termination should be decided at your discretion. Read the room. If you think it is finished; if agents have nothing to add, if the conversation reaches a natural conclusion, answers original question, deviates away from original question or if the discussion topic switches, it is time to terminate.
 
@@ -314,6 +318,8 @@ GROUP STATS
             for agent_name, count in group_manager.outgoing.items()
         )
         communications = f"Incoming communications:\n{incoming_communications}\nOutgoing communications:\n{outgoing_communications}"
+        if group_manager.delegator:
+            communications = f"{communications}\nCurrent Delegator:\n{group_manager.delegator.name}"
         return communications.strip()
 
 
@@ -336,6 +342,7 @@ GROUP STATS
         capability_names = AgentService.get_capability_names(agent.capability)
         capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
         formatted_message = ""
+        delegator = group_manager.delegator if group_manager.delegator else 'user'
         # Update the system message based on the agent type
         if agent.capability & MANAGEMENT:
             # Define the new agent system message with placeholders filled in
@@ -344,6 +351,7 @@ GROUP STATS
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_system_message,
+                delegator=delegator,
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text,
                 group_stats=AgentService._generate_group_stats_text(group_manager),
@@ -355,6 +363,7 @@ GROUP STATS
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_system_message,
+                delegator=delegator,
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text
             )

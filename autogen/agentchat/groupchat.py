@@ -141,6 +141,9 @@ class GroupChatManager(ConversableAgent):
         self.auth = None
         self.description = ""
         self.delegator = None
+        self.exiting = False
+        self.delegating = None
+        self.delegating_message = None
         self.incoming = {}
         self.outgoing = {}
 
@@ -158,6 +161,12 @@ class GroupChatManager(ConversableAgent):
         speaker = sender
         groupchat = config
         for i in range(groupchat.max_round):
+            if self.delegating and self.delegating_message:
+                self.initiate_chat(self.delegating, message=self.delegating_message)
+                self.delegating = None
+                self.delegating_message = None
+            if self.exiting:
+                break
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
                 message["name"] = speaker.name
@@ -189,6 +198,10 @@ class GroupChatManager(ConversableAgent):
             # The speaker sends the message without requesting a reply
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
+        self.delegator = None
+        self.exiting = False
+        self.delegating = None
+        self.delegating_message = None
         return True, None
 
     async def a_run_chat(
