@@ -194,7 +194,7 @@ upsert_function_spec = {
             },
             "function_code": {
                 "type": "string",
-                "description": "Python code. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume 'parameters' available as global variables. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names."
+                "description": "Python code. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume 'parameters' available as global variables. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names. The code will be exported to the code interpreter which should run it and fix any errors by updating function."
             },
             "category": {
                 "type": "string",

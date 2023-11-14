@@ -48,7 +48,7 @@ GROUP STATS
 """
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
     - GROUP_INFO: Able to get group information (list group agents, list group files, stats) on demand via get_group_info function.
-    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. Interpreter can natively work with files for advanced coding usecases.
+    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. Interpreter can natively work with files for advanced coding usecases. Avoid the same functions executing over and over. Functions use the code interpreter tool by exporting code and expecting interpreter to run and provide results.
     - RETRIEVAL_TOOL: Expands the agent's knowledge base with external documents and data. Uses files to create knowledge base.
     - FILES: Provides the ability to manage files for data processing and sharing across groups.
     - MANAGEMENT: Grants the agent the power to modify agents/functions/groups, communicate with other groups, discover entities, and manage group activities (including termination).

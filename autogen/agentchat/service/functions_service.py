@@ -19,7 +19,7 @@ class FunctionsService:
     def execute_func(function_code: str, **args):
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
         str_code = f"{global_vars_code}\n\n{function_code}"
-        return f"The function exports the following code:\n\n```python {str_code}```\n\nIt requires execution by the code interpreter. Please execute."
+        return f"The function exports the following code:\n\n```python {str_code}\n```\n\nIt requires execution by the code interpreter. Please execute."
     
     @staticmethod
     def _find_class(class_name):
