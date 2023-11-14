@@ -5,6 +5,9 @@ import sys
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List, Any, Optional, Dict, Tuple
 from pydantic import ValidationError
+from autogen.code_utils import (
+    execute_code
+)
 
 class FunctionsService:
     @staticmethod
@@ -19,11 +22,17 @@ class FunctionsService:
     def execute_func(sender: GPTAssistantAgent, function_code: str, **args):
         from . import CODE_INTERPRETER_TOOL
         if not sender.capability & CODE_INTERPRETER_TOOL:
-            return json.dumps({"error": "Agent {sender.name} does not have CODE_INTERPRETER_TOOL capability to execute code."})
+            return json.dumps({"error": f"Agent {sender.name} does not have CODE_INTERPRETER_TOOL capability to execute code."})
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
         str_code = f"{global_vars_code}\n\n{function_code}"
-        return json.dumps({"response": f"The function exports the following code:\n\n```python {str_code}\n```\n\nIt requires execution by the code interpreter. Please execute."})
-    
+        exitcode, logs, env = execute_code(str_code)
+        exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
+        if logs == "" and exitcode2str == "execution succeeded":
+            exitcode2str = "no output found, make sure function uses stdout to output results"
+        if logs == "" or exitcode != 0:
+            return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}\n\nBroken function code (please fix): {function_code}"
+        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"
+
     @staticmethod
     def _find_class(class_name):
         for module in sys.modules.values():

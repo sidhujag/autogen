@@ -112,5 +112,3 @@ async def query(input: QueryModel):
         print(f'Error creating groups {err}')
         return
     agents[0].initiate_chat(groups[0], message=input.query)
-    
-    
