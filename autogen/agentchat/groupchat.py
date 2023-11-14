@@ -162,6 +162,7 @@ class GroupChatManager(ConversableAgent):
         groupchat = config
         for i in range(groupchat.max_round):
             if self.delegating and self.delegating_message:
+                self.delegating_message = f'Delegating From Group[{self.name}] To Group[{self.delegating.name}]: {self.delegating_message}'
                 self.initiate_chat(self.delegating, message=self.delegating_message)
                 self.delegating = None
                 self.delegating_message = None
@@ -196,6 +197,7 @@ class GroupChatManager(ConversableAgent):
             if reply is None:
                 break
             # The speaker sends the message without requesting a reply
+            reply["content"] = f'Group[{self.name}] Speaker[{speaker.name}]: {reply["content"]}'
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
         self.delegator = None

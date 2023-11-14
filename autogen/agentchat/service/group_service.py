@@ -88,8 +88,6 @@ class GroupService:
         group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=group))
         if group_manager is None:
             return json.dumps({"error": "Could not send message: group not found"})
-        if sender.name not in group_manager.groupchat.agent_names:
-            return json.dumps({"error": "Only agents in the group can terminate it"})
         if group_manager.delegator:
             group_manager.send(response, group_manager.delegator, request_reply=False)
             group_manager.delegator = None
@@ -105,8 +103,6 @@ class GroupService:
         from_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=from_group))
         if from_group_manager is None:
             return json.dumps({"error": "Could not send message: from_group not found"})
-        if sender.name not in from_group_manager.groupchat.agent_names:
-            return json.dumps({"error": "Could not send message: Only agents in the from_group can send a message to another group"})
         to_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=to_group))
         if to_group_manager is None:
             return json.dumps({"error": "Could not send message: to_group not found"})
