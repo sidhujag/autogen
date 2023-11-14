@@ -164,6 +164,7 @@ class GroupChatManager(ConversableAgent):
             groupchat.messages.append(message)
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
+                AgentService.update_agent_system_message(agent, self)
                 if agent != speaker:
                     self.send(message, agent, request_reply=False, silent=True)
             if i == groupchat.max_round - 1:
@@ -172,7 +173,6 @@ class GroupChatManager(ConversableAgent):
             try:
                 # select the next speaker
                 speaker = groupchat.select_speaker(speaker, self)
-                AgentService.update_agent_system_message(speaker, self)
                 # let the speaker speak
                 reply = speaker.generate_reply(sender=self)
             except KeyboardInterrupt:
@@ -180,7 +180,6 @@ class GroupChatManager(ConversableAgent):
                 if groupchat.admin_name in groupchat.agent_names:
                     # admin agent is one of the participants
                     speaker = groupchat.agent_by_name(groupchat.admin_name)
-                    AgentService.update_agent_system_message(speaker, self)
                     reply = speaker.generate_reply(sender=self)
                 else:
                     # admin agent is not found in the participants
@@ -212,6 +211,7 @@ class GroupChatManager(ConversableAgent):
             groupchat.messages.append(message)
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
+                AgentService.update_agent_system_message(speaker, self)
                 if agent != speaker:
                     await self.a_send(message, agent, request_reply=False, silent=True)
             if i == groupchat.max_round - 1:
@@ -220,7 +220,6 @@ class GroupChatManager(ConversableAgent):
             try:
                 # select the next speaker
                 speaker = groupchat.select_speaker(speaker, self)
-                AgentService.update_agent_system_message(speaker, self)
                 # let the speaker speak
                 reply = await speaker.a_generate_reply(sender=self)
             except KeyboardInterrupt:
@@ -228,7 +227,6 @@ class GroupChatManager(ConversableAgent):
                 if groupchat.admin_name in groupchat.agent_names:
                     # admin agent is one of the participants
                     speaker = groupchat.agent_by_name(groupchat.admin_name)
-                    AgentService.update_agent_system_message(speaker, self)
                     reply = await speaker.a_generate_reply(sender=self)
                 else:
                     # admin agent is not found in the participants
