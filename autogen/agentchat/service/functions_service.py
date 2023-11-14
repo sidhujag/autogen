@@ -16,10 +16,13 @@ class FunctionsService:
         return response
     
     @staticmethod
-    def execute_func(function_code: str, **args):
+    def execute_func(sender: GPTAssistantAgent, function_code: str, **args):
+        from . import CODE_INTERPRETER_TOOL
+        if not sender.capability & CODE_INTERPRETER_TOOL:
+            return json.dumps({"error": "Agent {sender.name} does not have CODE_INTERPRETER_TOOL capability to execute code."})
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
         str_code = f"{global_vars_code}\n\n{function_code}"
-        return f"The function exports the following code:\n\n```python {str_code}\n```\n\nIt requires execution by the code interpreter. Please execute."
+        return json.dumps({"response": f"The function exports the following code:\n\n```python {str_code}\n```\n\nIt requires execution by the code interpreter. Please execute."})
     
     @staticmethod
     def _find_class(class_name):
@@ -84,7 +87,7 @@ class FunctionsService:
                 return json.dumps({"error": "function code was empty unexpectedly, either define a class_name or function_code"})
             agent.register_function(
                 function_map={
-                    function.name: lambda **args: FunctionsService.execute_func(function.function_code, **args)
+                    function.name: lambda sender, **args: FunctionsService.execute_func(sender=sender, function_code=function.function_code, **args)
                 }
             )
         return json.dumps({"response": "Function added!"})
