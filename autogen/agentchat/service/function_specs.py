@@ -176,7 +176,7 @@ upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
-    "description": "Upsert a function with code. Upon creation only use code that has been validated/tested additionally modifying and validating changes as needed related to using the 'parameters' field for general purpose applicability. Functions may be added to agents and called within groups if those agents are part of that group.",
+    "description": "Upsert a function with code. Test any code before adding and run the function to test it after creating, fix it if broken. You may have to add function to an agent and agent to group to run it.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -194,7 +194,7 @@ upsert_function_spec = {
             },
             "function_code": {
                 "type": "string",
-                "description": "Python code to be executed. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume parameters available as global variables. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names."
+                "description": "Python code. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume 'parameters' available as global variables. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names."
             },
             "category": {
                 "type": "string",

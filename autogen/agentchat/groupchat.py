@@ -63,7 +63,7 @@ Current speaker:
 {AgentService.CAPABILITY_SYSTEM_MESSAGE}
 
 Read the following conversation.
-Then select the next speaker from {[agent.name for agent in agents]}. Take note of agents' capabilities. Only return the speaker name. Agent's shouldn't talk to themselves."""
+Then select the next speaker from {[agent.name for agent in agents]}. Take note of agents' capabilities. Only return the speaker name. Agent's shouldn't talk to themselves, but the same agent may be required to speak again if he should continue the task."""
 
     def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
         """Select the next speaker."""
@@ -83,7 +83,7 @@ Then select the next speaker from {[agent.name for agent in agents]}. Take note 
             + [
                 {
                     "role": "system",
-                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Note the capability of each agent. Only return the speaker name. Agent's shouldn't talk to themselves.",
+                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Note the capability of each agent. Only return the speaker name. Agent's shouldn't talk to themselves, but the same agent may be required to speak again if he should continue the task.",
                 }
             ]
         )

@@ -16,6 +16,7 @@ from .backend_service import (
     UpdateComms,
     UpsertGroupModel,
     GetGroupModel,
+    GroupInfo,
     DiscoverGroupsModel
 )
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "GroupService",
     "UpsertGroupModel",
     "GetGroupModel",
+    "GroupInfo",
     "DiscoverGroupsModel",
     "GROUP_INFO",
     "CODE_INTERPRETER_TOOL",

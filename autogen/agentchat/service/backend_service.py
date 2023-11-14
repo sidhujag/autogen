@@ -78,6 +78,9 @@ class BaseGroup(BaseModel):
     outgoing: Dict[str, int] = Field(default_factory=dict)
     incoming: Dict[str, int] = Field(default_factory=dict)
 
+class GroupInfo(BaseGroup):
+    agents: Dict[str, Dict] = Field(default_factory=dict)
+
 class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)
 

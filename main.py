@@ -7,8 +7,6 @@ from pydantic import BaseModel
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service import UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, GROUP_INFO, CODE_INTERPRETER_TOOL, FILES, RETRIEVAL_TOOL
 from typing import List
-from hanging_threads import start_monitoring
-monitoring_thread = start_monitoring()
 app = FastAPI()
 
 # Initialize logging

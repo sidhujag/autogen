@@ -335,7 +335,7 @@ GROUP STATS
         from . import MakeService, MANAGEMENT
         capability_names = AgentService.get_capability_names(agent.capability)
         capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
-        formatted_message = None
+        formatted_message = ""
         # Update the system message based on the agent type
         if agent.capability & MANAGEMENT:
             # Define the new agent system message with placeholders filled in
@@ -358,3 +358,4 @@ GROUP STATS
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text
             )
+        agent.update_system_message(formatted_message)

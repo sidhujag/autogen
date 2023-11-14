@@ -3,6 +3,7 @@ from .. import GroupChatManager, GroupChat
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
 import json
+import threading
 GROUP_INFO = 1
 CODE_INTERPRETER_TOOL = 2
 RETRIEVAL_TOOL = 4
@@ -24,17 +25,17 @@ class GroupService:
     
     @staticmethod
     def get_group_info(sender: GPTAssistantAgent, group: str) -> str:
-        from . import BackendService, GetGroupModel, AgentService, MakeService, GetAgentModel
+        from . import BackendService, GetGroupModel, GroupInfo, AgentService, MakeService, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
 
         backend_groups, err = BackendService.get_backend_groups([GetGroupModel(auth=sender.auth, name=group)])
         if err is not None or not backend_groups:
-            return err
+            return json.dumps({"error": str(err) if err else "No groups found"})
 
-        # Process each group to replace agent_names with agents objects
+        groups_info = []
         for backend_group in backend_groups:
-            agents_list = []
+            agents_dict = {}
             for agent_name in backend_group.agent_names:
                 agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
                 if agent is None:
@@ -43,22 +44,21 @@ class GroupService:
                 short_description = MakeService._get_short_description(agent.description)
                 capability_names = AgentService.get_capability_names(agent.capability)
                 capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
-                agents_list.append({
-                    "name": agent.name,
+                agents_dict[agent.name] = {
                     "capabilities": capability_text,
                     "description": short_description,
                     "files": agent.files
-                })
-
-            # Replace agent_names with agents objects
-            backend_group.agents = agents_list
-            del backend_group.agent_names  # Remove the agent_names field
-
-        # Convert the backend_groups to a list of dictionaries
-        groups_info = [group.dict() for group in backend_groups]
+                }
+            # Create a dictionary from backend_group without 'agent_names'
+            group_info_dict = backend_group.dict(exclude={'agent_names'})
+            # Create a new GroupInfo object using the modified dictionary
+            group_info = GroupInfo(**group_info_dict, agents=agents_dict)
+            # Add the GroupInfo dictionary to the list
+            groups_info.append(group_info.dict())
 
         # Return the JSON representation of the groups info
         return json.dumps(groups_info)
+
 
     @staticmethod
     def discover_groups(sender: GPTAssistantAgent, query: str) -> str:
@@ -96,8 +96,14 @@ class GroupService:
         if sender.name not in group_manager.groupchat.agent_names:
             return json.dumps({"error": "Only agents in the group can terminate it"})
         if group_manager.delegator:
-            group_manager.send(response, group_manager.delegator, request_reply=True)
-            group_manager.delegator = None
+            # Define a function to wrap the call to initiate_chat that will be run in a separate thread
+            def initiate_chat_in_thread():
+                group_manager.initiate_chat(group_manager.delegator, message=response)
+                group_manager.delegator = None
+
+            # Start a new thread to run the initiate_chat function
+            chat_thread = threading.Thread(target=initiate_chat_in_thread)
+            chat_thread.start()
         return "reply with only 'TERMINATE' to end the conversation"
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
@@ -132,7 +138,13 @@ class GroupService:
         if err:
             return err
         to_group_manager.delegator = from_group_manager
-        from_group_manager.send(message, to_group_manager, request_reply=True)
+        # Define a function to wrap the call to initiate_chat that will be run in a separate thread
+        def initiate_chat_in_thread():
+            from_group_manager.initiate_chat(to_group_manager, message=message)
+
+        # Start a new thread to run the initiate_chat function
+        chat_thread = threading.Thread(target=initiate_chat_in_thread)
+        chat_thread.start()
         return "reply with only 'TERMINATE' to pause this group because you have delegated control to another group"
     
     @staticmethod

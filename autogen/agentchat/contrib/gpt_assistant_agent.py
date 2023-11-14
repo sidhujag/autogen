@@ -141,6 +141,7 @@ class GPTAssistantAgent(ConversableAgent):
             self._openai_client.beta.threads.messages.create(
                 thread_id=assistant_thread.id,
                 content=message["content"],
+                # https://platform.openai.com/docs/api-reference/messages/createMessage - only user role accepted to create message in thread
                 role="user",
             )
 
@@ -186,13 +187,13 @@ class GPTAssistantAgent(ConversableAgent):
                 if run.last_error:
                     new_messages.append(
                         {
-                            "role": msg.role,
+                            "role": "assistant",
                             "content": f'Last error: {run.last_error}',
                         }
                     )
                 new_messages.append(
                     {
-                        "role": msg.role,
+                        "role": "assistant",
                         "content": 'Failed',
                     }
                 )
@@ -204,7 +205,7 @@ class GPTAssistantAgent(ConversableAgent):
                 new_messages = []
                 new_messages.append(
                     {
-                        "role": msg.role,
+                        "role": "assistant",
                         "content": 'Expired',
                     }
                 )
@@ -214,7 +215,7 @@ class GPTAssistantAgent(ConversableAgent):
                 new_messages = []
                 new_messages.append(
                     {
-                        "role": msg.role,
+                        "role": "assistant",
                         "content": 'Cancelled',
                     }
                 )
@@ -230,7 +231,7 @@ class GPTAssistantAgent(ConversableAgent):
                 if run.last_error:
                     new_messages.append(
                         {
-                            "role": msg.role,
+                            "role": "assistant",
                             "content": f'Last error: {run.last_error}',
                         }
                     )
@@ -262,7 +263,7 @@ class GPTAssistantAgent(ConversableAgent):
                     }
 
                     logger.info(
-                        "Intermediate executing(%s, Sucess: %s) : %s",
+                        "Intermediate executing(%s, Success: %s) : %s",
                         tool_response["name"],
                         is_exec_success,
                         tool_response["content"],
