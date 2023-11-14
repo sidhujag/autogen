@@ -20,7 +20,7 @@ Checkout example notebooks for reference:</p><ul><li><a href="https://github.com
 Fortunately, because of AutoGen, this is now a reality!
 AutoGen has been pioneering agents and supporting <a href="https://aka.ms/autogen-pdf">multi-agent workflows</a> since earlier this year, and now (starting with version 0.2.0b5) we are introducing compatibility with the <a href="https://openai.com/blog/introducing-gpts">Assistant API</a>, which is currently in beta preview.</p><p>To accomplish this, we&#x27;ve added a new (experimental) agent called the <code>GPTAssistantAgent</code> that
 lets you seamlessly add these new OpenAI assistants into AutoGen-based multi-agent workflows.
-This integration shows great potential and synergy, and we plan to continue enhancing it.</p><h2>Installation</h2><pre><code class="language-bash">pip install pyautogen
+This integration shows great potential and synergy, and we plan to continue enhancing it.</p><h2>Installation</h2><pre><code class="language-bash">pip install pyautogen==0.2.0b5
 </code></pre><h2>Basic Example</h2><p>Here&#x27;s a basic example that uses a <code>UserProxyAgent</code> to allow an interface
 with the <code>GPTAssistantAgent</code>.</p><p>First, import the new agent and setup <code>config_list</code>:</p><pre><code class="language-python">from autogen import config_list_from_json
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
