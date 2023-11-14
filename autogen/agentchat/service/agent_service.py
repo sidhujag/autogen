@@ -53,7 +53,7 @@ GROUP STATS
 """
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
     - GROUP_INFO: Able to get group information (list group agents, list group files, stats) on demand via get_group_info function.
-    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. You have 2 interpreters, local and OpenAI. OpenAI interpreter can natively work with OpenAI files but cannot access the internet. Local interpreter is only accessible via functions and can access regular files locally (can download online files to local if needed) and also has internet access. Avoid running the same functions over and over.
+    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. You have 2 interpreters, local and OpenAI. OpenAI interpreter can natively work with OpenAI files but cannot access the internet. Local interpreter is only accessible via custom functions (defined through upsert_function) and can access regular files locally (can download online files to local if needed) and also has internet access. Avoid running the same functions over and over. If a function exists in your context, you have priviledge to run and execute it.
     - RETRIEVAL_TOOL: Expands the agent's knowledge base with external documents and data. Uses files to create knowledge base.
     - FILES: Provides the ability to manage files for data processing and sharing across groups.
     - MANAGEMENT: Grants the agent the power to modify agents/functions/groups, communicate with other groups, discover entities, and manage group activities (including termination).
@@ -243,13 +243,13 @@ GROUP STATS
 
     @staticmethod
     def update_agent(agent, backend_agent):
-        from . import FunctionsService, AddFunctionModel
+        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER_TOOL
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
         AgentService._update_capability(agent)
-        if len(backend_agent.functions) > 0:
+        if len(backend_agent.functions) > 0 and agent.capability & CODE_INTERPRETER_TOOL:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         agent._openai_assistant = agent.openai_client.beta.assistants.update(
@@ -262,7 +262,7 @@ GROUP STATS
 
     @staticmethod
     def make_agent(backend_agent):
-        from . import FunctionsService, AddFunctionModel
+        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER_TOOL
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
@@ -271,7 +271,7 @@ GROUP STATS
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
         AgentService._update_capability(agent)
-        if len(backend_agent.functions) > 0:
+        if len(backend_agent.functions) > 0 and agent.capability & CODE_INTERPRETER_TOOL:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         agent._openai_assistant = agent.openai_client.beta.assistants.update(
