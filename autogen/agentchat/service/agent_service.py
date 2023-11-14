@@ -238,6 +238,7 @@ GROUP STATS
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
+        agent.files = backend_agent.files
         AgentService._update_capability(agent)
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
@@ -259,6 +260,7 @@ GROUP STATS
         agent.description = backend_agent.description
         agent.custom_system_message = agent.system_message
         agent.capability = backend_agent.capability
+        agent.files = backend_agent.files
         AgentService._update_capability(agent)
         if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
@@ -356,7 +358,3 @@ GROUP STATS
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text
             )
-        agent._openai_assistant = agent.openai_client.beta.assistants.update(
-            assistant_id=agent.assistant_id,
-            instructions=formatted_message,
-        )
