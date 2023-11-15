@@ -91,9 +91,10 @@ class OpenAIParameter(BaseModel):
 
 class AddFunctionModel(BaseModel):
     name: str
-    description: str
     auth: AuthAgent
-    category: str
+    status: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
     class_name: str = None
     parameters: OpenAIParameter = None
     function_code: Optional[str] = None

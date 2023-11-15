@@ -87,8 +87,8 @@ class GroupService:
         group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=group))
         if group_manager is None:
             return json.dumps({"error": "Could not send message: group not found"})
-        if group_manager.delegator:
-            group_manager.send(response, group_manager.delegator, request_reply=False)
+        if group_manager.dependent:
+            group_manager.send(response, group_manager.dependent, request_reply=False)
         group_manager.exiting = True
         return json.dumps({"response": "Group terminating!"})
 
@@ -104,10 +104,10 @@ class GroupService:
         to_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=to_group))
         if to_group_manager is None:
             return json.dumps({"error": "Could not send message: to_group not found"})
-        if to_group_manager.delegator:
-            return json.dumps({"error": f"Could not send message: to_group already has delegated task from {to_group_manager.delegator.name}. Wait for it to finish or ask the delegator to finish so you can delegate your task."})
-        if from_group_manager.delegator and to_group == from_group_manager.delegator.name:
-            return json.dumps({"error": "Could not send message: cannot send message to your delegating group, this would create cyclic dependency. Finish your task then your concluding response will be sent to the delegating group."})
+        if to_group_manager.dependent:
+            return json.dumps({"error": f"Could not send message: to_group already depends on a task from {to_group_manager.dependent.name}."})
+        if from_group_manager.dependent and to_group == from_group_manager.dependent.name:
+            return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
         if len(to_group_manager.groupchat.agents) < 3:
             return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
         found_mgr = False
@@ -125,9 +125,9 @@ class GroupService:
                                                                     receiver=to_group_manager.name))
         if err:
             return err
-        to_group_manager.delegator = from_group_manager
-        from_group_manager.delegating = to_group_manager
-        from_group_manager.delegating_message = message
+        to_group_manager.dependent = from_group_manager
+        from_group_manager.tasking = to_group_manager
+        from_group_manager.tasking_message = message
         return json.dumps({"response": "Message sent!"})
     
     @staticmethod

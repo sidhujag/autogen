@@ -27,8 +27,8 @@ class FunctionsService:
         if logs == "" and exitcode2str == "execution succeeded":
             exitcode2str = "no output found, make sure function uses stdout to output results"
         if logs == "" or exitcode != 0:
-            return f"Broken function code! (PLEASE FIX using upsert_function with new function_code). exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'\n\nfunction_code:\n```python {function_code}\n```"
-        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'.\nNote even though it ran successfully you may still need to update the code if results do not match as expected. Iterate to fix function_code (via upsert_function) until you are happy.\n\nfunction_code:\n```python {function_code}\n``"
+            return f"Broken function code! (PLEASE FIX using upsert_function with new function_code). exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'\n\nargs: {args}\nfunction_code:\n```python {function_code}\n```"
+        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'.\nNote even though it ran successfully you may still need to update the code if results do not match as expected. Iterate to fix function_code (via upsert_function) until you are happy.\n\nargs: {args}\nfunction_code:\n```python {function_code}\n``"
 
     @staticmethod
     def _find_class(class_name):

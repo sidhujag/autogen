@@ -8,7 +8,7 @@ import openai
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}, delegator: {delegator}, capabilities: {capabilities}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}{dependent}, capabilities: {capabilities}
 
 {capability_instruction}
 
@@ -22,18 +22,19 @@ team members, and use the group's collective strengths to deliver creative and t
 Adherence to these directives ensures efficient task resolution and maintains the integrity of the 
 collaborative process within the hierarchy of groups.
 
+Dependent groups are those that have given you a task to work on. Once you complete your task and give response it will give speaking control back to the dependent group.
 Read the conversation and respond based on the history of messages of agents within the group you are responding to. Group and Speaker information is prepended to messages for your reference.
 
 Custom instructions: {custom_instructions}
 """
     MANAGER_AGENT_SYSTEM_MESSAGE: str = """
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name},  delegator: {delegator}, capabilities: {capabilities}
+Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}{dependent}, capabilities: {capabilities}
 
 {capability_instruction}
 
 Agent, as part of the management tier in our advanced hierarchy of groups, you have an instrumental role in 
 steering collaborative efforts toward successful completion. You possess the authority to orchestrate the 
-activity within the group, delegate tasks to other agents and groups, and synergize the diverse capabilities at your 
+activity within the group, assign tasks to other agents and groups, and synergize the diverse capabilities at your 
 disposal. Prior to undertaking complex endeavors, craft an elaborate, step-by-step strategy that 
 outlines the involvement of each agent and group along with their assigned roles. Ensure that you 
 maximize the use of your management tools to discover new agents, create entities, and coordinate efforts 
@@ -44,6 +45,7 @@ hierarchy of groups. Termination should be decided at your discretion. Read the 
 if agents have nothing to add, if the conversation reaches a natural conclusion, answers original question,
 deviates away from original question or if the discussion topic switches, it is time to terminate.
 
+Dependent groups are those that have given you a task to work on. Once you complete your task, terminate the group and give response it will give speaking control back to the dependent group.
 Read the conversation and respond based on the history of messages of agents within the group you are responding to. Group and Speaker information is prepended to messages for your reference.
 
 Custom instructions: {custom_instructions}
@@ -53,7 +55,7 @@ GROUP STATS
 """
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
     - GROUP_INFO: Able to get group information (list group agents, list group files, stats) on demand via get_group_info function. upsert_function also available to create or update functions.
-    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. You have 2 interpreters, local and OpenAI. OpenAI interpreter can natively work with OpenAI files but cannot access the internet. Local interpreter is only accessible via custom functions (defined through upsert_function) and can access regular files locally (can download online files to local if needed) and also has internet access. Avoid running the same functions over and over. If a function exists in your context, you have priviledge to run and execute it.
+    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. You have 2 interpreters, local and OpenAI. OpenAI interpreter can natively work with OpenAI files but cannot access the internet. Local interpreter is only accessible via custom functions (defined through upsert_function) and can access regular files locally (can download online files to local if needed) and also has internet access. If a function exists in your context, you have priviledge to run and execute it.
     - RETRIEVAL_TOOL: Expands the agent's knowledge base with external documents and data. Uses files to create knowledge base.
     - FILES: Provides the ability to manage files for data processing and sharing across groups.
     - MANAGEMENT: Grants the agent the power to modify agents/groups, communicate with other groups, discover entities, and manage group activities (including termination).
@@ -323,8 +325,8 @@ GROUP STATS
             for agent_name, count in group_manager.outgoing.items()
         )
         communications = f"Incoming communications:\n{incoming_communications}\nOutgoing communications:\n{outgoing_communications}"
-        if group_manager.delegator:
-            communications = f"{communications}\nCurrent Delegator:\n{group_manager.delegator.name}"
+        if group_manager.dependent:
+            communications = f"{communications}\nCurrent Dependent Group:\n{group_manager.dependent.name}"
         return communications.strip()
 
 
@@ -347,7 +349,7 @@ GROUP STATS
         capability_names = AgentService.get_capability_names(agent.capability)
         capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
         formatted_message = ""
-        delegator = group_manager.delegator if group_manager.delegator else 'user'
+        dependent = f', dependent group: {group_manager.dependent}' if group_manager.dependent else ''
         # Update the system message based on the agent type
         if agent.capability & MANAGEMENT:
             # Define the new agent system message with placeholders filled in
@@ -356,7 +358,7 @@ GROUP STATS
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_instructions,
-                delegator=delegator,
+                dependent=dependent,
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text,
                 group_stats=AgentService._generate_group_stats_text(group_manager),
@@ -368,7 +370,7 @@ GROUP STATS
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_instructions,
-                delegator=delegator,
+                dependent=dependent,
                 capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
                 capabilities=capability_text
             )

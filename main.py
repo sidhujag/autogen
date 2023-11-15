@@ -89,7 +89,7 @@ async def query(input: QueryModel):
     management_group_model = UpsertGroupModel(
         name="ManagementGroup",
         auth=input.auth,
-        description="Management group, you will delegate user problem to other groups.",
+        description="Management group, you will task user problem to other groups.",
         agents_to_add=["UserProxyAgent", "user_assistant", "manager"]
     )
     planning_group_model = UpsertGroupModel(

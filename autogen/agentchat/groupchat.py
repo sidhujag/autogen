@@ -140,10 +140,10 @@ class GroupChatManager(ConversableAgent):
         self.groupchat = groupchat
         self.auth = None
         self.description = ""
-        self.delegator = None
+        self.dependent = None
         self.exiting = False
-        self.delegating = None
-        self.delegating_message = None
+        self.tasking = None
+        self.tasking_message = None
         self.incoming = {}
         self.outgoing = {}
 
@@ -161,11 +161,11 @@ class GroupChatManager(ConversableAgent):
         speaker = sender
         groupchat = config
         for i in range(groupchat.max_round):
-            if self.delegating and self.delegating_message:
-                self.delegating_message = f'Delegating From Group[{self.name}] To Group[{self.delegating.name}]: {self.delegating_message}'
-                self.initiate_chat(self.delegating, message=self.delegating_message)
-                self.delegating = None
-                self.delegating_message = None
+            if self.tasking and self.tasking_message:
+                self.tasking_message = f'Group[{self.tasking.name}] Speaker[{self.name}]: {self.tasking_message}'
+                self.initiate_chat(self.tasking, message=self.tasking_message)
+                self.tasking = None
+                self.tasking_message = None
             if self.exiting:
                 break
             # set the name to speaker's name if the role is not function
@@ -201,10 +201,10 @@ class GroupChatManager(ConversableAgent):
             reply["content"] = f'Group[{self.name}] Speaker[{speaker.name}]: {reply["content"]}'
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
-        self.delegator = None
+        self.dependent = None
         self.exiting = False
-        self.delegating = None
-        self.delegating_message = None
+        self.tasking = None
+        self.tasking_message = None
         return True, None
 
     async def a_run_chat(

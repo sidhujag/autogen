@@ -2,7 +2,7 @@ send_message_spec = {
     "name": "send_message_to_group",
     "category": "communication",
     "class_name": "GroupService.send_message_to_group",
-    "description": "Send a message to another group to delegate a task. When you send a message to another group your current group will terminate and upon termination of the recipient group a response will be sent back to you so your group can continue.",
+    "description": "Send a message to another group to assign a task. When you send a message to another group your current group will terminate and upon termination of the recipient group a response will be sent back to you so your group can continue.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -23,7 +23,7 @@ terminate_group_spec = {
         "type": "object",
         "properties": {
             "group": {"type": "string", "description": "The group you are terminating."},
-            "response": {"type": "string", "description": "Summary of group discussion and response back to the group delegating to you or if no delegation then the user."},
+            "response": {"type": "string", "description": "Summary of group discussion and response back to the dependent group if there is one."},
         },
         "required": ["group", "response"]
     }
@@ -180,7 +180,7 @@ upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
-    "description": "Use this endpoint to define or update a general-purpose function that can be parameterized and reused across different contexts. The function should encapsulate a specific operation or a set of operations that can be applied to various inputs. Ensure the function is self-contained, does not hardcode values specific to a single use case, and clearly defines its parameters for flexibility and reuse. Functions that are too specific and not reusable should not be created through this endpoint; instead, use the online interpreter to run specific code directly.",
+    "description": "This endpoint is for defining or updating a reusable function that encapsulate a set of operations. Functions should be black-box, handling input arguments dynamically to deliver expected outputs across various use cases. Avoid hardcoding values and ensure your function is adaptable. This function should include debug print statements during its development and testing phases to facilitate troubleshooting. Iterative refinement is expected, and the function should not be marked as 'accepted' until it meets all specified requirements and performs as intended.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -194,11 +194,16 @@ upsert_function_spec = {
             },
             "parameters": {
                 "type": "string",
-                "description": "A JSON string defining the schema for the function's input parameters, in accordance with the OpenAPI 2.0 specification. These parameters should be designed to allow the function to operate in different scenarios and with various inputs."
+                "description": "Function arguments represented as a JSON object encoded as a string, in accordance with the OpenAPI 2.0 specification. These arguments should be designed to allow the function to operate in different scenarios and with various inputs. In addition to existing arguments, include a 'debug_mode' argument, which when set to `True`, activates detailed print statements throughout the function. Arguments are added automatically by the interpreter as global variables (key=value statements) accessible inside of function_code."
             },
             "function_code": {
                 "type": "string",
-                "description": "The Python code implementing the function. The code should accept parameters and perform operations in a way that is not tied to a specific context. Include all necessary imports and ensure the code adheres to proper Python syntax. The output should be directed to stdout. Manage dependencies via subprocess calls to install required packages."
+                "description": "The executable Python code for the function. Ensure all required imports are included. The code should be modular and general-purpose, capable of handling a range of inputs specified through arguments. Outputs should be directed to stdout to facilitate result capture. It's recommended to include print statements or logging for debugging purposes, allowing you to verify and iterate on the function's behavior. If the function does not produce the expected results, use these debug outputs to identify and resolve issues before finalizing the function definition. Use 'debug_mode' argument to control debugging on stdout. Manage dependencies with subprocess calls to install external packages as needed."
+            },
+            "status": {
+                "type": "string",
+                "enum": ["development", "testing", "accepted"],
+                "description": "Add a status attribute to the function's metadata to clearly indicate its development stage. Code should be iterated on until accepted for working code that others can use."
             },
             "category": {
                 "type": "string",
@@ -206,7 +211,7 @@ upsert_function_spec = {
                 "description": "The category for the function, helping categorize and organize functions within the system for easier discovery and reuse."
             }
         },
-        "required": ["name", "parameters", "function_code"]
+        "required": ["name", "parameters", "function_code", "status"]
     }
 }
 
