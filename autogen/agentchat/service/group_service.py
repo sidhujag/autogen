@@ -3,7 +3,6 @@ from .. import GroupChatManager, GroupChat
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
 import json
-import threading
 GROUP_INFO = 1
 CODE_INTERPRETER_TOOL = 2
 RETRIEVAL_TOOL = 4
