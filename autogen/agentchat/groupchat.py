@@ -197,6 +197,7 @@ class GroupChatManager(ConversableAgent):
             if reply is None:
                 break
             # The speaker sends the message without requesting a reply
+            reply = self._message_to_dict(reply)
             reply["content"] = f'Group[{self.name}] Speaker[{speaker.name}]: {reply["content"]}'
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
