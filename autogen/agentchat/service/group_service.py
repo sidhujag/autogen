@@ -90,7 +90,6 @@ class GroupService:
             return json.dumps({"error": "Could not send message: group not found"})
         if group_manager.delegator:
             group_manager.send(response, group_manager.delegator, request_reply=False)
-            group_manager.delegator = None
         group_manager.exiting = True
         return json.dumps({"response": "Group terminating!"})
 
@@ -106,12 +105,10 @@ class GroupService:
         to_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=to_group))
         if to_group_manager is None:
             return json.dumps({"error": "Could not send message: to_group not found"})
-        if to_group_manager.delegator is not None:
-            return json.dumps({"error": f"Could not send message: to_group has already been given a task by group: {to_group_manager.delegator.name}. A group can only work on on task at a time. Wait until it concludes."})
+        if to_group_manager.delegator:
+            return json.dumps({"error": f"Could not send message: to_group already has delegated task from {to_group_manager.delegator.name}. Wait for it to finish or ask the delegator to finish so you can delegate your task."})
         if from_group_manager.delegator and to_group == from_group_manager.delegator.name:
             return json.dumps({"error": "Could not send message: cannot send message to your delegating group, this would create cyclic dependency. Finish your task then your concluding response will be sent to the delegating group."})
-        if to_group_manager.delegator and from_group == to_group_manager.delegator.name:
-            return json.dumps({"error": "Could not send message: from_group already has delegated a task to to_group"})
         if len(to_group_manager.groupchat.agents) < 3:
             return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
         found_mgr = False
