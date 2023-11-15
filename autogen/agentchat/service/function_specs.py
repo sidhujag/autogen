@@ -180,35 +180,36 @@ upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
-    "description": "This endpoint creates or updates a reusable function with code. The function should be general-purpose and accept parameters as needed. When defining the function, include a test call at the end of your code to invoke the function and print the result, which verifies the function's operability. Ensure your code is standalone and follows proper Python syntax. Functions can be added to an agent, and the agent can be added to a group to run it. Functions are capable of accessing the internet if necessary.",
+    "description": "Use this endpoint to define or update a general-purpose function that can be parameterized and reused across different contexts. The function should encapsulate a specific operation or a set of operations that can be applied to various inputs. Ensure the function is self-contained, does not hardcode values specific to a single use case, and clearly defines its parameters for flexibility and reuse. Functions that are too specific and not reusable should not be created through this endpoint; instead, use the online interpreter to run specific code directly.",
     "parameters": {
         "type": "object",
         "properties": {
             "name": {
                 "type": "string",
-                "description": "The unique name of the function to define, used as an identifier within the system."
+                "description": "The unique name for the function, serving as an identifier. Choose a name that reflects the function's general operation."
             },
             "description": {
                 "type": "string",
-                "description": "A brief description of what the function does and its expected return value."
+                "description": "A concise summary of the function's purpose, behavior, and potential use cases. Highlight the general nature of the function."
             },
             "parameters": {
                 "type": "string",
-                "description": "A JSON string representing the schema for the function's input parameters, following the OpenAPI 2.0 specification. These parameters are provided to the function as global variables during execution."
+                "description": "A JSON string defining the schema for the function's input parameters, in accordance with the OpenAPI 2.0 specification. These parameters should be designed to allow the function to operate in different scenarios and with various inputs."
             },
             "function_code": {
                 "type": "string",
-                "description": "The Python code for the function, including any necessary imports. The code should end with a test invocation of the function and print its return value to stdout. Dependencies can be managed via subprocess calls to install external packages."
+                "description": "The Python code implementing the function. The code should accept parameters and perform operations in a way that is not tied to a specific context. Include all necessary imports and ensure the code adheres to proper Python syntax. The output should be directed to stdout. Manage dependencies via subprocess calls to install required packages."
             },
             "category": {
                 "type": "string",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"],
-                "description": "The category under which the function will be classified, aiding in organization and discovery within the system."
+                "description": "The category for the function, helping categorize and organize functions within the system for easier discovery and reuse."
             }
         },
         "required": ["name", "parameters", "function_code"]
     }
 }
+
 
 
 
