@@ -114,9 +114,12 @@ class FunctionsService:
         elif isinstance(field_value, dict):
             if not field_value:  # Check if the dictionary is empty
                 return json.dumps({"error": f"The '{field}' cannot be an empty object."})
-            else:
+            try:
+                # Attempt to create an OpenAIParameter instance from a dictionary
                 func_spec[field] = OpenAIParameter(**field_value)
                 return None
+            except ValidationError as e:
+                return json.dumps({"error": f"Validation error for '{field}': {str(e)}"})
 
         # If the field is a non-empty string, attempt to parse it as a JSON string
         elif isinstance(field_value, str) and field_value.strip():
@@ -126,13 +129,12 @@ class FunctionsService:
                     return json.dumps({"error": f"The '{field}' cannot be an empty JSON object."})
                 func_spec[field] = OpenAIParameter(**parameters_dict)
                 return None
-            except json.JSONDecodeError as e:
-                return json.dumps({"error": f"Error parsing JSON for '{field}' in function {func_spec.get('name', '')}: {str(e)}"})
+            except (json.JSONDecodeError, ValidationError) as e:
+                return json.dumps({"error": f"Error parsing JSON for '{field}': {str(e)}"})
 
         # If the field is none of the above, return an error
         else:
             return json.dumps({"error": f"The '{field}' field must be a JSON string."})
-
 
     @staticmethod
     def _create_function_model(agent: GPTAssistantAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
