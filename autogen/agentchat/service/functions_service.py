@@ -101,28 +101,37 @@ class FunctionsService:
     @staticmethod
     def _load_json_field(func_spec: Dict[str, Any], field: str) -> Optional[str]:
         from . import OpenAIParameter
+        
+        # Check if the field is missing
         if field not in func_spec:
-            return json.dumps({
-                "error": f"The '{field}' field is missing."
-            })
-        elif not isinstance(func_spec[field], str) or not func_spec[field].strip():
-            return json.dumps({
-                "error": f"The '{field}' field must be a non-empty string."
-            })
-        try:
-            # Parse the JSON string into a Python dictionary
-            parameters_dict = json.loads(func_spec[field])
-            if not parameters_dict:  # Check if the parsed JSON object is empty
-                return json.dumps({
-                    "error": f"The '{field}' cannot be an empty JSON object."
-                })
-            # Create an OpenAIParameter instance from the dictionary
-            func_spec[field] = OpenAIParameter(**parameters_dict)
+            return json.dumps({"error": f"The '{field}' field is missing."})
+
+        field_value = func_spec[field]
+
+        # If the field is already an OpenAIParameter instance or a non-empty dictionary, use it directly
+        if isinstance(field_value, OpenAIParameter):
             return None
-        except (json.JSONDecodeError, ValidationError) as e:
-            return json.dumps({
-                "error": f"Error parsing JSON for {field} in function {func_spec.get('name', '')}: {str(e)}"
-            })
+        elif isinstance(field_value, dict):
+            if not field_value:  # Check if the dictionary is empty
+                return json.dumps({"error": f"The '{field}' cannot be an empty object."})
+            else:
+                func_spec[field] = OpenAIParameter(**field_value)
+                return None
+
+        # If the field is a non-empty string, attempt to parse it as a JSON string
+        elif isinstance(field_value, str) and field_value.strip():
+            try:
+                parameters_dict = json.loads(field_value)
+                if not parameters_dict:  # Check if the parsed JSON object is empty
+                    return json.dumps({"error": f"The '{field}' cannot be an empty JSON object."})
+                func_spec[field] = OpenAIParameter(**parameters_dict)
+                return None
+            except json.JSONDecodeError as e:
+                return json.dumps({"error": f"Error parsing JSON for '{field}' in function {func_spec.get('name', '')}: {str(e)}"})
+
+        # If the field is none of the above, return an error
+        else:
+            return json.dumps({"error": f"The '{field}' field must be a JSON string."})
 
 
     @staticmethod
