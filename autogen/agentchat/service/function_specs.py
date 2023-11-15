@@ -180,7 +180,7 @@ upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
-    "description": "Upsert a function with code. Function should be general purpose and parameterized if needed. Test any code before adding and run the function to test it after creating, fix it if broken. You may have to add function to an agent and agent to group to run it. Use this to create reusable components and also code that may access the internet.",
+    "description": "Upsert a function with code. Function should be general purpose and parameterized if needed. You may have to add function to an agent and agent to group to run it. Use this to create reusable components and also code that may access the internet.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -198,7 +198,7 @@ upsert_function_spec = {
             },
             "function_code": {
                 "type": "string",
-                "description": "Python code. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Assume 'parameters' available as global variables. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names. It will be executed locally."
+                "description": "Python code. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names. It will be executed locally."
             },
             "category": {
                 "type": "string",
@@ -206,7 +206,7 @@ upsert_function_spec = {
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"]
             },
         },
-        "required": ["name", "function_code"],
+        "required": ["name", "parameters", "function_code"],
     },
 }
 

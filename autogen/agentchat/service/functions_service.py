@@ -27,8 +27,8 @@ class FunctionsService:
         if logs == "" and exitcode2str == "execution succeeded":
             exitcode2str = "no output found, make sure function uses stdout to output results"
         if logs == "" or exitcode != 0:
-            return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}\n\nBroken function code (please fix): {function_code}"
-        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"
+            return f"Broken function code! (PLEASE FIX using upsert_function with new function_code). exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'\n\nfunction_code:\n```python {function_code}\n```"
+        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'.\nNote even though it ran successfully you may still need to update the code if results do not match as expected. Iterate to fix function_code (via upsert_function) until you are happy.\n\nfunction_code:\n```python {function_code}\n``"
 
     @staticmethod
     def _find_class(class_name):
@@ -97,15 +97,33 @@ class FunctionsService:
                 }
             )
         return json.dumps({"response": "Function added!"})
- 
+    
     @staticmethod
     def _load_json_field(func_spec: Dict[str, Any], field: str) -> Optional[str]:
-        if field in func_spec and isinstance(func_spec[field], str):
-            try:
-                func_spec[field] = json.loads(func_spec[field])
-            except json.JSONDecodeError as e:
-                return json.dumps({"error": f"Error parsing JSON for {field} in function {func_spec.get('name', '')}: {str(e)}"})
-        return None
+        from . import OpenAIParameter
+        if field not in func_spec:
+            return json.dumps({
+                "error": f"The '{field}' field is missing."
+            })
+        elif not isinstance(func_spec[field], str) or not func_spec[field].strip():
+            return json.dumps({
+                "error": f"The '{field}' field must be a non-empty string."
+            })
+        try:
+            # Parse the JSON string into a Python dictionary
+            parameters_dict = json.loads(func_spec[field])
+            if not parameters_dict:  # Check if the parsed JSON object is empty
+                return json.dumps({
+                    "error": f"The '{field}' cannot be an empty JSON object."
+                })
+            # Create an OpenAIParameter instance from the dictionary
+            func_spec[field] = OpenAIParameter(**parameters_dict)
+            return None
+        except (json.JSONDecodeError, ValidationError) as e:
+            return json.dumps({
+                "error": f"Error parsing JSON for {field} in function {func_spec.get('name', '')}: {str(e)}"
+            })
+
 
     @staticmethod
     def _create_function_model(agent: GPTAssistantAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
@@ -125,11 +143,9 @@ class FunctionsService:
     @staticmethod
     def upsert_function(agent: GPTAssistantAgent, **kwargs: Any) -> str:
         from . import BackendService, AgentService, UpsertAgentModel
-
         function_model, error_message = FunctionsService._create_function_model(agent, kwargs)
         if error_message:
             return error_message
-
         err = BackendService.upsert_backend_functions([function_model])
         if err is not None:
             return err
