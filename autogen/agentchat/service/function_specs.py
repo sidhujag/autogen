@@ -180,35 +180,36 @@ upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
-    "description": "Upsert a function with code. Function should be general purpose and parameterized if needed. You may have to add function to an agent and agent to group to run it. Use this to create reusable components and also code that may access the internet.",
+    "description": "This endpoint creates or updates a reusable function with code. The function should be general-purpose and accept parameters as needed. When defining the function, include a test call at the end of your code to invoke the function and print the result, which verifies the function's operability. Ensure your code is standalone and follows proper Python syntax. Functions can be added to an agent, and the agent can be added to a group to run it. Functions are capable of accessing the internet if necessary.",
     "parameters": {
         "type": "object",
         "properties": {
             "name": {
                 "type": "string",
-                "description": "The name of the function to define.",
+                "description": "The unique name of the function to define, used as an identifier within the system."
             },
             "description": {
                 "type": "string",
-                "description": "A short description of the function.",
+                "description": "A brief description of what the function does and its expected return value."
             },
             "parameters": {
                 "type": "string",
-                "description": "JSON schema of the parameters object encoded as a string. Use the standard OpenAPI 2.0 specification for parameters in function calling, and examples of functions already attached to see format. These are injected as global variables.",
+                "description": "A JSON string representing the schema for the function's input parameters, following the OpenAPI 2.0 specification. These parameters are provided to the function as global variables during execution."
             },
             "function_code": {
                 "type": "string",
-                "description": "Python code. Make sure to include any imports that are needed. Make sure your code is standalone. Follow proper Python syntax. Use stdout for output to log so execution can get results. To solve ModuleNotFoundError you can import external packages by code like: 'import subprocess\nsubprocess.run([\"pip\", \"-qq\", \"install\", [package1,package2]])' where package1..x are your external package names. It will be executed locally."
+                "description": "The Python code for the function, including any necessary imports. The code should end with a test invocation of the function and print its return value to stdout. Dependencies can be managed via subprocess calls to install external packages."
             },
             "category": {
                 "type": "string",
-                "description": "A category to filter functions based on predefined categories. Set when creating a new function.",
-                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"]
-            },
+                "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"],
+                "description": "The category under which the function will be classified, aiding in organization and discovery within the system."
+            }
         },
-        "required": ["name", "parameters", "function_code"],
-    },
+        "required": ["name", "parameters", "function_code"]
+    }
 }
+
 
 
 upload_file_spec = {
@@ -268,6 +269,7 @@ get_file_content_spec = {
 }
 group_info_function_specs = [
     get_group_info_spec,
+    upsert_function_spec
 ]
 
 management_function_specs = [
@@ -277,7 +279,6 @@ management_function_specs = [
     discover_groups_spec,
     upsert_group_spec,
     discover_functions_spec,
-    upsert_function_spec, 
     terminate_group_spec
 ]
 
