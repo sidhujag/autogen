@@ -112,8 +112,6 @@ class FunctionsService:
         if isinstance(field_value, OpenAIParameter):
             return None
         elif isinstance(field_value, dict):
-            if not field_value:  # Check if the dictionary is empty
-                return json.dumps({"error": f"The '{field}' cannot be an empty object."})
             try:
                 # Attempt to create an OpenAIParameter instance from a dictionary
                 func_spec[field] = OpenAIParameter(**field_value)
@@ -125,8 +123,6 @@ class FunctionsService:
         elif isinstance(field_value, str) and field_value.strip():
             try:
                 parameters_dict = json.loads(field_value)
-                if not parameters_dict:  # Check if the parsed JSON object is empty
-                    return json.dumps({"error": f"The '{field}' cannot be an empty JSON object."})
                 func_spec[field] = OpenAIParameter(**parameters_dict)
                 return None
             except (json.JSONDecodeError, ValidationError) as e:
