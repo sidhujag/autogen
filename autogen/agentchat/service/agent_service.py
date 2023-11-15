@@ -249,7 +249,7 @@ GROUP STATS
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
         AgentService._update_capability(agent)
-        if len(backend_agent.functions) > 0 and agent.capability & CODE_INTERPRETER_TOOL:
+        if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         agent._openai_assistant = agent.openai_client.beta.assistants.update(
@@ -271,7 +271,7 @@ GROUP STATS
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
         AgentService._update_capability(agent)
-        if len(backend_agent.functions) > 0 and agent.capability & CODE_INTERPRETER_TOOL:
+        if len(backend_agent.functions) > 0:
             for function in backend_agent.functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
         agent._openai_assistant = agent.openai_client.beta.assistants.update(
