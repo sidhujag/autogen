@@ -143,6 +143,8 @@ class FunctionsService:
 
         try:
             function = AddFunctionModel(**func_spec, auth=agent.auth)
+            if function.function_code:
+                function.last_updater = agent.name
             return function, None
         except ValidationError as e:
             return None, json.dumps({"error": f"Validation error when defining function {func_spec.get('name', '')}: {str(e)}"})

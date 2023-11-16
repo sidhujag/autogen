@@ -98,6 +98,7 @@ class AddFunctionModel(BaseModel):
     class_name: str = None
     parameters: OpenAIParameter = None
     function_code: Optional[str] = None
+    last_updater: str = None
 
 class UpdateComms(BaseModel):
     auth: AuthAgent

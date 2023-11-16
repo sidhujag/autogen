@@ -180,7 +180,7 @@ upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
-    "description": "This endpoint is for defining or updating a reusable function that encapsulate a set of operations. Functions should be black-box, handling input arguments dynamically to deliver expected outputs across various use cases. Avoid hardcoding values and ensure your function is adaptable. This function should include debug print statements during its development and testing phases to facilitate troubleshooting. Iterative refinement is expected, and the function should not be marked as 'accepted' until it meets all specified requirements and performs as intended.",
+    "description": "This endpoint is for defining or updating a reusable function that encapsulate a set of operations. Functions should be black-box, handling input arguments dynamically to deliver expected outputs across various use cases. Avoid hardcoding values and ensure your function is adaptable. This function should include debug print statements during its development and testing phases to facilitate troubleshooting. Iterative refinement is expected, and the function should not be marked as 'accepted' until it meets all specified requirements and performs as intended. Acceptance only possible by an agent other than the one who made the last code change. Must either see the result or test it himself to accept.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -203,7 +203,7 @@ upsert_function_spec = {
             "status": {
                 "type": "string",
                 "enum": ["development", "testing", "accepted"],
-                "description": "Add a status attribute to the function's metadata to clearly indicate its development stage. Code should be iterated on until accepted for working code that others can use."
+                "description": "Add a status attribute to the function's metadata to clearly indicate its development stage. Code should be iterated on until accepted for working code that others can use. The code cannot be accepted by the one who changes function_code."
             },
             "category": {
                 "type": "string",

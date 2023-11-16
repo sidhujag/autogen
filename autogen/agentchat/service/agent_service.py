@@ -23,6 +23,7 @@ Adherence to these directives ensures efficient task resolution and maintains th
 collaborative process within the hierarchy of groups.
 
 Dependent groups are those that have given you a task to work on. Once you complete your task and give response it will give speaking control back to the dependent group.
+Don't trust non-accepted functions, instead fix or repair them and move them into acceptance before using. Don't make a new version of a function because you cannot get code working, work to fix an existing function that has the same intent.
 Read the conversation and respond based on the history of messages of agents within the group you are responding to. Group and Speaker information is prepended to messages for your reference.
 
 Custom instructions: {custom_instructions}
@@ -46,6 +47,7 @@ if agents have nothing to add, if the conversation reaches a natural conclusion,
 deviates away from original question or if the discussion topic switches, it is time to terminate.
 
 Dependent groups are those that have given you a task to work on. Once you complete your task, terminate the group and give response it will give speaking control back to the dependent group.
+Don't trust non-accepted functions, instead fix or repair them and move them into acceptance before using. Don't make a new version of a function because you cannot get code working, work to fix an existing function that has the same intent.
 Read the conversation and respond based on the history of messages of agents within the group you are responding to. Group and Speaker information is prepended to messages for your reference.
 
 Custom instructions: {custom_instructions}
