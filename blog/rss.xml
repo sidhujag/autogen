@@ -806,7 +806,7 @@ cd FastChat
 </code></pre><h2>Initiate server</h2><p>First, launch the controller</p><pre><code class="language-bash">python -m fastchat.serve.controller
 </code></pre><p>Then, launch the model worker(s)</p><pre><code class="language-bash">python -m fastchat.serve.model_worker --model-path chatglm2-6b
 </code></pre><p>Finally, launch the RESTful API server</p><pre><code class="language-bash">python -m fastchat.serve.openai_api_server --host localhost --port 8000
-</code></pre><p>Normally this will work. However, if you encounter error like <a href="https://github.com/lm-sys/FastChat/issues/1641">this</a>, commenting out all the lines containing <code>finish_reason</code> in <code>fastchat/protocol/api_protocal.py</code> and <code>fastchat/protocol/openai_api_protocol.py</code> will fix the problem. The modified code looks like:</p><pre><code class="language-python">class CompletionResponseChoice(BaseModel):
+</code></pre><p>Normally this will work. However, if you encounter error like <a href="https://github.com/lm-sys/FastChat/issues/1641">this</a>, commenting out all the lines containing <code>finish_reason</code> in <code>fastchat/protocol/api_protocol.py</code> and <code>fastchat/protocol/openai_api_protocol.py</code> will fix the problem. The modified code looks like:</p><pre><code class="language-python">class CompletionResponseChoice(BaseModel):
     index: int
     text: str
     logprobs: Optional[int] = None
