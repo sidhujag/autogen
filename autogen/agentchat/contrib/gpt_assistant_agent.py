@@ -66,6 +66,7 @@ class GPTAssistantAgent(ConversableAgent):
                 instructions=instructions,
                 tools=llm_config.get("tools", []),
                 model=llm_config.get("model", "gpt-4-1106-preview"),
+                file_ids=llm_config.get("file_ids", []),
             )
         else:
             # retrieve an existing assistant
