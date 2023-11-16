@@ -1107,13 +1107,15 @@ class ConversableAgent(Agent):
 
         is_exec_success = False
         if func is not None:
-            # Extract arguments from a json-like string and put it into a dict.
-            input_string = self._format_json_str(func_call.get("arguments", "{}"))
-            try:
-                arguments = json.loads(input_string)
-            except json.JSONDecodeError as e:
-                arguments = None
-                content = f"Error: {e}\n You argument should follow json format."
+            arguments = func_call.get("arguments", "{}")
+            if isinstance(arguments, str):
+                # Extract arguments from a json-like string and put it into a dict.
+                input_string = self._format_json_str(arguments)
+                try:
+                    arguments = json.loads(input_string)
+                except json.JSONDecodeError as e:
+                    arguments = None
+                    content = f"Error: {e}\n Your argument should follow json format. input_string {input_string}"
 
             # Try to execute the function
             if arguments is not None:
