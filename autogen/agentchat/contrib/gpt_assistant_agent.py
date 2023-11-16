@@ -102,10 +102,7 @@ class GPTAssistantAgent(ConversableAgent):
         # lazly create thread
         self._openai_threads = {}
         self._unread_index = defaultdict(int)
-        self._reply_func_list = []
-        self.register_reply([Agent, None], GPTAssistantAgent._invoke_assistant)
-        self.register_reply([Agent, None], ConversableAgent.check_termination_and_human_reply)
-
+        self.register_reply([Agent, None], GPTAssistantAgent._invoke_assistant, position=1)
 
     def _invoke_assistant(
         self,
