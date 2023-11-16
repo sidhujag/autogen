@@ -5,6 +5,7 @@ import json
 import logging
 import inspect # MAKEAI
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Type, Union
 from autogen import OpenAIWrapper
 from .agent import Agent
 from autogen.code_utils import (
@@ -46,6 +47,8 @@ class ConversableAgent(Agent):
     }
     MAX_CONSECUTIVE_AUTO_REPLY = 100  # maximum number of consecutive auto replies (subject to future change)
 
+    llm_config: Union[Dict, Literal[False]]
+
     def __init__(
         self,
         name: str,
@@ -54,8 +57,8 @@ class ConversableAgent(Agent):
         max_consecutive_auto_reply: Optional[int] = None,
         human_input_mode: Optional[str] = "TERMINATE",
         function_map: Optional[Dict[str, Callable]] = None,
-        code_execution_config: Optional[Union[Dict, bool]] = None,
-        llm_config: Optional[Union[Dict, bool]] = None,
+        code_execution_config: Optional[Union[Dict, Literal[False]]] = None,
+        llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
     ):
         """
@@ -115,7 +118,9 @@ class ConversableAgent(Agent):
                 self.llm_config.update(llm_config)
             self.client = OpenAIWrapper(**self.llm_config)
 
-        self._code_execution_config = {} if code_execution_config is None else code_execution_config
+        self._code_execution_config: Union[Dict, Literal[False]] = (
+            {} if code_execution_config is None else code_execution_config
+        )
         self.human_input_mode = human_input_mode
         self._max_consecutive_auto_reply = (
             max_consecutive_auto_reply if max_consecutive_auto_reply is not None else self.MAX_CONSECUTIVE_AUTO_REPLY
@@ -136,7 +141,7 @@ class ConversableAgent(Agent):
         self,
         trigger: Union[Type[Agent], str, Agent, Callable[[Agent], bool], List],
         reply_func: Callable,
-        position: Optional[int] = 0,
+        position: int = 0,
         config: Optional[Any] = None,
         reset_config: Optional[Callable] = None,
     ):
@@ -163,7 +168,7 @@ class ConversableAgent(Agent):
             messages: Optional[List[Dict]] = None,
             sender: Optional[Agent] = None,
             config: Optional[Any] = None,
-        ) -> Union[str, Dict, None]:
+        ) -> Tuple[bool, Union[str, Dict, None]]:
         ```
             position (int): the position of the reply function in the reply function list.
                 The function registered later will be checked earlier by default.
@@ -222,7 +227,7 @@ class ConversableAgent(Agent):
         """A dictionary of conversations from agent to list of messages."""
         return self._oai_messages
 
-    def last_message(self, agent: Optional[Agent] = None) -> Dict:
+    def last_message(self, agent: Optional[Agent] = None) -> Optional[Dict]:
         """The last message exchanged with the agent.
 
         Args:
@@ -305,7 +310,7 @@ class ConversableAgent(Agent):
         recipient: Agent,
         request_reply: Optional[bool] = None,
         silent: Optional[bool] = False,
-    ) -> bool:
+    ):
         """Send a message to another agent.
 
         Args:
@@ -354,7 +359,7 @@ class ConversableAgent(Agent):
         recipient: Agent,
         request_reply: Optional[bool] = None,
         silent: Optional[bool] = False,
-    ) -> bool:
+    ):
         """(async) Send a message to another agent.
 
         Args:
@@ -400,6 +405,8 @@ class ConversableAgent(Agent):
     def _print_received_message(self, message: Union[Dict, str], sender: Agent):
         # print the message received
         print(colored(sender.name, "yellow"), "(to", f"{self.name}):\n", flush=True)
+        message = self._message_to_dict(message)
+
         if message.get("role") == "function":
             func_print = f"***** Response from calling function \"{message['name']}\" *****"
             print(colored(func_print, "green"), flush=True)
@@ -607,7 +614,7 @@ class ConversableAgent(Agent):
         self,
         messages: Optional[List[Dict]] = None,
         sender: Optional[Agent] = None,
-        config: Optional[Any] = None,
+        config: Optional[OpenAIWrapper] = None,
     ) -> Tuple[bool, Union[str, Dict, None]]:
         """Generate a reply using autogen.oai."""
         client = self.client if config is None else config
@@ -625,7 +632,7 @@ class ConversableAgent(Agent):
         self,
         messages: Optional[List[Dict]] = None,
         sender: Optional[Agent] = None,
-        config: Optional[Any] = None,
+        config: Optional[Union[Dict, Literal[False]]] = None,
     ):
         """Generate a reply using code execution."""
         code_execution_config = config if config is not None else self._code_execution_config
