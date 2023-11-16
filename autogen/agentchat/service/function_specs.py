@@ -2,13 +2,13 @@ send_message_spec = {
     "name": "send_message_to_group",
     "category": "communication",
     "class_name": "GroupService.send_message_to_group",
-    "description": "Send a message to another group to assign a task. When you send a message to another group your current group will terminate and upon termination of the recipient group a response will be sent back to you so your group can continue.",
+    "description": "Send a message to another group to assign a task. When you send a message to another group your current group will terminate and upon termination of the recipient group a response will be sent back to you so your group can continue. Before sending check that the recipient is a valid existing group, has 3 or more agents inside it with atleast 1 being from MANAGEMENT.",
     "parameters": {
         "type": "object",
         "properties": {
-            "from_group": {"type": "string", "description": "The name of the sending group you are sending message from. A reference will be stored so a group can respond back to this group upon termination."},
-            "to_group": {"type": "string", "description": "The name of the recipient group. It must be a valid existing group and have 3 or more agents inside it with atleast 1 being atleast as capable as a MANAGER."},
-            "message": {"type": "string", "description": "The content of the message. In the message you should include full context of what your task is for the recipient group."},
+            "from_group": {"type": "string", "description": "The name of the sending group you are sending message from."},
+            "to_group": {"type": "string", "description": "The name of the recipient group."},
+            "message": {"type": "string", "description": "The content of the message. In the message you should include full context of what your task is for the recipient group because the recipient group does not share message history with your group."},
         },
         "required": ["from_group", "to_group", "message"]
     }
@@ -18,7 +18,7 @@ terminate_group_spec = {
     "name": "terminate_group",
     "category": "communication",
     "class_name": "GroupService.terminate_group",
-    "description": "Terminate and conclude a group. The groupchat has loop that continues to select a next speaker until it is terminated. This will let give control back to the caller with a summary. If another group sent you a task, from_group was saved as a reference which will be sent the response.",
+    "description": "Terminate and conclude a group. The groupchat has a loop that continues to select a next speaker until it is terminated. If you have been sent a task by another group, this will give control back with a response.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -180,40 +180,65 @@ upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
-    "description": "This endpoint is for defining or updating a reusable function that encapsulate a set of operations. Functions should be black-box, handling input arguments dynamically to deliver expected outputs across various use cases. Avoid hardcoding values and ensure your function is adaptable. This function should include debug print statements during its development and testing phases to facilitate troubleshooting. Iterative refinement is expected, and the function should not be marked as 'accepted' until it meets all specified requirements and performs as intended. Acceptance only possible by an agent other than the one who made the last code change. Must either see the result or test it himself to accept.",
+    "description": (
+        "This function endpoint is designed to define or update a modular and reusable function that can be utilized across various use cases. "
+        "Functions should be black-box, equipped to handle dynamic input arguments, and deliver predictable outputs. "
+        "Avoid hardcoding values within the function to ensure adaptability and broad applicability. "
+        "During development and testing phases, include a 'debug_mode' parameter that, when enabled, will trigger verbose logging to aid in troubleshooting. "
+        "A function should not be marked as 'accepted' until it has been thoroughly tested and confirmed to meet all specified operational requirements. "
+        "ENSURE you escape any quotes or slashes as the function specification will be parsed as a JSON object using json.loads()."
+    ),
     "parameters": {
         "type": "object",
         "properties": {
             "name": {
                 "type": "string",
-                "description": "The unique name for the function, serving as an identifier. Choose a name that reflects the function's general operation."
+                "description": "A unique identifier for the function that succinctly describes its operation."
             },
             "description": {
                 "type": "string",
-                "description": "A concise summary of the function's purpose, behavior, and potential use cases. Highlight the general nature of the function."
+                "description": "A brief explanation of the function's purpose, its expected behavior, and potential applications."
             },
             "parameters": {
-                "type": "string",
-                "description": "Function arguments represented as a JSON object encoded as a string, in accordance with the OpenAPI 2.0 specification. These arguments should be designed to allow the function to operate in different scenarios and with various inputs. In addition to existing arguments, include a 'debug_mode' argument, which when set to `True`, activates detailed print statements throughout the function. Arguments are added automatically by the interpreter as global variables (key=value statements) accessible inside of function_code."
+                "type": "object",
+                "description": (
+                    "Inputs to our custom OpenAI assistants API function following the OpenAPI 2.0 specification. Assign dynamic properties and required parameters which are provided when calling the custom function. "
+                    "The schema should be designed to be generic enough to handle various use cases. Include 'debug_mode' "
+                    "to toggle debugging information. When writing function code, ensure that it reads parameters dynamically. "
+                    "and produces outputs accordingly. This allows for flexibility and adaptability in different contexts. The parameters are injected by the interpreter to global variables. "
+                    "The pydantic model that will parse parameters is class OpenAIParameter(BaseModel):\ntype: str = 'object'\nproperties: dict[str, Any] = {}\nrequired: Optional[List[str]] = []"
+                ),
+                "properties": {},
+                "required": []
             },
             "function_code": {
                 "type": "string",
-                "description": "The executable Python code for the function. Ensure all required imports are included. The code should be modular and general-purpose, capable of handling a range of inputs specified through arguments. Outputs should be directed to stdout to facilitate result capture. It's recommended to include print statements or logging for debugging purposes, allowing you to verify and iterate on the function's behavior. If the function does not produce the expected results, use these debug outputs to identify and resolve issues before finalizing the function definition. Use 'debug_mode' argument to control debugging on stdout. Manage dependencies with subprocess calls to install external packages as needed."
+                "description": (
+                    "The actual Python code that executes the function's logic. "
+                    "Include all necessary import statements, and ensure that the code is self-contained and general-purpose. "
+                    "The function should use the 'print' statement to output results and debug information, controlled by the 'debug_mode' parameter. "
+                    "External dependencies should be managed with subprocess calls to install packages as needed."
+                )
             },
             "status": {
                 "type": "string",
                 "enum": ["development", "testing", "accepted"],
-                "description": "Add a status attribute to the function's metadata to clearly indicate its development stage. Code should be iterated on until accepted for working code that others can use. The code cannot be accepted by the one who changes function_code."
+                "description": (
+                    "The current stage of the function's lifecycle. "
+                    "Functions in 'development' or 'testing' are subject to change, while 'accepted' functions are stable and ready for public use. "
+                    "A function can only be marked 'accepted' by an agent other than the one who made the last code change, ensuring peer review."
+                )
             },
             "category": {
                 "type": "string",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"],
-                "description": "The category for the function, helping categorize and organize functions within the system for easier discovery and reuse."
+                "description": "A category label that helps organize and classify the function within the system."
             }
         },
         "required": ["name", "parameters", "function_code", "status"]
     }
 }
+
 
 
 

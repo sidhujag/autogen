@@ -27,8 +27,8 @@ class FunctionsService:
         if logs == "" and exitcode2str == "execution succeeded":
             exitcode2str = "no output found, make sure function uses stdout to output results"
         if logs == "" or exitcode != 0:
-            return f"Broken function code! (PLEASE FIX using upsert_function with new function_code). exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'\n\nargs: {args}\nfunction_code:\n```python {function_code}\n```"
-        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'.\nNote even though it ran successfully you may still need to update the code if results do not match as expected. Iterate to fix function_code (via upsert_function) until you are happy.\n\nargs: {args}\nfunction_code:\n```python {function_code}\n``"
+            return f"Broken function code! (PLEASE FIX using upsert_function with new function_code). Note the arguments have been injected as global variables, they are not part of function_code. DO NOT run this code through the OpenAI code interpreter. It runs through function call in local interpreter. exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'\n\nargs: {args}\nfull code:\n```python\n{str_code}\n```"
+        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'.\nNote even though it ran successfully you may still need to update the code if results do not match as expected. Also note the arguments have been injected as global variables, they are not part of function_code. Iterate to fix function_code (via upsert_function) until you are happy. DO NOT run this code through the OpenAI code interpreter. It runs through function call in local interpreter.\n\nargs: {args}\nfull code:\n```python\n{str_code}\n``"
 
     @staticmethod
     def _find_class(class_name):
@@ -118,19 +118,9 @@ class FunctionsService:
                 return None
             except ValidationError as e:
                 return json.dumps({"error": f"Validation error for '{field}': {str(e)}"})
-
-        # If the field is a non-empty string, attempt to parse it as a JSON string
-        elif isinstance(field_value, str) and field_value.strip():
-            try:
-                parameters_dict = json.loads(field_value)
-                func_spec[field] = OpenAIParameter(**parameters_dict)
-                return None
-            except (json.JSONDecodeError, ValidationError) as e:
-                return json.dumps({"error": f"Error parsing JSON for '{field}': {str(e)}"})
-
         # If the field is none of the above, return an error
         else:
-            return json.dumps({"error": f"The '{field}' field must be a JSON string."})
+            return json.dumps({"error": f"The '{field}' field must be a dictonary."})
 
     @staticmethod
     def _create_function_model(agent: GPTAssistantAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
