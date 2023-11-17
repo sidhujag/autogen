@@ -158,12 +158,9 @@ class GPTAssistantAgent(ConversableAgent):
         run_response_messages = self._get_run_response(assistant_thread, run)
         assert len(run_response_messages) > 0, "No response from the assistant."
         self._unread_index[sender] = len(self._oai_messages[sender]) + 1
-        # Here you can access the response
         if run_response_messages is not None:
-            # Process the response
             return True, run_response_messages
         else:
-            # Handle the case where no response was retrieved
             return False, "No response from the assistant."
 
     def _process_messages(self, assistant_thread, run):
@@ -224,6 +221,7 @@ class GPTAssistantAgent(ConversableAgent):
                                 }
                             )
             return new_messages
+
     def _get_run_response(self, assistant_thread, run):
         """
         Waits for and processes the response of a run from the OpenAI assistant in a separate thread.
@@ -239,7 +237,7 @@ class GPTAssistantAgent(ConversableAgent):
                 time.sleep(self.llm_config.get("check_every_ms", 1000) / 1000)
                 run = self._openai_client.beta.threads.runs.retrieve(run.id, thread_id=assistant_thread.id)
             elif run.status == "completed" or run.status == "cancelled" or run.status == "expired" or run.status == "failed":
-                return self._process_messages(run)
+                return self._process_messages(assistant_thread, run)
             elif run.status == "cancelling":
                 logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: cancelling...')
             elif run.status == "requires_action":
