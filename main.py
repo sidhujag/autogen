@@ -1,6 +1,8 @@
 import os
 import logging
 
+
+
 from autogen import OpenAIWrapper
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -14,6 +16,7 @@ LOGFILE_PATH = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'app.log')
 logging.basicConfig(filename=LOGFILE_PATH, filemode='w',
                     format='%(asctime)s.%(msecs)03d %(name)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S', force=True, level=logging.INFO)
+
 
 class QueryModel(BaseModel):
     auth: AuthAgent
@@ -41,7 +44,7 @@ def upsert_agents(models, auth, client):
     return agents, None
 
 @app.post('/query/')
-async def query(input: QueryModel):
+def query(input: QueryModel):
     oai_wrapper = OpenAIWrapper(api_key=input.auth.api_key)
     openai_client = oai_wrapper._clients[0]
             
