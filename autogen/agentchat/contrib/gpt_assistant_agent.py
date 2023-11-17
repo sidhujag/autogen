@@ -1,9 +1,7 @@
 from collections import defaultdict
-import openai
 import json
 import time
 import logging
-import threading
 
 from autogen import OpenAIWrapper
 from autogen.agentchat.agent import Agent
@@ -94,14 +92,17 @@ class GPTAssistantAgent(ConversableAgent):
             llm_config=llm_config,
             **kwargs
         )
-
+        self.cancellation_requested = False
         # lazly create thread
         self._openai_threads = {}
         self._unread_index = defaultdict(int)
         self.register_reply([Agent, None], GPTAssistantAgent._invoke_assistant, position=1)
 
     def check_for_cancellation(self):
-        return self.cancellation_requested  # A boolean flag that is set to True when you want to cancel
+        """
+        Checks for cancellation used during _get_run_response
+        """
+        return self.cancellation_requested
 
     def _invoke_assistant(
         self,
@@ -120,7 +121,6 @@ class GPTAssistantAgent(ConversableAgent):
         Returns:
             A tuple containing a boolean indicating success and the assistant's reply.
         """
-
         if messages is None:
             messages = self._oai_messages[sender]
         unread_index = self._unread_index[sender] or 0
@@ -156,6 +156,12 @@ class GPTAssistantAgent(ConversableAgent):
             return False, "No response from the assistant."
 
     def _process_messages(self, assistant_thread, run):
+        """
+        Processes and provides a response based on the run status.
+        Args:
+            assistant_thread: The thread object for the assistant.
+            run: The run object initiated with the OpenAI assistant.
+        """
         if run.status == "failed":
             logger.error(f'Run: {run.id} Thread: {assistant_thread.id}: failed...')
             if run.last_error:
@@ -215,12 +221,10 @@ class GPTAssistantAgent(ConversableAgent):
 
     def _get_run_response(self, assistant_thread, run):
         """
-        Waits for and processes the response of a run from the OpenAI assistant in a separate thread.
+        Waits for and processes the response of a run from the OpenAI assistant.
         Args:
             assistant_thread: The thread object for the assistant.
             run: The run object initiated with the OpenAI assistant.
-            stop_event: Event to stop the thread.
-            response_container: A shared dictionary to store responses.
         """
         while True:
             run = self._openai_client.beta.threads.runs.retrieve(run.id, thread_id=assistant_thread.id)
@@ -269,6 +273,13 @@ class GPTAssistantAgent(ConversableAgent):
 
 
     def _cancel_run(self, run_id: str, thread_id: str):
+        """
+        Cancels a run.
+
+        Args:
+            run_id: The ID of the run.
+            thread_id: The ID of the thread associated with the run.
+        """
         try:
             self._openai_client.beta.threads.runs.cancel(run_id=run_id, thread_id=thread_id)
             logger.info(f'Run: {run_id} Thread: {thread_id}: successfully sent cancellation signal.')
@@ -280,7 +291,6 @@ class GPTAssistantAgent(ConversableAgent):
         """
         Formats the assistant's message to include annotations and citations.
         """
-
         annotations = message_content.annotations
         citations = []
 
