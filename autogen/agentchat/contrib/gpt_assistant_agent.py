@@ -155,53 +155,41 @@ class GPTAssistantAgent(ConversableAgent):
             instructions=self.system_message,
         )
         self.cancellation_requested = False
-        run_response_messages = self._get_run_response(assistant_thread, run)
-        assert len(run_response_messages) > 0, "No response from the assistant."
+        response = self._get_run_response(assistant_thread, run)
         self._unread_index[sender] = len(self._oai_messages[sender]) + 1
-        if run_response_messages is not None:
-            return True, run_response_messages
+        if response["content"]:
+            return True, response
         else:
             return False, "No response from the assistant."
 
     def _process_messages(self, assistant_thread, run):
         if run.status == "failed":
-            new_messages = []
             logger.error(f'Run: {run.id} Thread: {assistant_thread.id}: failed...')
             if run.last_error:
-                new_messages.append(
-                    {
-                        "role": "assistant",
-                        "content": str(run.last_error),
-                    }
-                )
+                response = {
+                    "role": "assistant",
+                    "content": str(run.last_error),
+                }
             else:
-                new_messages.append(
-                    {
-                        "role": "assistant",
-                        "content": 'Failed',
-                    }
-                )
-            return new_messages
+                response = {
+                    "role": "assistant",
+                    "content": 'Failed',
+                }
+            return response
         elif run.status == "expired":
             logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: expired...')
-            new_messages = []
-            new_messages.append(
-                {
-                    "role": "assistant",
-                    "content": 'Expired',
-                }
-            )
+            response = {
+                "role": "assistant",
+                "content": 'Expired',
+            }
             return new_messages
         elif run.status == "cancelled":
             logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: cancelled...')
-            new_messages = []
-            new_messages.append(
-                {
-                    "role": "assistant",
-                    "content": 'Cancelled',
-                }
-            )
-            return new_messages
+            response = {
+                "role": "assistant",
+                "content": 'Cancelled',
+            }
+            return response
         elif run.status == "completed":
             logger.info(f'Run: {run.id} Thread: {assistant_thread.id}: completed...')
             response_messages = self._openai_client.beta.threads.messages.list(assistant_thread.id, order="asc")
@@ -220,7 +208,17 @@ class GPTAssistantAgent(ConversableAgent):
                                     "content": f"Recieved file id={content.image_file.file_id}",
                                 }
                             )
-            return new_messages
+            response = {
+                "role": new_messages[-1]["role"],
+                "content": "",
+            }
+            for message in new_messages:
+                # just logging or do something with the intermediate messages?
+                # if current response is not empty and there is more, append new lines
+                if len(response["content"]) > 0:
+                    response["content"] += "\n\n"
+                response["content"] += message["content"]
+            return response
 
     def _get_run_response(self, assistant_thread, run):
         """
