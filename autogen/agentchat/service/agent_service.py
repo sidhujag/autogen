@@ -240,6 +240,7 @@ GROUP STATS
                 human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 instructions=backend_agent.system_message,
+                is_termination_msg=lambda x: "TERMINATE" in x.get("content", ""),
                 llm_config=llm_config
             )
         agent.auth = backend_agent.auth

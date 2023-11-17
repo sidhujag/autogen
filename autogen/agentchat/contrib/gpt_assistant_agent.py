@@ -9,11 +9,9 @@ from autogen import OpenAIWrapper
 from autogen.agentchat.agent import Agent
 from autogen.agentchat.assistant_agent import ConversableAgent
 from autogen.agentchat.assistant_agent import AssistantAgent
-from typing import Dict, Optional, Union, List, Tuple, Any, Callable
+from typing import Dict, Optional, Union, List, Tuple, Any
 
 logger = logging.getLogger(__name__)
-class CancellationException(Exception):
-    pass
 
 class GPTAssistantAgent(ConversableAgent):
     """
@@ -24,7 +22,6 @@ class GPTAssistantAgent(ConversableAgent):
     def __init__(
         self,
         name="GPT Assistant",
-        is_termination_msg: Optional[Callable[[Dict], bool]] = None,
         instructions: Optional[str] = None,
         llm_config: Optional[Union[Dict, bool]] = None,
         overwrite_instructions: bool = False,
@@ -91,21 +88,17 @@ class GPTAssistantAgent(ConversableAgent):
                 logger.warning(
                     "overwrite_instructions is False. Provided instructions will be used without permanently modifying the assistant in the API."
                 )
-        _is_termination_msg = (
-            is_termination_msg if is_termination_msg is not None else (lambda x: "TERMINATE" in x.get("content", ""))
-        )
         super().__init__(
             name=name,
             system_message=instructions,
             llm_config=llm_config,
-            is_termination_msg=_is_termination_msg,
             **kwargs
         )
 
         # lazly create thread
         self._openai_threads = {}
         self._unread_index = defaultdict(int)
-        self.register_reply(Agent, GPTAssistantAgent._invoke_assistant, position=1)
+        self.register_reply([Agent, None], GPTAssistantAgent._invoke_assistant, position=1)
 
     def check_for_cancellation(self):
         return self.cancellation_requested  # A boolean flag that is set to True when you want to cancel
