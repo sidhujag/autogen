@@ -55,16 +55,50 @@ get_group_info_spec = {
     "name": "get_group_info",
     "category": "communication",
     "class_name": "GroupService.get_group_info",
-    "description": "Get group info: Communication stats of the group as well as agents/files in group.",
+    "description": "Get group info by name: Communication stats of the group as well as agents/files in group.",
     "parameters": {
         "type": "object",
         "properties": {
-            "group": {
+            "name": {
                 "type": "string",
                 "description": "The group name."
             }
         },
-        "required": ["group"]
+        "required": ["name"]
+    },
+}
+
+get_function_info_spec = {
+    "name": "get_function_info",
+    "category": "communication",
+    "class_name": "FunctionsService.get_function_info",
+    "description": "Get function info ny name.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "The function name."
+            }
+        },
+        "required": ["name"]
+    },
+}
+
+get_agent_info_spec = {
+    "name": "get_agent_info",
+    "category": "communication",
+    "class_name": "AgentService.get_agent_info",
+    "description": "Get agent info by name.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "The agent name."
+            }
+        },
+        "required": ["name"]
     },
 }
 
@@ -89,7 +123,7 @@ upsert_agent = {
     "name": "upsert_agent",
     "category": "communication",
     "class_name": "AgentService.upsert_agent",
-    "description": "Upsert an agent. Create an agent only for reusable isolated usecases.",
+    "description": "Upsert an agent. Create an agent only for reusable usecases.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -108,7 +142,7 @@ upsert_agent = {
             "functions_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Function(s) names to add to agent. This gives the groups the agent is in the ability to see the function. Functions must already exist."
+                "description": "Function(s) names to add to agent. Functions must already exist."
             },
             "functions_to_remove": {
                 "type": "array",
@@ -122,7 +156,7 @@ upsert_agent = {
             },
             "capability": {
                 "type": "number",
-                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for GROUP_INFO, 2 for CODE_INTERPRETER_TOOL, 4 for RETRIEVAL_TOOL, 8 for FILES, and 16 for MANAGEMENT. Bit 1 (GROUP_INFO) must always be enabled. Combine capabilities by adding the values of their masks together."
+                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for INFO, 2 for CODE_INTERPRETER_TOOL, 4 for RETRIEVAL_TOOL, 8 for FILES, and 16 for MANAGEMENT. Bit 1 (INFO) must always be enabled. Combine capabilities by adding the values of their masks together."
             }
         },
         "required": ["name"]
@@ -138,7 +172,7 @@ upsert_group_spec = {
         "type": "object",
         "properties": {
             "group": {"type": "string", "description": "The name of group. Acts as an indentifier."},
-            "description": {"type": "string", "description": "Concise description of group. Is used when discovering groups so make sure it covers feautures, functions and roles within the group. You can also update it as you add/remove agents. When calling function in a group the agent must be existing in the group otherwise you will get a function not found error. A group should have atleast 1 MANAGER to be able to terminate it. Don't add agents for the sake of making a functional group, each agent must serve a valid purpose to the task at hand."},
+            "description": {"type": "string", "description": "Concise description of group. Is used when discovering groups so make sure it covers feautures, functions and roles within the group. You can also update it as you add/remove agents. A group should have atleast 1 MANAGER to be able to terminate it. Don't add agents for the sake of making a functional group, each agent must serve a valid purpose to the task at hand."},
             "agents_to_add": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -175,38 +209,33 @@ discover_functions_spec = {
         "required": ["category"]
     },
 }
-
 upsert_function_spec = {
     "name": "upsert_function",
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
     "description": (
-        "This function endpoint is designed to define or update a modular and reusable function that can be utilized across various use cases. "
-        "Functions should be black-box, equipped to handle dynamic input arguments, and deliver predictable outputs. "
-        "Avoid hardcoding values within the function to ensure adaptability and broad applicability. "
-        "During development and testing phases, include a 'debug_mode' parameter that, when enabled, will trigger verbose logging to aid in troubleshooting. "
-        "A function should not be marked as 'accepted' until it has been thoroughly tested and confirmed to meet all specified operational requirements. "
-        "ENSURE you escape any quotes or slashes as the function specification will be parsed as a JSON object using json.loads()."
+        "Endpoint for defining or updating modular functions for diverse applications. "
+        "Functions should be adaptable, handle dynamic inputs, and produce predictable outputs. "
+        "Include a 'debug_mode' for verbose logging in development/testing. "
+        "Mark functions as 'accepted' only after thorough testing and validation."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "name": {
                 "type": "string",
-                "description": "A unique identifier for the function that succinctly describes its operation."
+                "description": "Unique identifier describing the function's operation."
             },
             "description": {
                 "type": "string",
-                "description": "A brief explanation of the function's purpose, its expected behavior, and potential applications."
+                "description": "Brief explanation of the function's purpose and use cases."
             },
             "parameters": {
                 "type": "object",
                 "description": (
-                    "Inputs to our custom OpenAI assistants API function following the OpenAPI 2.0 specification. Assign dynamic properties and required parameters which are provided when calling the custom function. "
-                    "The schema should be designed to be generic enough to handle various use cases. Include 'debug_mode' "
-                    "to toggle debugging information. When writing function code, ensure that it reads parameters dynamically. "
-                    "and produces outputs accordingly. This allows for flexibility and adaptability in different contexts. The parameters are injected by the interpreter to global variables. "
-                    "The pydantic model that will parse parameters is class OpenAIParameter(BaseModel):\ntype: str = 'object'\nproperties: dict[str, Any] = {}\nrequired: Optional[List[str]] = []"
+                    "Dynamic inputs for the function following OpenAPI 3 specification. "
+                    "Include 'debug_mode' for debugging. Ensure flexibility by reading parameters dynamically. "
+                    "Parameters are injected as global variables. Pydantic model: OpenAIParameter."
                 ),
                 "properties": {},
                 "required": []
@@ -214,25 +243,22 @@ upsert_function_spec = {
             "function_code": {
                 "type": "string",
                 "description": (
-                    "The actual Python code that executes the function's logic. "
-                    "Include all necessary import statements, and ensure that the code is self-contained and general-purpose. "
-                    "The function should use the 'print' statement to output results and debug information, controlled by the 'debug_mode' parameter. "
-                    "External dependencies should be managed with subprocess calls to install packages as needed."
+                    "Python code executing the function's logic. Should be self-contained and general-purpose. "
+                    "Use 'print' for output and debugging, controlled by 'debug_mode'. Manage external dependencies via subprocess."
                 )
             },
             "status": {
                 "type": "string",
                 "enum": ["development", "testing", "accepted"],
                 "description": (
-                    "The current stage of the function's lifecycle. "
-                    "Functions in 'development' or 'testing' are subject to change, while 'accepted' functions are stable and ready for public use. "
-                    "A function can only be marked 'accepted' by an agent other than the one who made the last code change, ensuring peer review."
+                    "Function's lifecycle stage. 'Development' and 'testing' indicate change, 'accepted' means stable for public use. "
+                    "Requires peer review for 'accepted' status."
                 )
             },
             "category": {
                 "type": "string",
                 "enum": ["information_retrieval", "communication", "data_processing", "sensory_perception", "planning", "programming"],
-                "description": "A category label that helps organize and classify the function within the system."
+                "description": "Category label for system organization."
             }
         },
         "required": ["name", "parameters", "function_code", "status"]
@@ -240,12 +266,9 @@ upsert_function_spec = {
 }
 
 
-
-
-
 upload_file_spec = {
     "name": "upload_file",
-    "category": "programming",
+    "category": "communication",
     "class_name": "AgentService.upload_file",
     "description": "Upload a file to OpenAI to be used by online assistant tools like code interpreter and retrieval.",
     "parameters": {
@@ -298,8 +321,32 @@ get_file_content_spec = {
         "required": ["file_id"],
     },
 }
+
+serper_spec = {
+    "name": "web_search",
+    "category": "communication",
+    "class_name": "SerperWrapper.run",
+    "description": "Generic web search, access the internet through a search engine.",
+    "status": "accepted",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Search query",
+            },
+            "max_results": {
+                "type": "string",
+                "description": "Maximum search results to include, defaults to 8.",
+            },
+        },
+        "required": ["query"],
+    },
+}
 group_info_function_specs = [
     get_group_info_spec,
+    get_function_info_spec,
+    get_agent_info_spec,
     upsert_function_spec
 ]
 
@@ -317,4 +364,8 @@ files_function_specs = [
     upload_file_spec,
     delete_files_spec,
     get_file_content_spec
+]
+
+external_function_specs = [
+    serper_spec,
 ]
