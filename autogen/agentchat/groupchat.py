@@ -64,19 +64,16 @@ class GroupChat:
                 if self.agents[(offset + i) % len(self.agents)] in agents:
                     return self.agents[(offset + i) % len(self.agents)]
 
-    def select_speaker_msg(self, agents: List[Agent], last_speaker: Agent):
+    def select_speaker_msg(self, agents: List[Agent]):
         """Return the message for selecting the next speaker."""
         from autogen.agentchat.service import AgentService
         return f"""You are a speaker selector in a chat group. The following speakers are available:
 {self._participant_roles(agents)}.
 
-Current speaker:
-{last_speaker.name}
-
 {AgentService.CAPABILITY_SYSTEM_MESSAGE}
 
 Read the following conversation.
-Then select the next speaker from {[agent.name for agent in agents]}. Take note of agents' capabilities. Only return the speaker name. Agent's shouldn't talk to themselves, but the same agent may be required to speak again if he should continue the task."""
+Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities. Only return the role."""
 
     def manual_select_speaker(self, agents: List[Agent]) -> Agent:
         """Manually select the next speaker."""
@@ -166,7 +163,7 @@ Then select the next speaker from {[agent.name for agent in agents]}. Take note 
             + [
                 {
                     "role": "system",
-                    "content": f"Read the above conversation. Then select the next speaker from {[agent.name for agent in agents]}. Note the capability of each agent. Only return the speaker name. Agent's shouldn't talk to themselves, but the same agent may be required to speak again if he should continue the task.",
+                    "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Note the capability of each role. Only return the role.",
                 }
             ]
         )
@@ -203,7 +200,7 @@ Then select the next speaker from {[agent.name for agent in agents]}. Take note 
                 )
             capability_names = AgentService.get_capability_names(agent.capability)
             capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
-            roles.append(f"Name: {agent.name}, Description: {agent.description}, Capabilities: {capability_text}")
+            roles.append(f"Role: {agent.name}, Description: {agent.description}, Capabilities: {capability_text}")
         return "\n".join(roles)
 
     def _mentioned_agents(self, message_content: str, agents: List[Agent]) -> Dict:
