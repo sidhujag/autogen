@@ -1,6 +1,7 @@
         
 import json
 import sys
+import asyncio
 
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List, Any, Optional, Dict, Tuple
@@ -18,6 +19,19 @@ class FunctionsService:
             return err
         return response
     
+    @staticmethod
+    def get_function_info(sender: GPTAssistantAgent, name: str) -> str:
+        from . import GetFunctionModel, BackendService
+        if sender is None:
+            return json.dumps({"error": "Sender not found"})
+        response, err = BackendService.get_backend_functions([GetFunctionModel(auth=sender.auth, name=name)])
+        if err is not None:
+            return err
+        # Convert the response (list of BaseFunction) to a list of dicts
+        response_dicts = [base_function.dict() for base_function in response]
+        
+        return json.dumps({"response": response_dicts})
+
     @staticmethod
     def execute_func(function_code: str, **args):
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
@@ -78,11 +92,22 @@ class FunctionsService:
             if ServiceClass is not None:
                 method = getattr(ServiceClass, module_name)
                 if method is not None:
-                    agent.register_function(
-                        function_map={
-                            function.name: lambda sender, **args: method(sender, **args)
-                        }
-                    )
+                    if asyncio.coroutines.iscoroutinefunction(method):
+                        # If method is async, define a wrapper to run it synchronously
+                        def sync_wrapper(sender, **args):
+                            return asyncio.run(method(sender, **args))
+                        agent.register_function(
+                            function_map={
+                                function.name: sync_wrapper
+                            }
+                        )
+                    else:
+                        # If method is not async, register it directly
+                        agent.register_function(
+                            function_map={
+                                function.name: lambda sender, **args: method(sender, **args)
+                            }
+                        )
                 else:
                     return json.dumps({"error": f"Method {module_name} not found in class {class_name}"})
             else:
@@ -140,19 +165,18 @@ class FunctionsService:
             return None, json.dumps({"error": f"Validation error when defining function {func_spec.get('name', '')}: {str(e)}"})
 
     @staticmethod
-    def upsert_function(agent: GPTAssistantAgent, **kwargs: Any) -> str:
+    def upsert_function(sender: GPTAssistantAgent, **kwargs: Any) -> str:
         from . import BackendService, AgentService, UpsertAgentModel
-        function_model, error_message = FunctionsService._create_function_model(agent, kwargs)
+        function_model, error_message = FunctionsService._create_function_model(sender, kwargs)
         if error_message:
             return error_message
         err = BackendService.upsert_backend_functions([function_model])
         if err is not None:
             return err
-
         # update the agent to have the function so it can use it
         agent_upserted, err = AgentService.upsert_agents([UpsertAgentModel(
-            auth=agent.auth,
-            name=agent.name,
+            auth=sender.auth,
+            name=sender.name,
             functions_to_add=[function_model.name],
         )])
         if err is not None:

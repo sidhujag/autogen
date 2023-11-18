@@ -8,59 +8,31 @@ import openai
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}{dependent}, capabilities: {capabilities}
+Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, Capabilities: {capabilities}
 
 {capability_instruction}
 
-Agent, you are a vital component within a sophisticated hierarchy of groups, designed to collaborate with peers 
-to accomplish tasks effectively. Your primary function involves working alongside other agents, each 
-contributing unique skills and perspectives to achieve common goals. Collaborate extensively, leverage 
-your specialized capabilities, and engage with other agents to explore all possible solutions. Before 
-beginning complex tasks, develop a detailed plan assigning specific parts to relevant agents or groups, 
-and always aim to present comprehensive and finished work. Stay on topic, encourage contribution from all 
-team members, and use the group's collective strengths to deliver creative and thorough outcomes. 
-Adherence to these directives ensures efficient task resolution and maintains the integrity of the 
-collaborative process within the hierarchy of groups.
+As a Basic Agent, collaborate with peers to achieve goals, leveraging your unique skills. Plan thoroughly for complex tasks, assigning roles to appropriate agents or groups. Aim for comprehensive solutions, stay focused, and utilize collective strengths. Prioritize reusing existing functions, agents, and groups. Be cautious with non-accepted functions; prefer fixing them over creating new versions. Always consider the group's message history in your responses.
 
-Dependent groups are those that have given you a task to work on. Once you complete your task and give response it will give speaking control back to the dependent group.
-Don't trust non-accepted functions, instead fix or repair them and move them into acceptance before using. Don't make a new version of a function because you cannot get code working, work to fix an existing function that has the same intent.
-Read the conversation and respond based on the history of messages of agents within the group you are responding to. Group and Speaker information is prepended to messages for your reference.
-
-Custom instructions: {custom_instructions}
+Custom Instructions: {custom_instructions}
 """
     MANAGER_AGENT_SYSTEM_MESSAGE: str = """
-Agent name and Group: Your name: {agent_name}, description: {agent_description}, group: {group_name}{dependent}, capabilities: {capabilities}
+Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, Capabilities: {capabilities}
 
 {capability_instruction}
 
-Agent, as part of the management tier in our advanced hierarchy of groups, you have an instrumental role in 
-steering collaborative efforts toward successful completion. You possess the authority to orchestrate the 
-activity within the group, assign tasks to other agents and groups, and synergize the diverse capabilities at your 
-disposal. Prior to undertaking complex endeavors, craft an elaborate, step-by-step strategy that 
-outlines the involvement of each agent and group along with their assigned roles. Ensure that you 
-maximize the use of your management tools to discover new agents, create entities, and coordinate efforts 
-across groups to exhaust all avenues of problem-solving. Keep your team focused, foster creativity, and 
-maintain a clear line of communication with all participants. Your leadership is crucial in driving the 
-team to deliver complete and well-considered solutions that reflect the collective expertise of the 
-hierarchy of groups. Termination should be decided at your discretion. Read the room. If you think it is finished;
-if agents have nothing to add, if the conversation reaches a natural conclusion, answers original question,
-deviates away from original question or if the discussion topic switches, it is time to terminate.
+As a Manager Agent, lead and coordinate group activities. Develop detailed strategies, assign tasks, and utilize management tools for optimal problem-solving. Encourage focus and creativity within your team. Terminate groups judiciously based on the conversation's progress and relevance. Avoid creating new entities if existing ones suffice. Be wary of non-accepted functions and aim to improve them. Your responses should reflect the group's message history.
 
-Dependent groups are those that have given you a task to work on. Once you complete your task, terminate the group and give response it will give speaking control back to the dependent group.
-Don't trust non-accepted functions, instead fix or repair them and move them into acceptance before using. Don't make a new version of a function because you cannot get code working, work to fix an existing function that has the same intent.
-Read the conversation and respond based on the history of messages of agents within the group you are responding to. Group and Speaker information is prepended to messages for your reference.
+Custom Instructions: {custom_instructions}
 
-Custom instructions: {custom_instructions}
-
-GROUP STATS
-{group_stats}
+Group Stats: {group_stats}
 """
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
-    - GROUP_INFO: Able to get group information (list group agents, list group files, stats) on demand via get_group_info function. upsert_function also available to create or update functions.
-    - CODE_INTERPRETER_TOOL: Allows the agent to write and run Python code in a sandboxed environment. You have 2 interpreters, local and OpenAI. OpenAI interpreter can natively work with OpenAI files but cannot access the internet. Local interpreter is only accessible via custom functions (defined through upsert_function) and can access regular files locally (can download online files to local if needed) and also has internet access. If a function exists in your context, you have priviledge to run and execute it.
-    - RETRIEVAL_TOOL: Expands the agent's knowledge base with external documents and data. Uses files to create knowledge base.
-    - FILES: Provides the ability to manage files for data processing and sharing across groups.
-    - MANAGEMENT: Grants the agent the power to modify agents/groups, communicate with other groups, discover entities, and manage group activities (including termination).
+- INFO: Access and manage information on functions, agents, and groups.
+- CODE_INTERPRETER_TOOL: Write and run Python code. Use OpenAI interpreter for OpenAI files, and local interpreter for local files and internet access. Execute functions in your context.
+- RETRIEVAL_TOOL: Enhance knowledge with external documents and data using files.
+- FILES: Manage files for data processing and sharing.
+- MANAGEMENT: Modify agents/groups, communicate across groups, discover entities, and manage group activities, including termination.
 """
 
     @staticmethod
@@ -86,12 +58,30 @@ GROUP STATS
         return response
 
     @staticmethod
-    def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
-        from . import UpsertAgentModel, GROUP_INFO, GetAgentModel
+    def get_agent_info(sender: GPTAssistantAgent, name: str) -> str:
+        from . import GetAgentModel, AgentInfo
         if sender is None:
             return json.dumps({"error": "Sender not found"})
-        if not capability & GROUP_INFO:
-            return json.dumps({"error": "GROUP_INFO bit must be set for capability"})
+        agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
+        if agent is None:
+            return json.dumps({"error": f"Agent({name}) not found"})
+
+        agentInfo = AgentInfo(
+            name=agent.name,
+            description=agent.description,
+            system_message=agent.system_message,
+            capability=agent.capability,
+            files=agent.files
+        )
+        return json.dumps({"response": agentInfo.dict()})
+    
+    @staticmethod
+    def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
+        from . import UpsertAgentModel, INFO, GetAgentModel
+        if sender is None:
+            return json.dumps({"error": "Sender not found"})
+        if not capability & INFO:
+            return json.dumps({"error": "INFO bit must be set for capability"})
         agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
         id = None
         if agent is None:
@@ -206,9 +196,9 @@ GROUP STATS
 
     @staticmethod
     def _update_capability(agent):
-        from . import FunctionsService, MakeService, GROUP_INFO, MANAGEMENT, FILES, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL
+        from . import FunctionsService, MakeService, INFO, MANAGEMENT, FILES, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL
         agent.llm_config["tools"] = []
-        if agent.capability & GROUP_INFO:
+        if agent.capability & INFO:
             for func_spec in group_info_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
@@ -335,9 +325,9 @@ GROUP STATS
 
     @staticmethod
     def get_capability_names(capability_number):
-        from . import GROUP_INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
+        from . import INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
         capabilities = [
-            ("GROUP_INFO", GROUP_INFO),
+            ("INFO", INFO),
             ("CODE_INTERPRETER_TOOL", CODE_INTERPRETER_TOOL),
             ("RETRIEVAL_TOOL", RETRIEVAL_TOOL),
             ("FILES", FILES),

@@ -3,7 +3,7 @@ from .. import GroupChatManager, GroupChat
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
 import json
-GROUP_INFO = 1
+INFO = 1
 CODE_INTERPRETER_TOOL = 2
 RETRIEVAL_TOOL = 4
 FILES = 8
@@ -11,47 +11,47 @@ MANAGEMENT = 16
 
 class GroupService:
     @staticmethod
-    def get_group_manager(group_model) -> GroupChatManager:
+    def get_group(group_model) -> GroupChatManager:
         from . import BackendService, MakeService
-        manager: GroupChatManager = MakeService.GROUP_REGISTRY.get(group_model.name)
-        if manager is None:
+        group: GroupChatManager = MakeService.GROUP_REGISTRY.get(group_model.name)
+        if group is None:
             backend_groups, err = BackendService.get_backend_groups([group_model])
             if err is None and len(backend_groups) > 0:
-                manager, err = GroupService.make_group(backend_groups[0])
+                group, err = GroupService.make_group(backend_groups[0])
                 if err is not None:
-                    MakeService.GROUP_REGISTRY[group_model.name] = manager
-        return manager
+                    MakeService.GROUP_REGISTRY[group_model.name] = group
+        return group
     
     @staticmethod
-    def get_group_info(sender: GPTAssistantAgent, group: str) -> str:
-        from . import BackendService, GetGroupModel, GroupInfo, AgentService, MakeService, GetAgentModel
+    def get_group_info(sender: GPTAssistantAgent, name: str) -> str:
+        from . import GetGroupModel, GroupInfo, AgentService, MakeService, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
 
-        backend_groups, err = BackendService.get_backend_groups([GetGroupModel(auth=sender.auth, name=group)])
-        if err is not None or not backend_groups:
-            return json.dumps({"error": str(err) if err else "No groups found"})
+        backend_group = GroupService.get_group([GetGroupModel(auth=sender.auth, name=name)])
+        if not backend_group:
+            return json.dumps({"error": f"Group({name}) not found"})
         groups_info = []
-        for backend_group in backend_groups:
-            agents_dict = {}
-            for agent_name in backend_group.agent_names:
-                agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
-                if agent is None:
-                    return json.dumps({"error": f"Could not get group agent: {agent_name}"})
+      
+        agents_dict = {}
+        for agent_name in backend_group.agent_names:
+            agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
+            if agent is None:
+                return json.dumps({"error": f"Could not get group agent: {agent_name}"})
 
-                short_description = MakeService._get_short_description(agent.description)
-                capability_names = AgentService.get_capability_names(agent.capability)
-                capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
-                agents_dict[agent.name] = {
-                    "capabilities": capability_text,
-                    "description": short_description,
-                    "files": agent.files
-                }
-            group_info = GroupInfo(**backend_group.dict(), agents=agents_dict)
-            groups_info.append(group_info.dict(exclude={'agent_names'}))
+            short_description = MakeService._get_short_description(agent.description)
+            capability_names = AgentService.get_capability_names(agent.capability)
+            capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
+            agents_dict[agent.name] = {
+                "capabilities": capability_text,
+                "description": short_description,
+                "files": agent.files
+            }
+        group_info = GroupInfo(**backend_group.dict(), agents=agents_dict)
+        groups_info.append(group_info.dict(exclude=['agent_names', 'auth']))
 
         # Return the JSON representation of the groups info
-        return json.dumps(groups_info)
+        return json.dumps({"response": groups_info})
 
 
     @staticmethod
@@ -84,12 +84,12 @@ class GroupService:
         from . import GetGroupModel
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
-        group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=group))
-        if group_manager is None:
+        group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
+        if group is None:
             return json.dumps({"error": "Could not send message: group not found"})
-        if group_manager.dependent:
-            group_manager.send(response, group_manager.dependent, request_reply=False)
-        group_manager.exiting = True
+        if group.dependent:
+            group.send(response, group.dependent, request_reply=False)
+        group.exiting = True
         return json.dumps({"response": "Group terminating!"})
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
@@ -98,36 +98,36 @@ class GroupService:
             return json.dumps({"error": "Could not send message: sender not found"})
         if from_group == to_group:
             return json.dumps({"error": "Could not send message: cannot send message to the same group you are sending from"})
-        from_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=from_group))
-        if from_group_manager is None:
+        from_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=from_group))
+        if from_group is None:
             return json.dumps({"error": "Could not send message: from_group not found"})
-        to_group_manager = GroupService.get_group_manager(GetGroupModel(auth=sender.auth, name=to_group))
-        if to_group_manager is None:
+        to_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=to_group))
+        if to_group is None:
             return json.dumps({"error": "Could not send message: to_group not found"})
-        if to_group_manager.dependent:
+        if to_group.dependent:
             return json.dumps({"error": f"Could not send message: to_group already depends on a task from {to_group_manager.dependent.name}."})
-        if from_group_manager.dependent and to_group == from_group_manager.dependent.name:
+        if from_group.dependent and to_group == from_group.dependent.name:
             return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
-        if len(to_group_manager.groupchat.agents) < 3:
+        if len(to_group.groupchat.agents) < 3:
             return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
         found_mgr = False
-        for agent in to_group_manager.groupchat.agents:
+        for agent in to_group.groupchat.agents:
             if agent.capability & MANAGEMENT:
                 found_mgr = True
                 break
         if not found_mgr:
             return json.dumps({"error": f"Could not send message: to_group does not have a MANAGER. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
         # Increment the communication stats
-        from_group_manager.outgoing[to_group_manager.name] = from_group_manager.outgoing.get(to_group_manager.name, 0) + 1
-        to_group_manager.incoming[from_group_manager.name] = to_group_manager.incoming.get(from_group_manager.name, 0) + 1
+        from_group.outgoing[to_group.name] = from_group.outgoing.get(to_group.name, 0) + 1
+        to_group.incoming[from_group.name] = to_group.incoming.get(from_group.name, 0) + 1
         err = BackendService.update_communication_stats(UpdateComms(auth=sender.auth, 
-                                                                    sender=from_group_manager.name, 
-                                                                    receiver=to_group_manager.name))
+                                                                    sender=from_group.name, 
+                                                                    receiver=to_group.name))
         if err:
             return err
-        to_group_manager.dependent = from_group_manager
-        from_group_manager.tasking = to_group_manager
-        from_group_manager.tasking_message = message
+        to_group.dependent = from_group
+        from_group.tasking = to_group
+        from_group.tasking_message = message
         return json.dumps({"response": "Message sent!"})
     
     @staticmethod
@@ -214,9 +214,9 @@ class GroupService:
     @staticmethod
     def _get_short_group_description(group_name: str, auth) -> str:
         from . import GetGroupModel, GroupService, MakeService
-        manager = GroupService.get_group_manager(GetGroupModel(name=group_name, auth=auth))
-        if manager and manager.description:
-            return MakeService._get_short_description(manager.description)
+        group = GroupService.get_group(GetGroupModel(name=group_name, auth=auth))
+        if group and group.description:
+            return MakeService._get_short_description(group.description)
         else:
             return "Description not found"
 

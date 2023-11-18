@@ -7,7 +7,8 @@ from autogen import OpenAIWrapper
 from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
-from autogen.agentchat.service import UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, GROUP_INFO, CODE_INTERPRETER_TOOL, FILES, RETRIEVAL_TOOL
+from autogen.agentchat.service.function_specs import external_function_specs
+from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, CODE_INTERPRETER_TOOL, FILES, RETRIEVAL_TOOL
 from typing import List
 app = FastAPI()
 
@@ -21,6 +22,19 @@ logging.basicConfig(filename=LOGFILE_PATH, filemode='w',
 class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
+
+def upsert_external_functions(sender):
+    function_models = []
+    for func in external_function_specs:
+        func["last_updater"] = sender.name
+        function_model, error_message = FunctionsService._create_function_model(sender, func)
+        if error_message:
+            return error_message
+    function_models.append(function_model)
+    err = BackendService.upsert_backend_functions(function_models)
+    if err is not None:
+        return err
+    return None
 
 def upsert_agents(models, auth, client):
     for model in models:
@@ -64,7 +78,7 @@ def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
         category="user",
-        capability=MANAGEMENT | GROUP_INFO | CODE_INTERPRETER_TOOL | FILES | RETRIEVAL_TOOL
+        capability=MANAGEMENT | INFO | CODE_INTERPRETER_TOOL | FILES | RETRIEVAL_TOOL
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager",
@@ -73,7 +87,7 @@ def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the manager speaking.",
         category="planning",
-        capability=MANAGEMENT | GROUP_INFO
+        capability=MANAGEMENT | INFO
     )
     coder_assistant_model = UpsertAgentModel(
         name="coder_assistant",
@@ -114,4 +128,7 @@ def query(input: QueryModel):
     if err is not None:
         print(f'Error creating groups {err}')
         return
+    err = upsert_external_functions(agents[0])
+    if err is not None:
+        print(f'Could not upsert external functions err: {err}')
     agents[0].initiate_chat(groups[0], message=input.query)

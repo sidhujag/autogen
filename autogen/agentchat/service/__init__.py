@@ -1,14 +1,16 @@
 from .agent_service import AgentService
 from .functions_service import FunctionsService
 from .make_service import MakeService
-from .group_service import GroupService, GROUP_INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
+from .group_service import GroupService, INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
 from .backend_service import (
     BackendService,
     AuthAgent, 
     DeleteAgentModel, 
     GetAgentModel, 
+    AgentInfo,
     DiscoverAgentsModel, 
     DiscoverFunctionsModel,
+    GetFunctionModel,
     UpsertAgentModel,
     BaseAgent,
     AddFunctionModel,
@@ -25,6 +27,7 @@ __all__ = [
     "AgentService",
     "MakeService",
     "FunctionsService",
+    "AgentInfo",
     "BackendService",
     "MakeService",
     "AuthAgent",
@@ -32,6 +35,7 @@ __all__ = [
     "GetAgentModel",
     "DiscoverAgentsModel",
     "DiscoverFunctionsModel",
+    "GetFunctionModel",
     "UpsertAgentModel",
     "AddFunctionModel",
     "OpenAIParameter",
@@ -42,7 +46,7 @@ __all__ = [
     "GetGroupModel",
     "GroupInfo",
     "DiscoverGroupsModel",
-    "GROUP_INFO",
+    "INFO",
     "CODE_INTERPRETER_TOOL",
     "RETRIEVAL_TOOL",
     "FILES",

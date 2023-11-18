@@ -21,7 +21,11 @@ class GetAgentModel(BaseModel):
 class GetGroupModel(BaseModel):
     name: str
     auth: AuthAgent
-
+    
+class GetFunctionModel(BaseModel):
+    name: str
+    auth: AuthAgent
+    
 class DiscoverAgentsModel(BaseModel):
     query: str
     category: Optional[str] = None
@@ -81,6 +85,13 @@ class BaseGroup(BaseModel):
 class GroupInfo(BaseGroup):
     agents: Dict[str, Dict] = Field(default_factory=dict)
 
+class AgentInfo(BaseModel):
+    name: str
+    description: str
+    system_message: str
+    capability: int
+    files: Dict[str, str]
+
 class BackendAgent(BaseAgent):
     functions: List[dict] = Field(default_factory=list)
 
@@ -100,6 +111,17 @@ class AddFunctionModel(BaseModel):
     function_code: Optional[str] = None
     last_updater: str = None
 
+class BaseFunction(BaseModel):
+    name: str = Field(default="")
+    namespace_id: str = Field(default="")
+    status: str = Field(default="")
+    last_updater: str = Field(default="")
+    description: str = Field(default="")
+    parameters: OpenAIParameter = Field(default_factory=OpenAIParameter)
+    category: str = Field(default="")
+    function_code: str = Field(default="")
+    class_name: str = Field(default="")
+    
 class UpdateComms(BaseModel):
     auth: AuthAgent
     sender: str
@@ -165,6 +187,15 @@ class BackendService:
             return None, json.dumps({"error": "Unexpected response format: backend response is not a list"})
         return [BaseGroup(**agent) for agent in response], None
 
+    @staticmethod
+    def get_backend_functions(data_models: List[GetFunctionModel]) -> Tuple[Optional[List[BaseFunction]], Optional[str]]:
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("get_functions", list_of_dicts)
+        if err is not None:
+            return None, err
+        if not isinstance(response, list):
+            return None, json.dumps({"error": "Unexpected response format: backend response is not a list"})
+        return [BaseFunction(**agent) for agent in response], None
 
     @staticmethod
     def upsert_backend_functions(list_data_model: List[AddFunctionModel]):
