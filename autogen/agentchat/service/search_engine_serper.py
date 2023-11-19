@@ -36,7 +36,7 @@ class WebSearchSerperWrapper(BaseModel):
         return val
 
     @staticmethod
-    async def run(sender, query: str, max_results: int = 8, as_string: bool = True) -> str:
+    async def run(sender, query: str, max_results: int = 8, as_string: bool = True, **args) -> str:
         """Run query through Serper and parse result async."""
         wrapper = WebSearchSerperWrapper()
         if isinstance(query, str):
