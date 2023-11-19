@@ -247,6 +247,7 @@ class GPTAssistantAgent(ConversableAgent):
                         function = FunctionsService.get_function(GetFunctionModel(auth=self.auth, name=function_dict["name"]))
                         if function:
                             response = FunctionsService.define_function_internal(self, function)
+                            logger.info(f"Tool definition on demand ({function_dict['name']}), response: {response}")
                     is_exec_success, tool_response = self.execute_function(function_dict)
                     tool_response["metadata"] = {
                         "tool_call_id": tool_call.id,
