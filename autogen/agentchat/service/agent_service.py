@@ -124,6 +124,7 @@ Group Stats: {group_stats}
         # Check if all functions are retrieved
         for function_to_add in functions_to_add:
             if function_to_add not in retrieved_function_names:
+                sender.openai_client.beta.assistants.delete(assistant_id=id)
                 return json.dumps({"error": f"Function({function_to_add}) not found"})
 
         agent, err = AgentService.upsert_agents([UpsertAgentModel(
@@ -138,6 +139,7 @@ Group Stats: {group_stats}
             assistant_id=id
         )])
         if err is not None:
+            sender.openai_client.beta.assistants.delete(assistant_id=id)
             return err
         return json.dumps({"response": "Agent upserted!"})
 

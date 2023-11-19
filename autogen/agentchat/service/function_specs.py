@@ -349,7 +349,7 @@ get_file_content_spec = {
 
 serper_spec = {
     "name": "web_search",
-    "category": "communication",
+    "category": "information_retrieval",
     "class_name": "WebSearchSerperWrapper.run",
     "description": "Performs a generic search for real-time web access through a search engine query.",
     "status": "accepted",

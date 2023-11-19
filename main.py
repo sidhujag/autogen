@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service.function_specs import external_function_specs
+from autogen.agentchat.service.agent_models import external_agent_models
 from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, CODE_INTERPRETER, FILES, RETRIEVAL
 from typing import List
 app = FastAPI()
@@ -23,7 +24,28 @@ class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
 
+def upsert_external_models(agent_models, auth, client):
+    for agent_model in agent_models:
+        agent_model.auth = auth
+    agents, err = upsert_agents(agent_models, auth, client)
+    if err is not None:
+        print(f'Could not upsert external agents err: {err}')
+    return agents, None
+
 def upsert_external_functions(sender):
+    function_models = []
+    for func in external_function_specs:
+        func["last_updater"] = sender.name
+        function_model, error_message = FunctionsService._create_function_model(sender, func)
+        if error_message:
+            return error_message
+    function_models.append(function_model)
+    err = BackendService.upsert_backend_functions(function_models)
+    if err is not None:
+        return err
+    return None
+
+def upsert_external_agents(sender, client):
     function_models = []
     for func in external_function_specs:
         func["last_updater"] = sender.name
@@ -54,6 +76,7 @@ def upsert_agents(models, auth, client):
         model.assistant_id = id
     agents, err = AgentService.upsert_agents(models)
     if err is not None:
+        client.beta.assistants.delete(assistant_id=id)
         return None, err
     return agents, None
 
@@ -69,7 +92,7 @@ def query(input: QueryModel):
         description="The proxy to the user to get manual input from user or relay response to the user",
         human_input_mode="ALWAYS",
         default_auto_reply="This is UserProxyAgent speaking.",
-        category="user",
+        category="planning",
     )
     user_assistant_model = UpsertAgentModel(
         name="user_assistant",
@@ -77,7 +100,7 @@ def query(input: QueryModel):
         description="A generic AI assistant that can solve problems",
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
-        category="user",
+        category="planning",
         capability=MANAGEMENT | INFO | CODE_INTERPRETER | FILES | RETRIEVAL
     )
     manager_assistant_model = UpsertAgentModel(
@@ -131,4 +154,8 @@ def query(input: QueryModel):
     err = upsert_external_functions(agents[0])
     if err is not None:
         print(f'Could not upsert external functions err: {err}')
+    external_agents, err = upsert_external_models(external_agent_models, input.auth, openai_client)
+    if err is not None:
+        print(f'Error creating external agents {err}')
+        return
     agents[0].initiate_chat(groups[0], message=input.query)
