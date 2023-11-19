@@ -73,7 +73,7 @@ class GroupChat:
 {AgentService.CAPABILITY_SYSTEM_MESSAGE}
 
 Read the following conversation.
-Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities. Only return the role."""
+Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities for deciding the next role. Don't select the same role repeatedly unless its intentional. Only return the role."""
 
     def manual_select_speaker(self, agents: List[Agent]) -> Agent:
         """Manually select the next speaker."""
@@ -163,7 +163,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
             + [
                 {
                     "role": "system",
-                    "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Note the capability of each role. Only return the role.",
+                    "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Note the capability of each role for deciding the next role. Don't select the same role repeatedly unless its intentional. Only return the role.",
                 }
             ]
         )

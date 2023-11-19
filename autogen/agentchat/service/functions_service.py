@@ -6,11 +6,23 @@ import asyncio
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List, Any, Optional, Dict, Tuple
 from pydantic import ValidationError
+
 from autogen.code_utils import (
     execute_code
 )
-
+from ..service.backend_service import BaseFunction
 class FunctionsService:
+    @staticmethod
+    def get_function(function_model) -> BaseFunction:
+        from . import BackendService, MakeService
+        function: BaseFunction = MakeService.FUNCTION_REGISTRY.get(function_model.name)
+        if function is None:
+            backend_functions, err = BackendService.get_backend_functions([function_model])
+            if err is None and len(backend_functions) > 0:
+                function = backend_functions[0]
+                MakeService.FUNCTION_REGISTRY[function_model.name] = function
+        return function
+
     @staticmethod
     def discover_functions(sender: GPTAssistantAgent, category: str, query: str = None) -> str:
         from . import BackendService, DiscoverFunctionsModel
@@ -21,28 +33,28 @@ class FunctionsService:
     
     @staticmethod
     def get_function_info(sender: GPTAssistantAgent, name: str) -> str:
-        from . import GetFunctionModel, BackendService
+        from . import GetFunctionModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
-        response, err = BackendService.get_backend_functions([GetFunctionModel(auth=sender.auth, name=name)])
-        if err is not None:
-            return err
-        # Convert the response (list of BaseFunction) to a list of dicts
-        response_dicts = [base_function.dict() for base_function in response]
-        
-        return json.dumps({"response": response_dicts})
+        function = FunctionsService.get_function(GetFunctionModel(auth=sender.auth, name=name))
+        if not function:
+            return json.dumps({"error": f"Function({name}) not found"})
+        return json.dumps({"response": function.dict()})
 
     @staticmethod
     def execute_func(function_code: str, **args):
         global_vars_code = '\n'.join(f'{key} = {repr(value)}' for key, value in args.items())
         str_code = f"{global_vars_code}\n\n{function_code}"
         exitcode, logs, env = execute_code(str_code)
-        exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
-        if logs == "" and exitcode2str == "execution succeeded":
-            exitcode2str = "no output found, make sure function uses stdout to output results"
-        if logs == "" or exitcode != 0:
-            return f"Broken function code! (PLEASE FIX using upsert_function with new function_code). Note the arguments have been injected as global variables, they are not part of function_code. DO NOT run this code through the OpenAI code interpreter. It runs through function call in local interpreter. exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'\n\nargs: {args}\nfull code:\n```python\n{str_code}\n```"
-        return f"exitcode: {exitcode} ({exitcode2str})\nCode output: '{logs}'.\nNote even though it ran successfully you may still need to update the code if results do not match as expected. Also note the arguments have been injected as global variables, they are not part of function_code. Iterate to fix function_code (via upsert_function) until you are happy. DO NOT run this code through the OpenAI code interpreter. It runs through function call in local interpreter.\n\nargs: {args}\nfull code:\n```python\n{str_code}\n``"
+        exit_status = "Execution succeeded" if exitcode == 0 else "Execution failed"
+
+        if logs == "":
+            if exitcode == 0:
+                return f"No output. Ensure function writes to stdout. Arguments are global variables. Do not run through OpenAI interpreter. Uses local interpreter.\nExit code: {exitcode} ({exit_status})\nArguments: {args}\nFull code:\n```python\n{str_code}\n```"
+            else:
+                return f"Function execution error! Fix the code using upsert_function. Arguments are global variables. Do not run through OpenAI interpreter. Uses local interpreter.\nExit code: {exitcode} ({exit_status})\nLogs: '{logs}'\nArguments: {args}\nFull code:\n```python\n{str_code}\n```"
+
+        return f"Exit code: {exitcode} ({exit_status})\nLogs: '{logs}'. Update code if results are unexpected. Arguments are global variables. Do not run through OpenAI interpreter. Uses local interpreter.\nArguments: {args}\nFull code:\n```python\n{str_code}\n```"
 
     @staticmethod
     def _find_class(class_name):
@@ -55,18 +67,18 @@ class FunctionsService:
     @staticmethod
     def define_function_internal(
         agent: GPTAssistantAgent,
-        function
+        function_model
     ) -> str:
-        from .backend_service import OpenAIParameter
-        function.parameters = function.parameters or OpenAIParameter()
+        from . import MakeService, OpenAIParameter
+        function_model.parameters = function_model.parameters or OpenAIParameter()
         
         # Prepare the function tool configuration
         function_tool_config = {
             "type": "function",
             "function": {
-                "name": function.name,
-                "description": function.description,
-                "parameters": function.parameters.dict(exclude_none=True)
+                "name": function_model.name,
+                "description": function_model.description,
+                "parameters": function_model.parameters.dict(exclude_none=True)
             }
         }
         
@@ -74,7 +86,7 @@ class FunctionsService:
         if 'tools' not in agent.llm_config:
             agent.llm_config["tools"] = []
         existing_tool_index = next(
-            (index for (index, d) in enumerate(agent.llm_config["tools"]) if d.get("function", {}).get("name") == function.name),
+            (index for (index, d) in enumerate(agent.llm_config["tools"]) if d.get("function", {}).get("name") == function_model.name),
             None
         )
 
@@ -86,8 +98,8 @@ class FunctionsService:
             agent.llm_config["tools"].append(function_tool_config)
         
         # If the function has a class_name, find and register it
-        if function.class_name and function.class_name != "":
-            class_name, module_name = function.class_name.rsplit(".", 1)
+        if function_model.class_name and function_model.class_name != "":
+            class_name, module_name = function_model.class_name.rsplit(".", 1)
             ServiceClass = FunctionsService._find_class(class_name)
             if ServiceClass is not None:
                 method = getattr(ServiceClass, module_name)
@@ -98,14 +110,14 @@ class FunctionsService:
                             return asyncio.run(method(sender, **args))
                         agent.register_function(
                             function_map={
-                                function.name: sync_wrapper
+                                function_model.name: sync_wrapper
                             }
                         )
                     else:
                         # If method is not async, register it directly
                         agent.register_function(
                             function_map={
-                                function.name: lambda sender, **args: method(sender, **args)
+                                function_model.name: lambda sender, **args: method(sender, **args)
                             }
                         )
                 else:
@@ -114,13 +126,14 @@ class FunctionsService:
                 return json.dumps({"error": f"Class {class_name} not found"})
         else:
             # For functions without class_name, prepare them for direct execution
-            if not function.function_code or function.function_code == "":
+            if not function_model.function_code or function_model.function_code == "":
                 return json.dumps({"error": "function code was empty unexpectedly, either define a class_name or function_code"})
             agent.register_function(
                 function_map={
-                    function.name: lambda **args: FunctionsService.execute_func(function.function_code, **args)
+                    function_model.name: lambda **args: FunctionsService.execute_func(function_model.function_code, **args)
                 }
             )
+        MakeService.FUNCTION_REGISTRY[function_model.name] = BaseFunction(**function_model.dict(exclude_none=True))
         return json.dumps({"response": "Function added!"})
     
     @staticmethod
@@ -157,16 +170,16 @@ class FunctionsService:
                 return None, error_message
 
         try:
-            function = AddFunctionModel(**func_spec, auth=agent.auth)
-            if function.function_code:
-                function.last_updater = agent.name
-            return function, None
+            function_model = AddFunctionModel(**func_spec, auth=agent.auth)
+            if function_model.function_code:
+                function_model.last_updater = agent.name
+            return function_model, None
         except ValidationError as e:
             return None, json.dumps({"error": f"Validation error when defining function {func_spec.get('name', '')}: {str(e)}"})
 
     @staticmethod
     def upsert_function(sender: GPTAssistantAgent, **kwargs: Any) -> str:
-        from . import BackendService, AgentService, UpsertAgentModel
+        from . import BackendService, AgentService, UpsertAgentModel, MakeService, BaseFunction
         function_model, error_message = FunctionsService._create_function_model(sender, kwargs)
         if error_message:
             return error_message
@@ -181,4 +194,5 @@ class FunctionsService:
         )])
         if err is not None:
             return err
+        MakeService.FUNCTION_REGISTRY[function_model.name] = BaseFunction(**function_model.dict(exclude_none=True))
         return json.dumps({"response": "Function upserted!"})

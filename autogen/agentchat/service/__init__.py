@@ -1,7 +1,8 @@
 from .agent_service import AgentService
+from .search_engine_serper import SerperWrapper
 from .functions_service import FunctionsService
 from .make_service import MakeService
-from .group_service import GroupService, INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
+from .group_service import GroupService, INFO, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
 from .backend_service import (
     BackendService,
     AuthAgent, 
@@ -10,6 +11,7 @@ from .backend_service import (
     AgentInfo,
     DiscoverAgentsModel, 
     DiscoverFunctionsModel,
+    BaseFunction,
     GetFunctionModel,
     UpsertAgentModel,
     BaseAgent,
@@ -22,9 +24,20 @@ from .backend_service import (
     GroupInfo,
     DiscoverGroupsModel
 )
+from enum import Enum
+
+
+class SearchEngineType(Enum):
+    SERPAPI_GOOGLE = "serpapi"
+    SERPER_GOOGLE = "serper"
+    DIRECT_GOOGLE = "google"
+    DUCK_DUCK_GO = "ddg"
+    CUSTOM_ENGINE = "custom"
+
 __all__ = [
     "UpdateComms",
     "AgentService",
+    "SerperWrapper",
     "MakeService",
     "FunctionsService",
     "AgentInfo",
@@ -35,6 +48,7 @@ __all__ = [
     "GetAgentModel",
     "DiscoverAgentsModel",
     "DiscoverFunctionsModel",
+    "BaseFunction",
     "GetFunctionModel",
     "UpsertAgentModel",
     "AddFunctionModel",
@@ -47,8 +61,8 @@ __all__ = [
     "GroupInfo",
     "DiscoverGroupsModel",
     "INFO",
-    "CODE_INTERPRETER_TOOL",
-    "RETRIEVAL_TOOL",
+    "CODE_INTERPRETER",
+    "RETRIEVAL",
     "FILES",
     "MANAGEMENT"
 ]

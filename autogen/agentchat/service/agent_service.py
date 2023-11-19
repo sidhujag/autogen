@@ -12,27 +12,33 @@ Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {gro
 
 {capability_instruction}
 
-As a Basic Agent, collaborate with peers to achieve goals, leveraging your unique skills. Plan thoroughly for complex tasks, assigning roles to appropriate agents or groups. Aim for comprehensive solutions, stay focused, and utilize collective strengths. Prioritize reusing existing functions, agents, and groups. Be cautious with non-accepted functions; prefer fixing them over creating new versions. Always consider the group's message history in your responses.
+As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements after a conclusion. Be cautious with non-accepted functions; repair them rather than creating new versions. Always consider the group's message history in your responses.
+
+Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
 Custom Instructions: {custom_instructions}
 """
+
     MANAGER_AGENT_SYSTEM_MESSAGE: str = """
 Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, Capabilities: {capabilities}
 
 {capability_instruction}
 
-As a Manager Agent, lead and coordinate group activities. Develop detailed strategies, assign tasks, and utilize management tools for optimal problem-solving. Encourage focus and creativity within your team. Terminate groups judiciously based on the conversation's progress and relevance. Avoid creating new entities if existing ones suffice. Be wary of non-accepted functions and aim to improve them. Your responses should reflect the group's message history.
+As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements after a conclusion. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them. Ensure your responses reflect the group's message history.
+
+Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
 Custom Instructions: {custom_instructions}
 
 Group Stats: {group_stats}
 """
+
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
-- INFO: Access and manage information on functions, agents, and groups.
-- CODE_INTERPRETER_TOOL: Write and run Python code. Use OpenAI interpreter for OpenAI files, and local interpreter for local files and internet access. Execute functions in your context.
-- RETRIEVAL_TOOL: Enhance knowledge with external documents and data using files.
+- INFO: Access and manage information on functions, agents, and groups, including termination of groups.
+- CODE_INTERPRETER: Write and run Python code. Use OpenAI interpreter for OpenAI files, and local interpreter for local files and internet access. Invoke local interpreter through and custom functions. Execute functions in your context.
+- RETRIEVAL: Enhance knowledge with external documents and data using files.
 - FILES: Manage files for data processing and sharing.
-- MANAGEMENT: Modify agents/groups, communicate across groups, discover entities, and manage group activities, including termination.
+- MANAGEMENT: Modify agents/groups, communicate across groups, discover entities, and manage group activities.
 """
 
     @staticmethod
@@ -196,7 +202,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _update_capability(agent):
-        from . import FunctionsService, MakeService, INFO, MANAGEMENT, FILES, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL
+        from . import FunctionsService, MakeService, INFO, MANAGEMENT, FILES, CODE_INTERPRETER, RETRIEVAL
         agent.llm_config["tools"] = []
         if agent.capability & INFO:
             for func_spec in group_info_function_specs:
@@ -204,9 +210,9 @@ Group Stats: {group_stats}
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model) 
-        if agent.capability & CODE_INTERPRETER_TOOL:
+        if agent.capability & CODE_INTERPRETER:
             agent.llm_config["tools"].append({"type": "code_interpreter"})
-        if agent.capability & RETRIEVAL_TOOL:
+        if agent.capability & RETRIEVAL:
             agent.llm_config["tools"].append({"type": "retrieval"})
         if agent.capability & FILES:
             for func_spec in files_function_specs:
@@ -238,7 +244,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def update_agent(agent, backend_agent):
-        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER_TOOL
+        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
@@ -257,7 +263,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def make_agent(backend_agent):
-        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER_TOOL
+        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
@@ -325,11 +331,11 @@ Group Stats: {group_stats}
 
     @staticmethod
     def get_capability_names(capability_number):
-        from . import INFO, CODE_INTERPRETER_TOOL, RETRIEVAL_TOOL, FILES, MANAGEMENT
+        from . import INFO, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
         capabilities = [
             ("INFO", INFO),
-            ("CODE_INTERPRETER_TOOL", CODE_INTERPRETER_TOOL),
-            ("RETRIEVAL_TOOL", RETRIEVAL_TOOL),
+            ("CODE_INTERPRETER", CODE_INTERPRETER),
+            ("RETRIEVAL", RETRIEVAL),
             ("FILES", FILES),
             ("MANAGEMENT", MANAGEMENT),
         ]

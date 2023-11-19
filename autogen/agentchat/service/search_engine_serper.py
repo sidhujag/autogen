@@ -14,8 +14,7 @@ from pydantic import BaseModel, Field, validator
 from dotenv import load_dotenv
 
 
-class SerperWrapper(BaseModel):
-    search_engine: Any  #: :meta private:
+class WebSearchSerperWrapper(BaseModel):
     payload: dict = Field(default={"page": 1, "num": 10})
     serper_api_key: Optional[str] = None
     aiosession: Optional[aiohttp.ClientSession] = None
@@ -39,7 +38,7 @@ class SerperWrapper(BaseModel):
     @staticmethod
     async def run(sender, query: str, max_results: int = 8, as_string: bool = True) -> str:
         """Run query through Serper and parse result async."""
-        wrapper = SerperWrapper()
+        wrapper = WebSearchSerperWrapper()
         if isinstance(query, str):
             return wrapper._process_response((await wrapper.results([query], max_results))[0], as_string=as_string)
         else:

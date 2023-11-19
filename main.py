@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service.function_specs import external_function_specs
-from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, CODE_INTERPRETER_TOOL, FILES, RETRIEVAL_TOOL
+from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, CODE_INTERPRETER, FILES, RETRIEVAL
 from typing import List
 app = FastAPI()
 
@@ -78,7 +78,7 @@ def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
         category="user",
-        capability=MANAGEMENT | INFO | CODE_INTERPRETER_TOOL | FILES | RETRIEVAL_TOOL
+        capability=MANAGEMENT | INFO | CODE_INTERPRETER | FILES | RETRIEVAL
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager",

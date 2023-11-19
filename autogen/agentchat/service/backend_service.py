@@ -113,7 +113,6 @@ class AddFunctionModel(BaseModel):
 
 class BaseFunction(BaseModel):
     name: str = Field(default="")
-    namespace_id: str = Field(default="")
     status: str = Field(default="")
     last_updater: str = Field(default="")
     description: str = Field(default="")

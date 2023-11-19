@@ -162,7 +162,7 @@ upsert_agent = {
             "functions_to_remove": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Names of functions to remove from the agent."
+                "description": "Names of functions to remove from the agent. Useful if function ends up not being useful to agent."
             },
             "category": {
                 "type": "string",
@@ -171,7 +171,7 @@ upsert_agent = {
             },
             "capability": {
                 "type": "number",
-                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for INFO, 2 for CODE_INTERPRETER_TOOL, 4 for RETRIEVAL_TOOL, 8 for FILES, and 16 for MANAGEMENT. Bit 1 (INFO) must always be enabled. Combine capabilities by adding the values of their masks together."
+                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for INFO, 2 for CODE_INTERPRETER, 4 for RETRIEVAL, 8 for FILES, and 16 for MANAGEMENT. Bit 1 (INFO) must always be enabled. Combine capabilities by adding the values of their masks together."
             }
         },
         "required": ["name"]
@@ -182,7 +182,7 @@ upsert_group_spec = {
     "name": "upsert_group",
     "category": "communication",
     "class_name": "GroupService.upsert_group",
-    "description": "Creates or updates a group.",
+    "description": "Creates or updates a group. Each group must have atleast 3 agents. Each group must have atleast 1 agent with MANAGEMENT capabilities.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -202,7 +202,7 @@ upsert_group_spec = {
             "agents_to_remove": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Agents to remove from the group."
+                "description": "Agents to remove from the group. Useful if agent ends up not being useful to group."
             }
         },
         "required": ["group", "description"]
@@ -236,7 +236,7 @@ upsert_function_spec = {
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
     "description": (
-        "Endpoint for defining or updating modular functions for diverse applications. "
+        "Endpoint for defining or updating modular custom functions for diverse applications. "
         "Functions should be adaptable, handle dynamic inputs, and produce predictable outputs. "
         "Include a 'debug_mode' for verbose logging in development/testing. "
         "Mark functions as 'accepted' only after thorough testing and validation."
@@ -314,7 +314,7 @@ delete_files_spec = {
     "name": "delete_files",
     "category": "programming",
     "class_name": "AgentService.delete_files",
-    "description": "Deletes OpenAI files linked to an agent.",
+    "description": "Deletes OpenAI files linked to an agent. Useful to clear up space since you can only upload up to 512MB of data in files.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -350,8 +350,9 @@ get_file_content_spec = {
 serper_spec = {
     "name": "web_search",
     "category": "communication",
-    "class_name": "SerperWrapper.run",
-    "description": "Performs a generic web search.",
+    "class_name": "WebSearchSerperWrapper.run",
+    "description": "Performs a generic search for real-time web access through a search engine query.",
+    "status": "accepted",
     "parameters": {
         "type": "object",
         "properties": {
@@ -372,7 +373,8 @@ group_info_function_specs = [
     get_group_info_spec,
     get_function_info_spec,
     get_agent_info_spec,
-    upsert_function_spec
+    upsert_function_spec,
+    terminate_group_spec
 ]
 
 management_function_specs = [
@@ -381,8 +383,7 @@ management_function_specs = [
     upsert_agent,
     discover_groups_spec,
     upsert_group_spec,
-    discover_functions_spec,
-    terminate_group_spec
+    discover_functions_spec
 ]
 
 files_function_specs = [

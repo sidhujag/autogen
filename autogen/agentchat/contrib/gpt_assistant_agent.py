@@ -226,6 +226,7 @@ class GPTAssistantAgent(ConversableAgent):
             assistant_thread: The thread object for the assistant.
             run: The run object initiated with the OpenAI assistant.
         """
+        from autogen.agentchat.service import GetFunctionModel, FunctionsService
         while True:
             run = self._openai_client.beta.threads.runs.retrieve(run.id, thread_id=assistant_thread.id)
             if run.status == "in_progress" or run.status == "queued":
@@ -240,7 +241,13 @@ class GPTAssistantAgent(ConversableAgent):
                 actions = []
                 for tool_call in run.required_action.submit_tool_outputs.tool_calls:
                     function = tool_call.function
-                    is_exec_success, tool_response = self.execute_function(function.dict())
+                    function_dict = function.dict()
+                    # if function not found in function map then try to find it from registry and add it before executing
+                    if not self.can_execute_function(function_dict["name"]):
+                        function = FunctionsService.get_function(GetFunctionModel(auth=self.auth, name=function_dict["name"]))
+                        if function:
+                            response = FunctionsService.define_function_internal(self, function)
+                    is_exec_success, tool_response = self.execute_function(function_dict)
                     tool_response["metadata"] = {
                         "tool_call_id": tool_call.id,
                         "run_id": run.id,
@@ -317,10 +324,6 @@ class GPTAssistantAgent(ConversableAgent):
         # Add footnotes to the end of the message before displaying to user
         message_content.value += "\n" + "\n".join(citations)
         return message_content.value
-
-    def can_execute_function(self, name: str) -> bool:
-        """Whether the agent can execute the function."""
-        return False
 
     def reset(self):
         """

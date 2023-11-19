@@ -1,10 +1,11 @@
 from .. import GroupChatManager
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
-
+from ..service.backend_service import BaseFunction
 class MakeService:
     
     AGENT_REGISTRY: dict[str, GPTAssistantAgent] = {}
     GROUP_REGISTRY: dict[str, GroupChatManager] = {}
+    FUNCTION_REGISTRY: dict[str, BaseFunction] = {}
     @staticmethod
     def get_service(service_type):
         from . import AgentService, FunctionsService, GroupService

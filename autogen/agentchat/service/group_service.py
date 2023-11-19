@@ -4,8 +4,8 @@ from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
 import json
 INFO = 1
-CODE_INTERPRETER_TOOL = 2
-RETRIEVAL_TOOL = 4
+CODE_INTERPRETER = 2
+RETRIEVAL = 4
 FILES = 8
 MANAGEMENT = 16
 
@@ -86,7 +86,7 @@ class GroupService:
             return json.dumps({"error": "Could not send message: sender not found"})
         group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
         if group is None:
-            return json.dumps({"error": "Could not send message: group not found"})
+            return json.dumps({"error": f"Could not send message: group({group}) not found"})
         if group.dependent:
             group.send(response, group.dependent, request_reply=False)
         group.exiting = True
