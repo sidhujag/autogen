@@ -84,12 +84,12 @@ class GroupService:
         from . import GetGroupModel
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
-        group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
-        if group is None:
+        group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
+        if group_obj is None:
             return json.dumps({"error": f"Could not send message: group({group}) not found"})
-        if group.dependent:
-            group.send(response, group.dependent, request_reply=False)
-        group.exiting = True
+        if group_obj.dependent:
+            group_obj.send(response, group_obj.dependent, request_reply=False)
+        group_obj.exiting = True
         return json.dumps({"response": "Group terminating!"})
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
