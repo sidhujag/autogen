@@ -65,25 +65,28 @@ Group Stats: {group_stats}
 
     @staticmethod
     def get_agent_info(sender: GPTAssistantAgent, name: str) -> str:
-        from . import GetAgentModel, AgentInfo
+        from . import GetAgentModel, AgentInfo, FunctionsService, GetFunctionModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
         agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
         if agent is None:
             return json.dumps({"error": f"Agent({name}) not found"})
+        function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in agent.function_names]
+        functions = FunctionsService.get_functions(function_models)
 
         agentInfo = AgentInfo(
             name=agent.name,
             description=agent.description,
             system_message=agent.system_message,
             capability=agent.capability,
-            files=agent.files
+            files=agent.files,
+            functions=functions
         )
         return json.dumps({"response": agentInfo.dict()})
     
     @staticmethod
     def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
-        from . import UpsertAgentModel, INFO, GetAgentModel
+        from . import UpsertAgentModel, INFO, GetAgentModel, FunctionsService, GetFunctionModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
         if not capability & INFO:
@@ -101,7 +104,17 @@ Group Stats: {group_stats}
             id = openai_assistant.id
         else:
             id = agent._openai_assistant.id
-            
+        function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in functions_to_add]
+        functions = FunctionsService.get_functions(function_models)
+
+        # Create a set of function names for easy lookup
+        retrieved_function_names = {func.name for func in functions if func}
+
+        # Check if all functions are retrieved
+        for function_to_add in functions_to_add:
+            if function_to_add not in retrieved_function_names:
+                return json.dumps({"error": f"Function({function_to_add}) not found"})
+
         agent, err = AgentService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=name,
@@ -244,15 +257,26 @@ Group Stats: {group_stats}
 
     @staticmethod
     def update_agent(agent, backend_agent):
-        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER
+        from . import FunctionsService, AddFunctionModel, GetFunctionModel
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
         AgentService._update_capability(agent)
-        if len(backend_agent.functions) > 0:
-            for function in backend_agent.functions:
-                FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
+        if backend_agent.function_names:
+            function_models = [GetFunctionModel(auth=agent.auth, name=function_name) for function_name in backend_agent.function_names]
+            functions = FunctionsService.get_functions(function_models)
+
+            # Create a set of function names for easy lookup
+            retrieved_function_names = {func.name for func in functions if func}
+
+            # Check if all functions are retrieved
+            for function_name in backend_agent.function_names:
+                if function_name not in retrieved_function_names:
+                    return json.dumps({"error": f"Function({function_name}) not found"})
+
+            for function in functions:
+                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=agent.auth))
         agent._openai_assistant = agent.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
@@ -260,10 +284,11 @@ Group Stats: {group_stats}
             tools=agent.llm_config.get("tools", []),
             file_ids=list(backend_agent.files.keys())
         )
+        return None
 
     @staticmethod
     def make_agent(backend_agent):
-        from . import FunctionsService, AddFunctionModel, CODE_INTERPRETER
+        from . import FunctionsService, AddFunctionModel, GetFunctionModel
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
@@ -272,9 +297,20 @@ Group Stats: {group_stats}
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
         AgentService._update_capability(agent)
-        if len(backend_agent.functions) > 0:
-            for function in backend_agent.functions:
-                FunctionsService.define_function_internal(agent, AddFunctionModel(**function, auth=agent.auth))
+        if backend_agent.function_names:
+            function_models = [GetFunctionModel(auth=agent.auth, name=function_name) for function_name in backend_agent.function_names]
+            functions = FunctionsService.get_functions(function_models)
+
+            # Create a set of function names for easy lookup
+            retrieved_function_names = {func.name for func in functions if func}
+
+            # Check if all functions are retrieved
+            for function_name in backend_agent.function_names:
+                if function_name not in retrieved_function_names:
+                    return json.dumps({"error": f"Function({function_name}) not found"})
+
+            for function in functions:
+                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=agent.auth))
         agent._openai_assistant = agent.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
@@ -309,7 +345,9 @@ Group Stats: {group_stats}
                 if err is not None:
                     return None, err
             else:
-                AgentService.update_agent(agent, backend_agent)
+                err = AgentService.update_agent(agent, backend_agent)
+                if err is not None:
+                    return None, err
             successful_agents.append(agent)
         return successful_agents, None
 

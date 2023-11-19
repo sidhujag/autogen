@@ -13,15 +13,29 @@ from autogen.code_utils import (
 from ..service.backend_service import BaseFunction
 class FunctionsService:
     @staticmethod
-    def get_function(function_model) -> BaseFunction:
+    def get_functions(function_models: List[Any]) -> List[BaseFunction]:
         from . import BackendService, MakeService
-        function: BaseFunction = MakeService.FUNCTION_REGISTRY.get(function_model.name)
-        if function is None:
-            backend_functions, err = BackendService.get_backend_functions([function_model])
-            if err is None and len(backend_functions) > 0:
-                function = backend_functions[0]
-                MakeService.FUNCTION_REGISTRY[function_model.name] = function
-        return function
+
+        functions = []
+        missing_models = []
+
+        # First, try to find each function in the registry
+        for function_model in function_models:
+            function = MakeService.FUNCTION_REGISTRY.get(function_model.name)
+            if function:
+                functions.append(function)
+            else:
+                missing_models.append(function_model)
+
+        # If there are missing models, query BackendService
+        if missing_models:
+            backend_functions, err = BackendService.get_backend_functions(missing_models)
+            if err is None and backend_functions:
+                for function in backend_functions:
+                    MakeService.FUNCTION_REGISTRY[function.name] = function
+                functions.extend(backend_functions)
+
+        return functions
 
     @staticmethod
     def discover_functions(sender: GPTAssistantAgent, category: str, query: str = None) -> str:
@@ -36,10 +50,10 @@ class FunctionsService:
         from . import GetFunctionModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
-        function = FunctionsService.get_function(GetFunctionModel(auth=sender.auth, name=name))
+        function = FunctionsService.get_functions([GetFunctionModel(auth=sender.auth, name=name)])
         if not function:
             return json.dumps({"error": f"Function({name}) not found"})
-        return json.dumps({"response": function.dict()})
+        return json.dumps({"response": function[0].dict()})
 
     @staticmethod
     def execute_func(function_code: str, **args):
@@ -179,7 +193,7 @@ class FunctionsService:
 
     @staticmethod
     def upsert_function(sender: GPTAssistantAgent, **kwargs: Any) -> str:
-        from . import BackendService, AgentService, UpsertAgentModel, MakeService, BaseFunction
+        from . import BackendService, AgentService, UpsertAgentModel, MakeService
         function_model, error_message = FunctionsService._create_function_model(sender, kwargs)
         if error_message:
             return error_message

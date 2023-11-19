@@ -244,9 +244,9 @@ class GPTAssistantAgent(ConversableAgent):
                     function_dict = function.dict()
                     # if function not found in function map then try to find it from registry and add it before executing
                     if not self.can_execute_function(function_dict["name"]):
-                        function = FunctionsService.get_function(GetFunctionModel(auth=self.auth, name=function_dict["name"]))
+                        function = FunctionsService.get_functions([GetFunctionModel(auth=self.auth, name=function_dict["name"])])
                         if function:
-                            response = FunctionsService.define_function_internal(self, function)
+                            response = FunctionsService.define_function_internal(self, function[0])
                             logger.info(f"Tool definition on demand ({function_dict['name']}), response: {response}")
                     is_exec_success, tool_response = self.execute_function(function_dict)
                     tool_response["metadata"] = {

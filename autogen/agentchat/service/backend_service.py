@@ -40,6 +40,7 @@ class DiscoverFunctionsModel(BaseModel):
     category: str
     auth: AuthAgent
 
+
 class UpsertAgentModel(BaseModel):
     name: str
     auth: AuthAgent
@@ -61,7 +62,7 @@ class UpsertGroupModel(BaseModel):
     description: Optional[str] = None
     agents_to_add: Optional[List[str]] = None
     agents_to_remove: Optional[List[str]] = None
-      
+
 class BaseAgent(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent
@@ -73,6 +74,7 @@ class BaseAgent(BaseModel):
     category: str = Field(default="")
     capability: int = Field(default=1)
     files: Dict[str, str] = Field(default_factory=dict)
+    function_names: List[str] = Field(default_factory=list)
     
 class BaseGroup(BaseModel):
     name: str = Field(default="")
@@ -85,31 +87,22 @@ class BaseGroup(BaseModel):
 class GroupInfo(BaseGroup):
     agents: Dict[str, Dict] = Field(default_factory=dict)
 
+class FunctionInfo(BaseModel):
+    name: str
+    status: str
+
 class AgentInfo(BaseModel):
     name: str
     description: str
     system_message: str
     capability: int
     files: Dict[str, str]
-
-class BackendAgent(BaseAgent):
-    functions: List[dict] = Field(default_factory=list)
+    functions: List[FunctionInfo]
 
 class OpenAIParameter(BaseModel):
     type: str = "object"
     properties: dict[str, Any] = {}
     required: Optional[List[str]] = []
-
-class AddFunctionModel(BaseModel):
-    name: str
-    auth: AuthAgent
-    status: Optional[str] = None
-    description: Optional[str] = None
-    category: Optional[str] = None
-    class_name: str = None
-    parameters: OpenAIParameter = None
-    function_code: Optional[str] = None
-    last_updater: str = None
 
 class BaseFunction(BaseModel):
     name: str = Field(default="")
@@ -120,6 +113,9 @@ class BaseFunction(BaseModel):
     category: str = Field(default="")
     function_code: str = Field(default="")
     class_name: str = Field(default="")
+    
+class AddFunctionModel(BaseFunction):
+    auth: AuthAgent
     
 class UpdateComms(BaseModel):
     auth: AuthAgent
@@ -167,14 +163,14 @@ class BackendService:
         return None
 
     @staticmethod
-    def get_backend_agents(data_models: List[GetAgentModel]) -> Tuple[Optional[List[BackendAgent]], Optional[str]]:
+    def get_backend_agents(data_models: List[GetAgentModel]) -> Tuple[Optional[List[BaseAgent]], Optional[str]]:
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("get_agents", list_of_dicts)
         if err is not None:
             return None, err
         if not isinstance(response, list):
             return None, json.dumps({"error": "Unexpected response format: backend response is not a list"})
-        return [BackendAgent(**agent) for agent in response], None
+        return [BaseAgent(**agent) for agent in response], None
 
     @staticmethod
     def get_backend_groups(data_models: List[GetGroupModel]) -> Tuple[Optional[List[BaseGroup]], Optional[str]]:
