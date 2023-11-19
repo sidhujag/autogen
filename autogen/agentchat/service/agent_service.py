@@ -65,14 +65,18 @@ Group Stats: {group_stats}
 
     @staticmethod
     def get_agent_info(sender: GPTAssistantAgent, name: str) -> str:
-        from . import GetAgentModel, AgentInfo, FunctionsService, GetFunctionModel
+        from . import GetAgentModel, AgentService, FunctionsService, GetFunctionModel, AgentInfo, FunctionInfo
         if sender is None:
             return json.dumps({"error": "Sender not found"})
         agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
         if agent is None:
             return json.dumps({"error": f"Agent({name}) not found"})
+
         function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in agent.function_names]
         functions = FunctionsService.get_functions(function_models)
+
+        # Convert BaseFunction objects to FunctionInfo objects
+        function_info_list = [FunctionInfo(name=func.name, status=func.status) for func in functions]
 
         agentInfo = AgentInfo(
             name=agent.name,
@@ -80,9 +84,10 @@ Group Stats: {group_stats}
             system_message=agent.system_message,
             capability=agent.capability,
             files=agent.files,
-            functions=functions
+            functions=function_info_list
         )
         return json.dumps({"response": agentInfo.dict()})
+
     
     @staticmethod
     def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 

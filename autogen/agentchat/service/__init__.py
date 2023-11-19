@@ -1,5 +1,5 @@
 from .agent_service import AgentService
-from .search_engine_serper import SerperWrapper
+from .search_engine_serper import WebSearchSerperWrapper
 from .functions_service import FunctionsService
 from .make_service import MakeService
 from .group_service import GroupService, INFO, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
@@ -9,6 +9,7 @@ from .backend_service import (
     DeleteAgentModel, 
     GetAgentModel, 
     AgentInfo,
+    FunctionInfo,
     DiscoverAgentsModel, 
     DiscoverFunctionsModel,
     BaseFunction,
@@ -35,10 +36,11 @@ class SearchEngineType(Enum):
 __all__ = [
     "UpdateComms",
     "AgentService",
-    "SerperWrapper",
+    "WebSearchSerperWrapper",
     "MakeService",
     "FunctionsService",
     "AgentInfo",
+    "FunctionInfo",
     "BackendService",
     "MakeService",
     "AuthAgent",

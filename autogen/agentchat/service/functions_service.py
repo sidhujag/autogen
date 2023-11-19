@@ -39,11 +39,29 @@ class FunctionsService:
 
     @staticmethod
     def discover_functions(sender: GPTAssistantAgent, category: str, query: str = None) -> str:
-        from . import BackendService, DiscoverFunctionsModel
+        from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel
         response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
         if err is not None:
             return err
-        return response
+
+        # Extract function names from the response
+        function_names = [func['name'] for func in response]
+
+        # Prepare GetFunctionModel instances for each function name
+        function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in function_names]
+
+        # Retrieve function statuses
+        functions = FunctionsService.get_functions(function_models)
+
+        # Create a dictionary to map function names to their status
+        function_status_map = {func.name: func.status for func in functions if func}
+
+        # Extend the response object with the status of each function
+        for func in response:
+            func['status'] = function_status_map.get(func['name'], 'not found')
+
+        return json.dumps(response)
+
     
     @staticmethod
     def get_function_info(sender: GPTAssistantAgent, name: str) -> str:
