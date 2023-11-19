@@ -40,9 +40,17 @@ class FunctionsService:
     @staticmethod
     def discover_functions(sender: GPTAssistantAgent, category: str, query: str = None) -> str:
         from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel
+
+        # Fetch the functions from the backend service
         response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
         if err is not None:
             return err
+
+        # Flatten the list of lists into a single list of dictionaries
+        if isinstance(response, list) and all(isinstance(item, list) for item in response):
+            response = [func for sublist in response for func in sublist]
+        else:
+            return json.dumps({"error": "Invalid response format"})
 
         # Extract function names from the response
         function_names = [func['name'] for func in response]
@@ -61,6 +69,7 @@ class FunctionsService:
             func['status'] = function_status_map.get(func['name'], 'not found')
 
         return json.dumps(response)
+
 
     
     @staticmethod

@@ -374,16 +374,16 @@ group_info_function_specs = [
     get_function_info_spec,
     get_agent_info_spec,
     upsert_function_spec,
+    discover_agents_spec,
+    discover_groups_spec,
+    discover_functions_spec,
     terminate_group_spec
 ]
 
 management_function_specs = [
     send_message_spec,
-    discover_agents_spec,
     upsert_agent,
-    discover_groups_spec,
     upsert_group_spec,
-    discover_functions_spec
 ]
 
 files_function_specs = [

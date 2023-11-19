@@ -12,9 +12,11 @@ Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {gro
 
 {capability_instruction}
 
-As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements after a conclusion. Be cautious with non-accepted functions; repair them rather than creating new versions. Always consider the group's message history in your responses.
+As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. You cannot update agents or groups but you can update functions. Functions are used within agents which are used withing groups. You can tag the manager in your group through text-interaction to have agents/groups modified. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Be cautious with non-accepted functions; repair them rather than creating new versions. Always consider the group's message history in your responses.
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
+
+Avoid needless discussion and going in circles, terminate to save costs.
 
 Custom Instructions: {custom_instructions}
 """
@@ -24,9 +26,13 @@ Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {gro
 
 {capability_instruction}
 
-As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements after a conclusion. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them. Ensure your responses reflect the group's message history.
+As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. Functions are used within agents which are used withing groups. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them. Ensure your responses reflect the group's message history.
+
+Watch for others tagging you in the chat for certain requests like modifying agents and groups only you can fulfill.
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
+
+Avoid needless discussion and going in circles, terminate to save costs.
 
 Custom Instructions: {custom_instructions}
 
@@ -34,11 +40,11 @@ Group Stats: {group_stats}
 """
 
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
-- INFO: Access and manage information on functions, agents, and groups, including termination of groups.
-- CODE_INTERPRETER: Write and run Python code. Use OpenAI interpreter for OpenAI files, and local interpreter for local files and internet access. Invoke local interpreter through and custom functions. Execute functions in your context.
-- RETRIEVAL: Enhance knowledge with external documents and data using files.
-- FILES: Manage files for data processing and sharing.
-- MANAGEMENT: Modify agents/groups, communicate across groups, discover entities, and manage group activities.
+- INFO: Access and manage information on functions, agents, and groups, including termination of groups. Discover entities.
+- CODE_INTERPRETER: Additional ability to write and run Python code. Use OpenAI interpreter for OpenAI files, and local interpreter for local files and internet access. Invoke local interpreter through and custom functions. Execute functions in your context.
+- RETRIEVAL: Additional ability to enhance knowledge with external documents and data using files.
+- FILES: Additional ability to manage files for data processing and sharing.
+- MANAGEMENT: Additional ability to modify agents/groups, communicate across groups to manage group activities.
 """
 
     @staticmethod
@@ -267,6 +273,7 @@ Group Stats: {group_stats}
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
+        agent.function_names = backend_agent.function_names
         AgentService._update_capability(agent)
         if backend_agent.function_names:
             function_models = [GetFunctionModel(auth=agent.auth, name=function_name) for function_name in backend_agent.function_names]
@@ -301,6 +308,7 @@ Group Stats: {group_stats}
         agent.custom_instructions = agent.system_message
         agent.capability = backend_agent.capability
         agent.files = backend_agent.files
+        agent.function_names = backend_agent.function_names
         AgentService._update_capability(agent)
         if backend_agent.function_names:
             function_models = [GetFunctionModel(auth=agent.auth, name=function_name) for function_name in backend_agent.function_names]
