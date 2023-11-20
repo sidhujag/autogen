@@ -20,7 +20,7 @@ Your environment HAS access to real-time information and the internet through yo
 
 Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add.
 
-In your responses include any tools you executed for conversational context.
+IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication.
 
 Custom Instructions: {custom_instructions}
 """
@@ -40,7 +40,7 @@ Your environment HAS access to real-time information and the internet through yo
 
 Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add.
 
-In your responses include any tools you executed for conversational context.
+IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication.
 
 Custom Instructions: {custom_instructions}
 
