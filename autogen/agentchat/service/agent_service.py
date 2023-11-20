@@ -18,10 +18,7 @@ Ensure to review the group's message history thoroughly before initiating a redu
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add.
-
-IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication
-For assistant responses that don't have a speaker prepended, assume the speaker is one from the message prior.
+Terminate if conversation is going in circles.
 
 Custom Instructions: {custom_instructions}
 """
@@ -39,10 +36,7 @@ Watch for others tagging you in the chat for certain requests like modifying age
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add.
-
-IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication. 
-For assistant responses that don't have a speaker prepended, assume the speaker is one from the message prior.
+Terminate if conversation is going in circles.
 
 Custom Instructions: {custom_instructions}
 
@@ -155,7 +149,7 @@ Group Stats: {group_stats}
             if created_assistant:
                 sender.openai_client.beta.assistants.delete(assistant_id=id)
             return err
-        return json.dumps({"response": "Agent upserted!"})
+        return json.dumps({"response": f"Agent({name}) upserted!"})
 
     @staticmethod
     def upload_file(sender: GPTAssistantAgent, description: str, data_or_url: str) -> str:
@@ -415,7 +409,7 @@ Group Stats: {group_stats}
         capability_names = AgentService.get_capability_names(agent.capability)
         capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
         formatted_message = ""
-        dependent = f', dependent group: {group_manager.dependent}' if group_manager.dependent else ''
+        dependent = f', dependent group: {group_manager.dependent.name}' if group_manager.dependent else ''
         # Update the system message based on the agent type
         if agent.capability & MANAGEMENT:
             # Define the new agent system message with placeholders filled in

@@ -158,7 +158,6 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
 
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
-        print(f'messages {self.messages}')
         final, name = selector.generate_oai_reply(
             self.messages
             + [
@@ -258,8 +257,10 @@ class GroupChatManager(ConversableAgent):
         self.exiting = False
         self.tasking = None
         self.tasking_message = None
+        self.exit_response = None
         self.incoming = {}
         self.outgoing = {}
+        self.running = False
 
     def run_chat(
         self,
@@ -274,13 +275,21 @@ class GroupChatManager(ConversableAgent):
         message = messages[-1]
         speaker = sender
         groupchat = config
+        self.running = True
         for i in range(groupchat.max_round):
             if self.tasking and self.tasking_message:
                 self.initiate_chat(self.tasking, message=self.tasking_message)
+                # set the name to speaker's name if the role is not function
+                if message["role"] != "function":
+                    message["name"] = speaker.name
+                groupchat.messages.append(message)
+                # broadcast the message to all agents except the speaker
+                for agent in groupchat.agents:
+                    if agent != speaker:
+                        self.send(message, agent, request_reply=False, silent=True)
+                message = self.exit_response
                 self.tasking = None
                 self.tasking_message = None
-            if self.exiting:
-                break
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
                 message["name"] = speaker.name
@@ -290,6 +299,8 @@ class GroupChatManager(ConversableAgent):
                 AgentService.update_agent_system_message(agent, self)
                 if agent != speaker:
                     self.send(message, agent, request_reply=False, silent=True)
+            if self.exiting:
+                break
             if i == groupchat.max_round - 1:
                 # the last round
                 break
@@ -314,8 +325,10 @@ class GroupChatManager(ConversableAgent):
             message = self.last_message(speaker)
         self.dependent = None
         self.exiting = False
+        self.exit_response = None
         self.tasking = None
         self.tasking_message = None
+        self.running = False
         return True, None
 
     async def a_run_chat(

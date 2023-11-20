@@ -236,4 +236,4 @@ class FunctionsService:
         if err is not None:
             return err
         MakeService.FUNCTION_REGISTRY[function_model.name] = BaseFunction(**function_model.dict(exclude_none=True))
-        return json.dumps({"response": "Function upserted!"})
+        return json.dumps({"response": f"Function({function_model.name}) upserted!"})

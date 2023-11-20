@@ -80,7 +80,7 @@ class GroupService:
         )])
         if err is not None:
             return err
-        return json.dumps({"response": "Group upserted!"})
+        return json.dumps({"response": f"Group({group}) upserted!"})
 
 
     @staticmethod
@@ -91,10 +91,16 @@ class GroupService:
         group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
         if group_obj is None:
             return json.dumps({"error": f"Could not send message: group({group}) not found"})
+        if not group_obj.running:
+            return json.dumps({"error": f"Could not terminate group({group}): group is currently not running, perhaps already terminated."})
         if group_obj.dependent:
-            group_obj.send(response, group_obj.dependent, request_reply=False)
+            msg = {
+                "role": "user",
+                "content": f'{group}: {response}'
+            }
+            group_obj.dependent.exit_response = msg
         group_obj.exiting = True
-        return json.dumps({"response": "Group terminating!"})
+        return json.dumps({"response": f"Group({group}) terminating!"})
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
         from . import GetGroupModel, BackendService, UpdateComms
@@ -102,37 +108,37 @@ class GroupService:
             return json.dumps({"error": "Could not send message: sender not found"})
         if from_group == to_group:
             return json.dumps({"error": "Could not send message: cannot send message to the same group you are sending from"})
-        from_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=from_group))
-        if from_group is None:
-            return json.dumps({"error": "Could not send message: from_group not found"})
-        to_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=to_group))
-        if to_group is None:
-            return json.dumps({"error": "Could not send message: to_group not found"})
-        if to_group.dependent:
-            return json.dumps({"error": f"Could not send message: to_group already depends on a task from {to_group.dependent.name}."})
-        if from_group.dependent and to_group == from_group.dependent.name:
+        from_group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=from_group))
+        if from_group_obj is None:
+            return json.dumps({"error": f"Could not send message: from_group({from_group}) not found"})
+        to_group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=to_group))
+        if to_group_obj is None:
+            return json.dumps({"error": f"Could not send message: to_group({to_group}) not found"})
+        if to_group_obj.dependent:
+            return json.dumps({"error": f"Could not send message: to_group({to_group}) already depends on a task from {to_group_obj.dependent.name}."})
+        if from_group_obj.dependent and to_group == from_group_obj.dependent.name:
             return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
-        if len(to_group.groupchat.agents) < 3:
-            return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group.agent_names)}"})
+        if len(to_group_obj.groupchat.agents) < 3:
+            return json.dumps({"error": f"Could not send message: to_group({to_group}) does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_obj.agent_names)}"})
         found_mgr = False
-        for agent in to_group.groupchat.agents:
+        for agent in to_group_obj.groupchat.agents:
             if agent.capability & MANAGEMENT:
                 found_mgr = True
                 break
         if not found_mgr:
-            return json.dumps({"error": f"Could not send message: to_group does not have a MANAGER. Current agents in group: {', '.join(to_group.agent_names)}"})
+            return json.dumps({"error": f"Could not send message: to_group({to_group}) does not have a MANAGER. Current agents in group: {', '.join(to_group_obj.agent_names)}"})
         # Increment the communication stats
-        from_group.outgoing[to_group.name] = from_group.outgoing.get(to_group.name, 0) + 1
-        to_group.incoming[from_group.name] = to_group.incoming.get(from_group.name, 0) + 1
+        from_group_obj.outgoing[to_group_obj.name] = from_group_obj.outgoing.get(to_group_obj.name, 0) + 1
+        to_group_obj.incoming[from_group_obj.name] = to_group_obj.incoming.get(from_group_obj.name, 0) + 1
         err = BackendService.update_communication_stats(UpdateComms(auth=sender.auth, 
-                                                                    sender=from_group.name, 
-                                                                    receiver=to_group.name))
+                                                                    sender=from_group_obj.name, 
+                                                                    receiver=to_group_obj.name))
         if err:
             return err
-        to_group.dependent = from_group
-        from_group.tasking = to_group
-        from_group.tasking_message = message
-        return json.dumps({"response": "Message sent!"})
+        to_group_obj.dependent = from_group_obj
+        from_group_obj.tasking = to_group_obj
+        from_group_obj.tasking_message = message
+        return json.dumps({"response": f"Message sent from group ({from_group}) to group ({to_group})!"})
     
     @staticmethod
     def _create_group(backend_group):

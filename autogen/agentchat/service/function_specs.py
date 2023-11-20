@@ -37,7 +37,7 @@ terminate_group_spec = {
             },
             "response": {
                 "type": "string",
-                "description": "Summary of discussion and response to dependent group."
+                "description": "Summary of answer and response to dependent group."
             }
         },
         "required": ["group", "response"]
