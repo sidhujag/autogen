@@ -139,7 +139,6 @@ class GPTAssistantAgent(ConversableAgent):
                 content=message["content"],
                 role="user",
             )
-
         # Create a new run to get responses from the assistant
         run = self._openai_client.beta.threads.runs.create(
             thread_id=assistant_thread.id,
@@ -358,11 +357,9 @@ class GPTAssistantAgent(ConversableAgent):
         if thread is None:
             print("No thread to print")
             return
-        # NOTE: that list may not be in order, sorting by created_at is important
         messages = self._openai_client.beta.threads.messages.list(
             thread_id=thread.id,
         )
-        messages = sorted(messages.data, key=lambda x: x.created_at)
         print("~~~~~~~THREAD CONTENTS~~~~~~~")
         for message in messages:
             content_types = [content.type for content in message.content]
