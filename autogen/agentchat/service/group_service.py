@@ -16,7 +16,7 @@ class GroupService:
         group: GroupChatManager = MakeService.GROUP_REGISTRY.get(group_model.name)
         if group is None:
             backend_groups, err = BackendService.get_backend_groups([group_model])
-            if err is None and len(backend_groups) > 0:
+            if err is None and backend_groups:
                 group, err = GroupService.make_group(backend_groups[0])
                 if err is not None:
                     MakeService.GROUP_REGISTRY[group_model.name] = group
@@ -27,12 +27,10 @@ class GroupService:
         from . import GetGroupModel, GroupInfo, AgentService, MakeService, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
-
-        backend_group = GroupService.get_group([GetGroupModel(auth=sender.auth, name=name)])
+        backend_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=name))
         if not backend_group:
             return json.dumps({"error": f"Group({name}) not found"})
         groups_info = []
-      
         agents_dict = {}
         for agent_name in backend_group.agent_names:
             agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
@@ -42,14 +40,13 @@ class GroupService:
             short_description = MakeService._get_short_description(agent.description)
             capability_names = AgentService.get_capability_names(agent.capability)
             capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
-            agents_dict[agent.name] = {
+            agents_dict[agent_name] = {
                 "capabilities": capability_text,
                 "description": short_description,
                 "files": agent.files
             }
         group_info = GroupInfo(**backend_group.dict(), agents=agents_dict)
         groups_info.append(group_info.dict(exclude=['agent_names', 'auth']))
-
         # Return the JSON representation of the groups info
         return json.dumps({"response": groups_info})
 
