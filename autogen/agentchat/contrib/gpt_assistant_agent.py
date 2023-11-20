@@ -139,6 +139,7 @@ class GPTAssistantAgent(ConversableAgent):
                 content=message["content"],
                 role="user",
             )
+        self.pretty_print_thread(assistant_thread)
         # Create a new run to get responses from the assistant
         run = self._openai_client.beta.threads.runs.create(
             thread_id=assistant_thread.id,
@@ -150,6 +151,7 @@ class GPTAssistantAgent(ConversableAgent):
         response = self._get_run_response(assistant_thread, run)
         self._unread_index[sender] = len(self._oai_messages[sender]) + 1
         if response["content"]:
+            response["content"] = f'{self.name}: {response["content"]}'
             return True, response
         else:
             return False, "No response from the assistant."
