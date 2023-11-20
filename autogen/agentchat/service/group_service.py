@@ -45,7 +45,14 @@ class GroupService:
                 "description": short_description,
                 "files": agent.files
             }
-        group_info = GroupInfo(**backend_group.dict(), agents=agents_dict)
+        group_info = GroupInfo(
+            name=name,
+            auth=backend_group.auth,
+            description=backend_group.description,
+            agents=agents_dict,
+            incoming=backend_group.incoming,
+            outgoing=backend_group.outgoing
+        )
         groups_info.append(group_info.dict(exclude=['agent_names', 'auth']))
         # Return the JSON representation of the groups info
         return json.dumps({"response": groups_info})
@@ -102,18 +109,18 @@ class GroupService:
         if to_group is None:
             return json.dumps({"error": "Could not send message: to_group not found"})
         if to_group.dependent:
-            return json.dumps({"error": f"Could not send message: to_group already depends on a task from {to_group_manager.dependent.name}."})
+            return json.dumps({"error": f"Could not send message: to_group already depends on a task from {to_group.dependent.name}."})
         if from_group.dependent and to_group == from_group.dependent.name:
             return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
         if len(to_group.groupchat.agents) < 3:
-            return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
+            return json.dumps({"error": f"Could not send message: to_group does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group.agent_names)}"})
         found_mgr = False
         for agent in to_group.groupchat.agents:
             if agent.capability & MANAGEMENT:
                 found_mgr = True
                 break
         if not found_mgr:
-            return json.dumps({"error": f"Could not send message: to_group does not have a MANAGER. Current agents in group: {', '.join(to_group_manager.groupchat.agent_names)}"})
+            return json.dumps({"error": f"Could not send message: to_group does not have a MANAGER. Current agents in group: {', '.join(to_group.agent_names)}"})
         # Increment the communication stats
         from_group.outgoing[to_group.name] = from_group.outgoing.get(to_group.name, 0) + 1
         to_group.incoming[from_group.name] = to_group.incoming.get(from_group.name, 0) + 1
@@ -154,7 +161,7 @@ class GroupService:
         group.description = backend_group.description
         group.incoming = backend_group.incoming
         group.outgoing = backend_group.outgoing
-        agent_names = group.groupchat.agent_names
+        agent_names = group.agent_names
         for agent_name in backend_group.agent_names:
             if agent_name not in agent_names:
                 agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))

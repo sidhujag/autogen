@@ -223,6 +223,11 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
 
+    @property
+    def agent_names(self) -> List[str]:
+        """Return the names of the agents in the group chat."""
+        return self.groupchat.agent_names
+
     def __init__(
         self,
         groupchat: GroupChat,
