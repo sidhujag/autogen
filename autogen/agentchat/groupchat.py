@@ -73,7 +73,7 @@ class GroupChat:
 {AgentService.CAPABILITY_SYSTEM_MESSAGE}
 
 Read the following conversation.
-Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities for deciding the next role. Don't select the same role repeatedly unless its intentional. Only return the role."""
+Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities for deciding the next role. Don't select the same role repeatedly unless its intentional. For assistant responses that don't have a role prepended, assume the role is one from the message prior. Only return the role."""
 
     def manual_select_speaker(self, agents: List[Agent]) -> Agent:
         """Manually select the next speaker."""
@@ -158,12 +158,13 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
 
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
+        print(f'messages {self.messages}')
         final, name = selector.generate_oai_reply(
             self.messages
             + [
                 {
                     "role": "system",
-                    "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Note the capability of each role for deciding the next role. Don't select the same role repeatedly unless its intentional. Only return the role.",
+                    "content": f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Note the capability of each role for deciding the next role. Don't select the same role repeatedly unless its intentional. For assistant responses that don't have a role prepended, assume the role is one from the message prior. Only return the role.",
                 }
             ]
         )
@@ -275,7 +276,6 @@ class GroupChatManager(ConversableAgent):
         groupchat = config
         for i in range(groupchat.max_round):
             if self.tasking and self.tasking_message:
-                self.tasking_message = f'Group[{self.tasking.name}] Speaker[{self.name}]: {self.tasking_message}'
                 self.initiate_chat(self.tasking, message=self.tasking_message)
                 self.tasking = None
                 self.tasking_message = None
@@ -310,8 +310,6 @@ class GroupChatManager(ConversableAgent):
             if reply is None:
                 break
             # The speaker sends the message without requesting a reply
-            reply = self._message_to_dict(reply)
-            reply["content"] = f'Group[{self.name}] Speaker[{speaker.name}]: {reply["content"]}'
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
         self.dependent = None
@@ -335,7 +333,6 @@ class GroupChatManager(ConversableAgent):
         groupchat = config
         for i in range(groupchat.max_round):
             if self.tasking and self.tasking_message:
-                self.tasking_message = f'Group[{self.tasking.name}] Speaker[{self.name}]: {self.tasking_message}'
                 self.initiate_chat(self.tasking, message=self.tasking_message)
                 self.tasking = None
                 self.tasking_message = None
@@ -369,8 +366,6 @@ class GroupChatManager(ConversableAgent):
                     raise
             if reply is None:
                 break
-            reply = self._message_to_dict(reply)
-            reply["content"] = f'Group[{self.name}] Speaker[{speaker.name}]: {reply["content"]}'
             # The speaker sends the message without requesting a reply
             await speaker.a_send(reply, self, request_reply=False)
             message = self.last_message(speaker)

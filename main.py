@@ -76,7 +76,6 @@ def upsert_agents(models, auth, client):
         model.assistant_id = id
     agents, err = AgentService.upsert_agents(models)
     if err is not None:
-        client.beta.assistants.delete(assistant_id=id)
         return None, err
     return agents, None
 

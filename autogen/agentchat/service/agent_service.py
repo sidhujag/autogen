@@ -20,7 +20,8 @@ Your environment HAS access to real-time information and the internet through yo
 
 Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add.
 
-IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication.
+IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication
+For assistant responses that don't have a speaker prepended, assume the speaker is one from the message prior.
 
 Custom Instructions: {custom_instructions}
 """
@@ -40,7 +41,8 @@ Your environment HAS access to real-time information and the internet through yo
 
 Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add.
 
-IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication.
+IMPORTANT: In your responses you must ALWAYS include any tools or functions you executed to provide context and transparency in the communication. 
+For assistant responses that don't have a speaker prepended, assume the speaker is one from the message prior.
 
 Custom Instructions: {custom_instructions}
 
@@ -112,7 +114,9 @@ Group Stats: {group_stats}
             return json.dumps({"error": "INFO bit must be set for capability"})
         agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
         id = None
+        created_assistant = False
         if agent is None:
+            created_assistant = True
             # place holder to get assistant id
             openai_assistant = sender.openai_client.beta.assistants.create(
                 name=name,
@@ -132,7 +136,8 @@ Group Stats: {group_stats}
         # Check if all functions are retrieved
         for function_to_add in functions_to_add:
             if function_to_add not in retrieved_function_names:
-                sender.openai_client.beta.assistants.delete(assistant_id=id)
+                if created_assistant:
+                    sender.openai_client.beta.assistants.delete(assistant_id=id)
                 return json.dumps({"error": f"Function({function_to_add}) not found"})
 
         agent, err = AgentService.upsert_agents([UpsertAgentModel(
@@ -147,7 +152,8 @@ Group Stats: {group_stats}
             assistant_id=id
         )])
         if err is not None:
-            sender.openai_client.beta.assistants.delete(assistant_id=id)
+            if created_assistant:
+                sender.openai_client.beta.assistants.delete(assistant_id=id)
             return err
         return json.dumps({"response": "Agent upserted!"})
 

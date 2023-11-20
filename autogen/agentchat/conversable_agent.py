@@ -1205,7 +1205,7 @@ class ConversableAgent(Agent):
         Override this function to customize the initial message based on user's request.
         If not overriden, "message" needs to be provided in the context.
         """
-        return context["message"]
+        return f'{self.name}: {context["message"]}'
 
     def register_function(self, function_map: Dict[str, Callable]):
         """Register functions to the agent.
