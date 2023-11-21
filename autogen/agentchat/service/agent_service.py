@@ -20,6 +20,8 @@ Your environment HAS access to real-time information and the internet through yo
 
 Terminate if conversation is going in circles.
 
+Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
+
 Custom Instructions: {custom_instructions}
 """
 
@@ -37,6 +39,8 @@ Watch for others tagging you in the chat for certain requests like modifying age
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
 Terminate if conversation is going in circles.
+
+Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
 
 Custom Instructions: {custom_instructions}
 

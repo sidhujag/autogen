@@ -276,7 +276,17 @@ class GroupChatManager(ConversableAgent):
         speaker = sender
         groupchat = config
         self.running = True
+        # Regular expression pattern to find 'x (to y):'
+        pattern = r"^.+ \(to .+\):\n"
         for i in range(groupchat.max_round):
+            # Check if the pattern exists in the message
+            if re.search(pattern, message["content"]):
+                # Pattern exists, replace it
+                replacement = f"{speaker.name} (to {self.name}):\n"
+                message["content"] = re.sub(pattern, replacement, message["content"], count=1)
+            else:
+                # Pattern does not exist, prepend it
+                message["content"] = f'{speaker.name} (to {self.name}):\n{message["content"]}'
             if self.tasking and self.tasking_message:
                 self.initiate_chat(self.tasking, message=self.tasking_message)
                 # set the name to speaker's name if the role is not function

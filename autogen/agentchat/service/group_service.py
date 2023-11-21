@@ -96,7 +96,7 @@ class GroupService:
         if group_obj.dependent:
             msg = {
                 "role": "user",
-                "content": f'{group}: {response}'
+                "content": f'{sender.name} (to {group}):\n{response}'
             }
             group_obj.dependent.exit_response = msg
         group_obj.exiting = True
@@ -137,7 +137,7 @@ class GroupService:
             return err
         to_group_obj.dependent = from_group_obj
         from_group_obj.tasking = to_group_obj
-        from_group_obj.tasking_message = message
+        from_group_obj.tasking_message = f'{sender.name} (to {to_group}):\n{message}'
         return json.dumps({"response": f"Message sent from group ({from_group}) to group ({to_group})!"})
     
     @staticmethod

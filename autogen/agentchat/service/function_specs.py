@@ -33,11 +33,11 @@ terminate_group_spec = {
         "properties": {
             "group": {
                 "type": "string",
-                "description": "Group to terminate."
+                "description": "Group to terminate. Most of the time this is the group you are in that you are terminating."
             },
             "response": {
                 "type": "string",
-                "description": "Summary of answer and response to dependent group."
+                "description": "Summary of answer to dependent group. Don't mention anything about a group terminating as that may confuse the dependent group."
             }
         },
         "required": ["group", "response"]
