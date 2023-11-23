@@ -5,10 +5,12 @@ from typing import List
 import json
 INFO = 1
 TERMINATE = 2
-CODE_INTERPRETER = 4
-RETRIEVAL = 8
-FILES = 16
-MANAGEMENT = 32
+OPENAI_CODE_INTERPRETER = 4
+LOCAL_CODE_INTERPRETER = 8
+FUNCTION_CODER = 16
+OPENAI_RETRIEVAL = 32
+OPENAI_FILES = 64
+MANAGEMENT = 128
 
 class GroupService:
     @staticmethod
@@ -115,7 +117,6 @@ class GroupService:
             return json.dumps({"error": f"Could not terminate group({group}): group is currently not running, perhaps already terminated."})
         if group_obj.dependent:
             group_obj.dependent.exit_response = group_obj.last_message(sender)
-        print(f'last_msg {group_obj.dependent.exit_response}')
         group_obj.exiting = True
         return json.dumps({"response": f"Group({group}) terminating!"})
 
@@ -128,9 +129,13 @@ class GroupService:
         from_group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=from_group))
         if from_group_obj is None:
             return json.dumps({"error": f"Could not send message: from_group({from_group}) not found"})
+        if not from_group_obj.running:
+            return json.dumps({"error": f"Could not send message: from_group({from_group}) is not running"})
         to_group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=to_group))
         if to_group_obj is None:
             return json.dumps({"error": f"Could not send message: to_group({to_group}) not found"})
+        if to_group_obj.running:
+            return json.dumps({"error": f"Could not send message: to_group({to_group}) is already running"})
         if to_group_obj.dependent:
             return json.dumps({"error": f"Could not send message: to_group({to_group}) already depends on a task from {to_group_obj.dependent.name}."})
         if from_group_obj.dependent and to_group == from_group_obj.dependent.name:

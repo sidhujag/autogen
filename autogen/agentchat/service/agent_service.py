@@ -1,7 +1,7 @@
 from .. import GroupChatManager
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
-from autogen.agentchat.service.function_specs import management_function_specs, group_terminate_function_specs, group_info_function_specs, files_function_specs
+from autogen.agentchat.service.function_specs import function_coder_specs, management_function_specs, group_terminate_function_specs, group_info_function_specs, files_function_specs
 import json
 import requests
 
@@ -51,12 +51,14 @@ Group Stats: {group_stats}
 """
 
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
-- INFO: Access and manage information on functions, agents, and groups. Discover entities.
-- TERMINATE: Ability to terminate a group.
-- CODE_INTERPRETER: Additional ability to write and run Python code. Use OpenAI interpreter for OpenAI files, and local interpreter for local files and internet access. Invoke local interpreter through and custom functions. Execute functions in your context.
-- RETRIEVAL: Additional ability to enhance knowledge with external documents and data using files.
-- FILES: Additional ability to manage files for data processing and sharing.
-- MANAGEMENT: Additional ability to modify agents/groups, communicate across groups to manage group activities.
+- INFO: Access and manage information on functions, agents, and groups. Discover entities and gather relevant data.
+- TERMINATE: Ability to terminate a group, concluding its operations.
+- OPENAI_CODE_INTERPRETER: Execute code using the OpenAI Code Interpreter, ideal for isolated, internet-independent tasks.
+- LOCAL_CODE_INTERPRETER: Execute code using a local interpreter, suitable for comprehensive application development and tasks requiring internet access.
+- FUNCTION_CODER: Develop and execute reusable functions, crucial for tasks that require modularity and reusability in code.
+- OPENAI_RETRIEVAL: Leverage OpenAI's capabilities to enhance knowledge retrieval, utilizing external documents and data.
+- OPENAI_FILES: Manage and utilize OpenAI Files for data processing, sharing, and state management across OpenAI Code Interpreter and Retrieval tools.
+- MANAGEMENT: Oversee and modify agents/groups, facilitate inter-group communication, and manage overall group activities.
 """
 
     @staticmethod
@@ -242,8 +244,9 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _update_capability(agent):
-        from . import FunctionsService, MakeService, INFO, TERMINATE, MANAGEMENT, FILES, CODE_INTERPRETER, RETRIEVAL
+        from . import FunctionsService, MakeService, INFO, TERMINATE, OPENAI_RETRIEVAL, MANAGEMENT, FUNCTION_CODER, LOCAL_CODE_INTERPRETER, OPENAI_FILES, OPENAI_CODE_INTERPRETER
         agent.llm_config["tools"] = []
+        agent._code_execution_config = {}
         if agent.capability & INFO:
             for func_spec in group_info_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
@@ -255,13 +258,24 @@ Group Stats: {group_stats}
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
                     return error_message
-                FunctionsService.define_function_internal(agent, function_model) 
-        if agent.capability & CODE_INTERPRETER:
+                FunctionsService.define_function_internal(agent, function_model)
+        if agent.capability & OPENAI_CODE_INTERPRETER:
             agent.llm_config["tools"].append({"type": "code_interpreter"})
-        if agent.capability & RETRIEVAL:
+        if agent.capability & LOCAL_CODE_INTERPRETER:
+            agent._code_execution_config={
+                "work_dir": f"coding/{agent.name}",
+                "use_docker": "python:3",
+            }
+        if agent.capability & OPENAI_RETRIEVAL:
             agent.llm_config["tools"].append({"type": "retrieval"})
-        if agent.capability & FILES:
+        if agent.capability & OPENAI_FILES:
             for func_spec in files_function_specs:
+                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                if error_message:
+                    return error_message
+                FunctionsService.define_function_internal(agent, function_model)
+        if agent.capability & FUNCTION_CODER:
+            for func_spec in function_coder_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
                     return error_message
@@ -404,13 +418,14 @@ Group Stats: {group_stats}
 
     @staticmethod
     def get_capability_names(capability_number):
-        from . import INFO, TERMINATE, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
+        from . import INFO, TERMINATE, OPENAI_CODE_INTERPRETER, LOCAL_CODE_INTERPRETER, OPENAI_RETRIEVAL, OPENAI_FILES, MANAGEMENT
         capabilities = [
             ("INFO", INFO),
             ("TERMINATE", TERMINATE),
-            ("CODE_INTERPRETER", CODE_INTERPRETER),
-            ("RETRIEVAL", RETRIEVAL),
-            ("FILES", FILES),
+            ("OPENAI_CODE_INTERPRETER", OPENAI_CODE_INTERPRETER),
+            ("LOCAL_CODE_INTERPRETER", LOCAL_CODE_INTERPRETER),
+            ("OPENAI_RETRIEVAL", OPENAI_RETRIEVAL),
+            ("OPENAI_FILES", OPENAI_FILES),
             ("MANAGEMENT", MANAGEMENT),
         ]
         capability_names = [name for name, bit in capabilities if capability_number & bit]

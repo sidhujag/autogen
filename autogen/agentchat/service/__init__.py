@@ -2,7 +2,7 @@ from .agent_service import AgentService
 from .search_engine_serper import WebSearchSerperWrapper
 from .functions_service import FunctionsService
 from .make_service import MakeService
-from .group_service import GroupService, INFO, TERMINATE, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
+from .group_service import GroupService, INFO, TERMINATE, OPENAI_CODE_INTERPRETER, LOCAL_CODE_INTERPRETER, FUNCTION_CODER, OPENAI_RETRIEVAL, OPENAI_FILES, MANAGEMENT
 from .backend_service import (
     BackendService,
     AuthAgent, 
@@ -60,8 +60,10 @@ __all__ = [
     "DiscoverGroupsModel",
     "INFO",
     "TERMINATE",
-    "CODE_INTERPRETER",
-    "RETRIEVAL",
-    "FILES",
+    "OPENAI_CODE_INTERPRETER",
+    "LOCAL_CODE_INTERPRETER",
+    "FUNCTION_CODER",
+    "OPENAI_RETRIEVAL",
+    "OPENAI_FILES",
     "MANAGEMENT"
 ]

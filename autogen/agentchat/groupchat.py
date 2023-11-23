@@ -289,6 +289,7 @@ class GroupChatManager(ConversableAgent):
                 # Pattern does not exist, prepend it
                 message["content"] = f'{speaker.name} (to {self.name}):\n{message["content"]}'
             if self.tasking and self.tasking_message:
+                self.running = False
                 # set the name to speaker's name if the role is not function
                 if message["role"] != "function":
                     message["name"] = speaker.name
@@ -302,6 +303,7 @@ class GroupChatManager(ConversableAgent):
                 if not message:
                     message = self.last_message(speaker)
                 self.send(message, speaker, request_reply=False, silent=True)
+                self.running = True
                 self.tasking = None
                 self.tasking_message = None
             # set the name to speaker's name if the role is not function

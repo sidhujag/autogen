@@ -10,7 +10,7 @@ from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service.function_specs import external_function_specs
 from autogen.agentchat.service.agent_models import external_agent_models
 from autogen.agentchat.service.group_models import external_group_models
-from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE, CODE_INTERPRETER, FILES, RETRIEVAL
+from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE
 from typing import List
 app = FastAPI()
 

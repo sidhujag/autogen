@@ -167,7 +167,7 @@ upsert_agent = {
             },
             "capability": {
                 "type": "number",
-                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for INFO, 2 for TERMINATE, 4 for CODE_INTERPRETER, 8 for RETRIEVAL, 16 for FILES, and 32 for MANAGEMENT. Combine capabilities by adding the values of their masks together."
+                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 = INFO, 2 = TERMINATE, 4 = OPENAI_CODE_INTERPRETER, 8 = LOCAL_CODE_INTERPRETER, 16 = FUNCTION_CODER, 32 = OPENAI_RETRIEVAL, 64 = OPENAI_FILES, 128 = MANAGEMENT. Combine capabilities by adding the values of their masks together."
             }
         },
         "required": ["name"]
@@ -257,7 +257,7 @@ upsert_function_spec = {
                 "description": (
                     "Dynamic inputs for the function following OpenAPI 3 specification. "
                     "Include 'debug_mode' for debugging. Ensure flexibility by reading parameters dynamically. "
-                    "Parameters are injected as global variables. Pydantic model: OpenAIParameter."
+                    "Parameters are injected as global variables. Pydantic model: class OpenAIParameter(BaseModel)\ntype: str = 'object'\nproperties: dict[str, Any] = {}\nrequired: Optional[List[str]] = []"
                 ),
                 "properties": {},
                 "required": []
@@ -287,6 +287,31 @@ upsert_function_spec = {
     }
 }
 
+test_function_spec = {
+    "name": "test_function",
+    "category": "programming",
+    "class_name": "FunctionsService.test_function",
+    "description": (
+        "Test a function by executing it to see if it is working correctly giving proper results."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "Function name, the function to test."
+            },
+            "parameters": {
+                "type": "object",
+                "description": (
+                    "A dictionary of parameters to pass to the function. Each key-value pair represents a parameter name and its value."
+                ),
+                "additionalProperties": True
+            }
+        },
+        "required": ["name", "parameters"]
+    }
+}
 
 upload_file_spec = {
     "name": "upload_file",
@@ -382,7 +407,6 @@ group_info_function_specs = [
     get_group_info_spec,
     get_function_info_spec,
     get_agent_info_spec,
-    upsert_function_spec,
     discover_agents_spec,
     discover_groups_spec,
     discover_functions_spec,
@@ -396,6 +420,10 @@ management_function_specs = [
     upsert_group_spec,
 ]
 
+function_coder_specs = [
+    upsert_function_spec,
+    test_function_spec
+]
 files_function_specs = [
     upload_file_spec,
     delete_files_spec,

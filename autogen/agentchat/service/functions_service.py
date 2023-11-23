@@ -38,6 +38,34 @@ class FunctionsService:
         return functions
 
     @staticmethod
+    def test_function(sender: GPTAssistantAgent, function_name: str, params: Dict[str, Any]) -> str:
+        from . import GetFunctionModel, OpenAIParameter
+        try:
+            # Validate parameters
+            OpenAIParameter(**params)
+        except ValidationError as e:
+            return json.dumps({"error": f"Validation error for params: {str(e)}"})
+
+        if sender is None:
+            return json.dumps({"error": "Sender not found"})
+
+        # Retrieve the function
+        function = FunctionsService.get_functions([GetFunctionModel(auth=sender.auth, name=function_name)])
+        if not function:
+            return json.dumps({"error": f"Function({function_name}) not found"})
+
+        # Check for function code
+        if not function.function_code:
+            return json.dumps({"error": f"Function({function_name}) has no function_code"})
+
+        # Execute the function and handle potential errors
+        try:
+            result = FunctionsService.execute_func(function.function_code, **params)
+            return json.dumps({"result": result})
+        except Exception as e:
+            return json.dumps({"error": f"Error executing function: {str(e)}"})
+
+    @staticmethod
     def discover_functions(sender: GPTAssistantAgent, category: str, query: str = None) -> str:
         from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel
 

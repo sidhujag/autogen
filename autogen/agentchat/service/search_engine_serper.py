@@ -99,10 +99,8 @@ class WebSearchSerperWrapper(BaseModel):
         """Process response from SerpAPI."""
         # logger.debug(res)
         focus = ["title", "snippet", "link", "date"]
-        print(f'res {results}')
         def get_focused(x):
             return {i: j for i, j in x.items() if i in focus}
-        print(f'res keys {results.keys()}')
         
         snippets = []
 
