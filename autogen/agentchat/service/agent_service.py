@@ -1,10 +1,9 @@
 from .. import GroupChatManager
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
-from autogen.agentchat.service.function_specs import management_function_specs, group_info_function_specs, files_function_specs
+from autogen.agentchat.service.function_specs import management_function_specs, group_terminate_function_specs, group_info_function_specs, files_function_specs
 import json
 import requests
-import openai
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """
@@ -12,15 +11,17 @@ Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {gro
 
 {capability_instruction}
 
-As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. You cannot update agents or groups but you can update functions. Functions are used within agents which are used withing groups. You can tag the manager in your group through text-interaction to have agents/groups modified. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Be cautious with non-accepted functions; if you do choose them then repair them rather than creating new versions. Prefer to use accepted functions over non-accepted. Always consider the group's message history in your responses.
+As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. Functions are used within agents which are used withing groups. You can tag the manager in your group through text-interaction to have agents/groups modified. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Be cautious with non-accepted functions; if you do choose them then repair them rather than creating new versions. Prefer to use accepted functions over non-accepted. Always consider the group's message history in your responses.
 
 Ensure to review the group's message history thoroughly before initiating a redundant action. Additionally, if the context indicates that a request has been previously addressed, you will acknowledge and proceed from the most recent state of information.
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-Terminate if conversation is going in circles.
+If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements.
 
 Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
+
+Locked groups are good at specific jobs. Unlocked groups are good for abstract or further delegation of roles/tasks downstream.
 
 Custom Instructions: {custom_instructions}
 """
@@ -30,7 +31,7 @@ Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {gro
 
 {capability_instruction}
 
-As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. Functions are used within agents which are used withing groups. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them if you do choose them. Prefer to use accepted functions over non-accepted. Ensure your responses reflect the group's message history.
+As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. Functions are used within agents which are used withing groups. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them if you do choose them. Prefer to use accepted functions over non-accepted. Ensure your responses reflect the group's message history.
 
 Ensure to review the group's message history thoroughly before initiating a redundant action. Additionally, if the context indicates that a request has been previously addressed, you will acknowledge and proceed from the most recent state of information.
 
@@ -38,9 +39,11 @@ Watch for others tagging you in the chat for certain requests like modifying age
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-Terminate if conversation is going in circles.
+If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements.
 
 Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
+
+Locked groups are good at specific jobs. Unlocked groups are good for abstract or further delegation of roles/tasks downstream.
 
 Custom Instructions: {custom_instructions}
 
@@ -48,7 +51,8 @@ Group Stats: {group_stats}
 """
 
     CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
-- INFO: Access and manage information on functions, agents, and groups, including termination of groups. Discover entities.
+- INFO: Access and manage information on functions, agents, and groups. Discover entities.
+- TERMINATE: Ability to terminate a group.
 - CODE_INTERPRETER: Additional ability to write and run Python code. Use OpenAI interpreter for OpenAI files, and local interpreter for local files and internet access. Invoke local interpreter through and custom functions. Execute functions in your context.
 - RETRIEVAL: Additional ability to enhance knowledge with external documents and data using files.
 - FILES: Additional ability to manage files for data processing and sharing.
@@ -108,8 +112,7 @@ Group Stats: {group_stats}
         from . import UpsertAgentModel, INFO, GetAgentModel, FunctionsService, GetFunctionModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
-        if not capability & INFO:
-            return json.dumps({"error": "INFO bit must be set for capability"})
+        print(f'upserting agent sender {sender.name}')
         agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
         id = None
         created_assistant = False
@@ -127,17 +130,16 @@ Group Stats: {group_stats}
             id = agent._openai_assistant.id
         function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in functions_to_add]
         functions = FunctionsService.get_functions(function_models)
-
+        if not functions and functions_to_add:
+            return json.dumps({"error": "Functions you are trying to add are not found"})
         # Create a set of function names for easy lookup
         retrieved_function_names = {func.name for func in functions if func}
-
         # Check if all functions are retrieved
         for function_to_add in functions_to_add:
             if function_to_add not in retrieved_function_names:
                 if created_assistant:
                     sender.openai_client.beta.assistants.delete(assistant_id=id)
                 return json.dumps({"error": f"Function({function_to_add}) not found"})
-
         agent, err = AgentService.upsert_agents([UpsertAgentModel(
             auth=sender.auth,
             name=name,
@@ -240,10 +242,16 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _update_capability(agent):
-        from . import FunctionsService, MakeService, INFO, MANAGEMENT, FILES, CODE_INTERPRETER, RETRIEVAL
+        from . import FunctionsService, MakeService, INFO, TERMINATE, MANAGEMENT, FILES, CODE_INTERPRETER, RETRIEVAL
         agent.llm_config["tools"] = []
         if agent.capability & INFO:
             for func_spec in group_info_function_specs:
+                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                if error_message:
+                    return error_message
+                FunctionsService.define_function_internal(agent, function_model) 
+        if agent.capability & TERMINATE:
+            for func_spec in group_terminate_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
                 if error_message:
                     return error_message
@@ -396,9 +404,10 @@ Group Stats: {group_stats}
 
     @staticmethod
     def get_capability_names(capability_number):
-        from . import INFO, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
+        from . import INFO, TERMINATE, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
         capabilities = [
             ("INFO", INFO),
+            ("TERMINATE", TERMINATE),
             ("CODE_INTERPRETER", CODE_INTERPRETER),
             ("RETRIEVAL", RETRIEVAL),
             ("FILES", FILES),

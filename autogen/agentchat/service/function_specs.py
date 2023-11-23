@@ -27,7 +27,7 @@ terminate_group_spec = {
     "name": "terminate_group",
     "category": "communication",
     "class_name": "GroupService.terminate_group",
-    "description": "Terminates a group, returning control with a response if tasked by another group.",
+    "description": "Terminates a group, returning control with a response if tasked by another group. Make sure to include all of the context in the response as the group that tasked you does not have the messages in this group.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -35,12 +35,8 @@ terminate_group_spec = {
                 "type": "string",
                 "description": "Group to terminate. Most of the time this is the group you are in that you are terminating."
             },
-            "response": {
-                "type": "string",
-                "description": "Detailed answer to dependent group. Include all context required to understand answer, because dependent group doesn't see messages within this group. Don't mention anything about a group terminating as that may confuse the dependent group."
-            }
         },
-        "required": ["group", "response"]
+        "required": ["group"]
     }
 }
 
@@ -171,7 +167,7 @@ upsert_agent = {
             },
             "capability": {
                 "type": "number",
-                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for INFO, 2 for CODE_INTERPRETER, 4 for RETRIEVAL, 8 for FILES, and 16 for MANAGEMENT. Bit 1 (INFO) must always be enabled. Combine capabilities by adding the values of their masks together."
+                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 for INFO, 2 for TERMINATE, 4 for CODE_INTERPRETER, 8 for RETRIEVAL, 16 for FILES, and 32 for MANAGEMENT. Combine capabilities by adding the values of their masks together."
             }
         },
         "required": ["name"]
@@ -182,7 +178,7 @@ upsert_group_spec = {
     "name": "upsert_group",
     "category": "communication",
     "class_name": "GroupService.upsert_group",
-    "description": "Creates or updates a group. Each group must have atleast 3 agents. Each group must have atleast 1 agent with MANAGEMENT capabilities.",
+    "description": "Creates or updates a group. Each group must have atleast 3 agents. Each group must have atleast 1 agent with TERMINATE capabilities.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -203,6 +199,10 @@ upsert_group_spec = {
                 "type": "array",
                 "items": {"type": "string"},
                 "description": "Agents to remove from the group. Useful if agent ends up not being useful to group."
+            },
+            "locked": {
+                "type": "boolean",
+                "description": "If the group should be locked (no agents allowed to be added or removed from the moment it is locked)."
             }
         },
         "required": ["group", "description"]
@@ -386,9 +386,10 @@ group_info_function_specs = [
     discover_agents_spec,
     discover_groups_spec,
     discover_functions_spec,
+]
+group_terminate_function_specs = [
     terminate_group_spec
 ]
-
 management_function_specs = [
     send_message_spec,
     upsert_agent,

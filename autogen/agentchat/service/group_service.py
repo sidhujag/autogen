@@ -4,10 +4,11 @@ from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
 import json
 INFO = 1
-CODE_INTERPRETER = 2
-RETRIEVAL = 4
-FILES = 8
-MANAGEMENT = 16
+TERMINATE = 2
+CODE_INTERPRETER = 4
+RETRIEVAL = 8
+FILES = 16
+MANAGEMENT = 32
 
 class GroupService:
     @staticmethod
@@ -51,7 +52,8 @@ class GroupService:
             description=backend_group.description,
             agents=agents_dict,
             incoming=backend_group.incoming,
-            outgoing=backend_group.outgoing
+            outgoing=backend_group.outgoing,
+            locked=backend_group.locked
         )
         groups_info.append(group_info.dict(exclude=['agent_names', 'auth']))
         # Return the JSON representation of the groups info
@@ -69,14 +71,32 @@ class GroupService:
         return response
 
     @staticmethod
-    def upsert_group(sender: GPTAssistantAgent, group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None) -> str:
-        from . import UpsertGroupModel
+    def upsert_group(sender: GPTAssistantAgent, group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None, locked: bool = None) -> str:
+        from . import UpsertGroupModel, GetGroupModel, GetAgentModel, AgentService
+        backend_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
+        if backend_group:
+            if backend_group.locked and (agents_to_add or agents_to_remove or (locked and locked != backend_group.locked) ):
+                return json.dumps({"error": f"Group({group}) is locked, agents cannot be added/removed and locked field cannot be modified"})
+        else:
+            if len(agents_to_add) < 3:
+                return json.dumps({"error": f"Could not create group: does not have sufficient agents, at least 3 are needed. Current agents proposed: {', '.join(agents_to_add)}"})
+            found_term = False
+            for agent_name in agents_to_add:
+                agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
+                if agent is None:
+                    return json.dumps({"error": f"Could not get agent: {agent_name}"})
+                if agent.capability & TERMINATE:
+                    found_term = True
+                    break
+            if not found_term:
+                return json.dumps({"error": f"Could not create group: does not have someone who can TERMINATE the group. Current agents proposed: {', '.join(agents_to_add)}"})
         group_managers, err = GroupService.upsert_groups([UpsertGroupModel(
             auth=sender.auth,
             name=group,
             description=description,
             agents_to_add=agents_to_add,
             agents_to_remove=agents_to_remove,
+            locked=locked
         )])
         if err is not None:
             return err
@@ -84,7 +104,7 @@ class GroupService:
 
 
     @staticmethod
-    def terminate_group(sender: GPTAssistantAgent, group: str, response: str) -> str:
+    def terminate_group(sender: GPTAssistantAgent, group: str) -> str:
         from . import GetGroupModel
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
@@ -94,11 +114,8 @@ class GroupService:
         if not group_obj.running:
             return json.dumps({"error": f"Could not terminate group({group}): group is currently not running, perhaps already terminated."})
         if group_obj.dependent:
-            msg = {
-                "role": "user",
-                "content": f'{sender.name} (to {group}):\n{response}'
-            }
-            group_obj.dependent.exit_response = msg
+            group_obj.dependent.exit_response = group_obj.last_message(sender)
+        print(f'last_msg {group_obj.dependent.exit_response}')
         group_obj.exiting = True
         return json.dumps({"response": f"Group({group}) terminating!"})
 
@@ -118,15 +135,6 @@ class GroupService:
             return json.dumps({"error": f"Could not send message: to_group({to_group}) already depends on a task from {to_group_obj.dependent.name}."})
         if from_group_obj.dependent and to_group == from_group_obj.dependent.name:
             return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
-        if len(to_group_obj.groupchat.agents) < 3:
-            return json.dumps({"error": f"Could not send message: to_group({to_group}) does not have sufficient agents, at least 3 are needed. Current agents in group: {', '.join(to_group_obj.agent_names)}"})
-        found_mgr = False
-        for agent in to_group_obj.groupchat.agents:
-            if agent.capability & MANAGEMENT:
-                found_mgr = True
-                break
-        if not found_mgr:
-            return json.dumps({"error": f"Could not send message: to_group({to_group}) does not have a MANAGER. Current agents in group: {', '.join(to_group_obj.agent_names)}"})
         # Increment the communication stats
         from_group_obj.outgoing[to_group_obj.name] = from_group_obj.outgoing.get(to_group_obj.name, 0) + 1
         to_group_obj.incoming[from_group_obj.name] = to_group_obj.incoming.get(from_group_obj.name, 0) + 1
@@ -167,6 +175,7 @@ class GroupService:
         group.description = backend_group.description
         group.incoming = backend_group.incoming
         group.outgoing = backend_group.outgoing
+        group.locked = backend_group.locked
         agent_names = group.agent_names
         for agent_name in backend_group.agent_names:
             if agent_name not in agent_names:
@@ -186,6 +195,7 @@ class GroupService:
         group.description = backend_group.description
         group.incoming = backend_group.incoming
         group.outgoing = backend_group.outgoing
+        group.locked = backend_group.locked
         group.auth = backend_group.auth
         MakeService.GROUP_REGISTRY[group.name] = group
         return group, None

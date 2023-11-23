@@ -62,6 +62,7 @@ class UpsertGroupModel(BaseModel):
     description: Optional[str] = None
     agents_to_add: Optional[List[str]] = None
     agents_to_remove: Optional[List[str]] = None
+    locked: Optional[bool] = None
 
 class BaseAgent(BaseModel):
     name: str = Field(default="")
@@ -72,7 +73,7 @@ class BaseAgent(BaseModel):
     default_auto_reply: str = Field(default="")
     system_message: str = Field(default="")
     category: str = Field(default="")
-    capability: int = Field(default=1)
+    capability: int = Field(default=0)
     files: Dict[str, str] = Field(default_factory=dict)
     function_names: List[str] = Field(default_factory=list)
     
@@ -83,6 +84,7 @@ class BaseGroup(BaseModel):
     agent_names: List[str] = Field(default_factory=list)
     outgoing: Dict[str, int] = Field(default_factory=dict)
     incoming: Dict[str, int] = Field(default_factory=dict)
+    locked: Optional[bool] = Field(default=False)
 
 class GroupInfo(BaseGroup):
     agents: Dict[str, Dict] = Field(default_factory=dict)

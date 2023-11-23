@@ -10,7 +10,7 @@ from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service.function_specs import external_function_specs
 from autogen.agentchat.service.agent_models import external_agent_models
 from autogen.agentchat.service.group_models import external_group_models
-from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, CODE_INTERPRETER, FILES, RETRIEVAL
+from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE, CODE_INTERPRETER, FILES, RETRIEVAL
 from typing import List
 app = FastAPI()
 
@@ -36,7 +36,6 @@ def upsert_external_agents(agent_models, auth, client):
 def upsert_external_groups(group_models, auth):
     for group_model in group_models:
         group_model.auth = auth
-    print(f'group_models {group_models}')
     groups, err = GroupService.upsert_groups(group_models)
     if err is not None:
         print(f'Error creating groups {err}')
@@ -90,54 +89,40 @@ def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is user_proxy_agent speaking.",
         category="planning",
+        capability=0
     )
     user_assistant_model = UpsertAgentModel(
         name="user_assistant",
         auth=input.auth,
-        description="A generic AI assistant that can solve problems",
+        description="A generic AI assistant that can analyze problems. I am the assistant to user_proxy_agent.",
         human_input_mode="ALWAYS",
         default_auto_reply="This is the user_assistant speaking.",
         category="planning",
-        capability=MANAGEMENT | INFO | CODE_INTERPRETER | FILES | RETRIEVAL
+        capability=INFO
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager",
         auth=input.auth,
-        description="A generic manager that can analyze and tell other agents what to do",
+        description="A generic manager that will analyze if the task is solved, delegate tasks and terminate the program. If the problem is complex and requires a plan you will include part(s) of the plan the groups you task should work on, when you message them. You will coordinate the hiearchy of agents and groups based on this plan.",
         human_input_mode="ALWAYS",
         default_auto_reply="This is the manager speaking.",
         category="planning",
-        capability=MANAGEMENT | INFO
-    )
-    coder_assistant_model = UpsertAgentModel(
-        name="coder_assistant",
-        auth=input.auth,
-        description="A generic AI assistant that can create elegant code to problems.",
-        human_input_mode="ALWAYS",
-        default_auto_reply="This is the coder_assistant speaking.",
-        category="programming",
+        capability=MANAGEMENT | INFO | TERMINATE
     )
     agent_models = [
         user_model,
         user_assistant_model,
         manager_assistant_model,
-        coder_assistant_model
     ]
     management_group_model = UpsertGroupModel(
         name="management_group",
         auth=input.auth,
-        description="Management group, you will task user problem to other groups.",
-        agents_to_add=["user_proxy_agent", "user_assistant", "manager"]
-    )
-    planning_group_model = UpsertGroupModel(
-        name="planning_group",
-        auth=input.auth,
-        description="Planning group, you will get a problem where you need to create a plan, and assemble a hiearchical organization of groups.",
-        agents_to_add=["user_proxy_agent", "user_assistant", "coder_assistant"]
+        description="Management group, you will analyze and task user problem to other groups.",
+        agents_to_add=["user_proxy_agent", "user_assistant", "manager"],
+        locked = True
     )
     group_models = [
         management_group_model,
-        planning_group_model
     ]
     agents: List[GPTAssistantAgent] = None
     agents, err = upsert_agents(agent_models, input.auth, openai_client)

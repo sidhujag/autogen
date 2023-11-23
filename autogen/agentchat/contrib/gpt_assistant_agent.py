@@ -132,7 +132,7 @@ class GPTAssistantAgent(ConversableAgent):
             msgs = []
             if isinstance(sender, GroupChatManager):
                 group_response = json.loads(GroupService.get_group_info(self, sender.name))
-                group_intro = f'To start this thread of conversation amongst multiple agents, I will give you a group summary and agents inside it, please note new agents may come, some may leave and you are to track them as you conversate within a group of agents. Note the instructions for each assistant in the thread and instructions every time you are asked to respond which will be for the assistant thats responding to the conversation. Assistant messages come from API responses from the agent in the previous message. Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add. Terminate if conversation is going in circles. In agent responses you should include any tools or functions you executed to provide context and transparency in the communication. Upon termination always include context to deliver the result to whoever called you. Include speaker/group in the assistant message just like the user messages in "speaker (to group)" format. Ensure the responses reflect the groups message history. Group Info: {group_response["response"]}'
+                group_intro = f'To start this thread of conversation amongst multiple agents, I will give you a group summary and agents inside it, please note new agents may come, some may leave and you are to track them as you conversate within a group of agents. Note the instructions for each assistant in the thread and instructions every time you are asked to respond which will be for the assistant thats responding to the conversation. Assistant messages come from API responses from the agent in the previous message. For those that have termination access, terminate if you see the discussion and going in circles, to save costs. Do not terminate if a path does not work out right away, exhaust all of your possibilities to try different things to try to solve the problem. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add. In agent responses you should include any tools or functions you executed to provide context and transparency in the communication. Include speaker/group in the assistant message just like the user messages in "speaker (to group)" format. Ensure the responses reflect the groups message history. Group Info: {group_response["response"]}'
                 msgs.append({
                     "role": "user",
                     "content": group_intro,
@@ -148,7 +148,7 @@ class GPTAssistantAgent(ConversableAgent):
                 content=message["content"],
                 role="user",
             )
-        self.pretty_print_thread(assistant_thread)
+        #self.pretty_print_thread(assistant_thread)
         # Create a new run to get responses from the assistant
         run = self._openai_client.beta.threads.runs.create(
             thread_id=assistant_thread.id,

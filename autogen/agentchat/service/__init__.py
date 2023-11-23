@@ -2,7 +2,7 @@ from .agent_service import AgentService
 from .search_engine_serper import WebSearchSerperWrapper
 from .functions_service import FunctionsService
 from .make_service import MakeService
-from .group_service import GroupService, INFO, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
+from .group_service import GroupService, INFO, TERMINATE, CODE_INTERPRETER, RETRIEVAL, FILES, MANAGEMENT
 from .backend_service import (
     BackendService,
     AuthAgent, 
@@ -59,6 +59,7 @@ __all__ = [
     "GroupInfo",
     "DiscoverGroupsModel",
     "INFO",
+    "TERMINATE",
     "CODE_INTERPRETER",
     "RETRIEVAL",
     "FILES",

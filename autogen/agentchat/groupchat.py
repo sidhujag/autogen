@@ -159,7 +159,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
         final, name = selector.generate_oai_reply(
-            self.messages
+            self.messages[-20:]
             + [
                 {
                     "role": "system",
@@ -260,6 +260,7 @@ class GroupChatManager(ConversableAgent):
         self.exit_response = None
         self.incoming = {}
         self.outgoing = {}
+        self.locked = False
         self.running = False
 
     def run_chat(
@@ -288,7 +289,6 @@ class GroupChatManager(ConversableAgent):
                 # Pattern does not exist, prepend it
                 message["content"] = f'{speaker.name} (to {self.name}):\n{message["content"]}'
             if self.tasking and self.tasking_message:
-                self.initiate_chat(self.tasking, message=self.tasking_message)
                 # set the name to speaker's name if the role is not function
                 if message["role"] != "function":
                     message["name"] = speaker.name
@@ -297,9 +297,11 @@ class GroupChatManager(ConversableAgent):
                 for agent in groupchat.agents:
                     if agent != speaker:
                         self.send(message, agent, request_reply=False, silent=True)
+                self.initiate_chat(self.tasking, message=self.tasking_message)
                 message = self.exit_response
                 if not message:
                     message = self.last_message(speaker)
+                self.send(message, speaker, request_reply=False, silent=True)
                 self.tasking = None
                 self.tasking_message = None
             # set the name to speaker's name if the role is not function
