@@ -18,4 +18,4 @@ class MakeService:
 
     @staticmethod
     def _get_short_description(full_description: str) -> str:
-        return (full_description[:75] + '...') if len(full_description) > 75 else full_description
+        return (full_description[:640] + '...') if len(full_description) > 640 else full_description

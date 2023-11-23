@@ -129,15 +129,16 @@ class GPTAssistantAgent(ConversableAgent):
         pending_messages = messages[unread_index:]
         # Check and initiate a new thread if necessary
         if self._openai_threads.get(sender, None) is None:
+            msgs = []
             if isinstance(sender, GroupChatManager):
                 group_response = json.loads(GroupService.get_group_info(self, sender.name))
                 group_intro = f'To start this thread of conversation amongst multiple agents, I will give you a group summary and agents inside it, please note new agents may come, some may leave and you are to track them as you conversate within a group of agents. Note the instructions for each assistant in the thread and instructions every time you are asked to respond which will be for the assistant thats responding to the conversation. Assistant messages come from API responses from the agent in the previous message. Avoid needless discussion and going in circles, terminate to save costs. If the conversation shows there is a satisfactory answer already no need to continue. If you have nothing to add either terminate or say you have nothing to add. Terminate if conversation is going in circles. In agent responses you should include any tools or functions you executed to provide context and transparency in the communication. Upon termination always include context to deliver the result to whoever called you. Include speaker/group in the assistant message just like the user messages in "speaker (to group)" format. Ensure the responses reflect the groups message history. Group Info: {group_response["response"]}'
-                msg = {
+                msgs.append({
                     "role": "user",
                     "content": group_intro,
-                }
+                })
             self._openai_threads[sender] = self._openai_client.beta.threads.create(
-                messages=[msg],
+                messages=msgs,
             )
         assistant_thread = self._openai_threads[sender]
         # Process each unread message
@@ -147,7 +148,7 @@ class GPTAssistantAgent(ConversableAgent):
                 content=message["content"],
                 role="user",
             )
-        # self.pretty_print_thread(assistant_thread)
+        self.pretty_print_thread(assistant_thread)
         # Create a new run to get responses from the assistant
         run = self._openai_client.beta.threads.runs.create(
             thread_id=assistant_thread.id,

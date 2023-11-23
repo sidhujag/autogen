@@ -37,7 +37,7 @@ terminate_group_spec = {
             },
             "response": {
                 "type": "string",
-                "description": "Summary of answer to dependent group. Don't mention anything about a group terminating as that may confuse the dependent group."
+                "description": "Detailed answer to dependent group. Include all context required to understand answer, because dependent group doesn't see messages within this group. Don't mention anything about a group terminating as that may confuse the dependent group."
             }
         },
         "required": ["group", "response"]
@@ -351,24 +351,33 @@ serper_spec = {
     "name": "web_search",
     "category": "information_retrieval",
     "class_name": "WebSearchSerperWrapper.run",
-    "description": "Performs a generic search for real-time web access through a search engine query.",
+    "description": "Performs a generic search for real-time web access through search engine queries.",
     "status": "accepted",
     "parameters": {
         "type": "object",
         "properties": {
-            "query": {
-                "type": "string",
-                "description": "Search query."
+            "queries": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Search queries."
             },
             "max_results": {
+                "type": "number",
+                "description": "Max number of search results. Defaults to 8."
+            },
+            "type": {
                 "type": "string",
-                "description": "Max number of search results."
+                "enum": ["search", "images", "videos", "news", "places", "shopping"],
+                "description": "Search type. Use 'search' for basic search and the others for specific types of searches."
+            },
+            "tbs": {
+                "type": "string",
+                "description": "for news type: past hour - qdr:h, past 24 hours - qdr:d, past week - qdr:w, past month - qdr:m, past year - qdr:y."
             }
         },
-        "required": ["query"]
+        "required": ["queries", "type"]
     }
 }
-
 group_info_function_specs = [
     get_group_info_spec,
     get_function_info_spec,

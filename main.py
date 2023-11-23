@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service.function_specs import external_function_specs
 from autogen.agentchat.service.agent_models import external_agent_models
+from autogen.agentchat.service.group_models import external_group_models
 from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, CODE_INTERPRETER, FILES, RETRIEVAL
 from typing import List
 app = FastAPI()
@@ -24,7 +25,7 @@ class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
 
-def upsert_external_models(agent_models, auth, client):
+def upsert_external_agents(agent_models, auth, client):
     for agent_model in agent_models:
         agent_model.auth = auth
     agents, err = upsert_agents(agent_models, auth, client)
@@ -32,20 +33,17 @@ def upsert_external_models(agent_models, auth, client):
         print(f'Could not upsert external agents err: {err}')
     return agents, None
 
-def upsert_external_functions(sender):
-    function_models = []
-    for func in external_function_specs:
-        func["last_updater"] = sender.name
-        function_model, error_message = FunctionsService._create_function_model(sender, func)
-        if error_message:
-            return error_message
-    function_models.append(function_model)
-    err = BackendService.upsert_backend_functions(function_models)
+def upsert_external_groups(group_models, auth):
+    for group_model in group_models:
+        group_model.auth = auth
+    print(f'group_models {group_models}')
+    groups, err = GroupService.upsert_groups(group_models)
     if err is not None:
-        return err
-    return None
+        print(f'Error creating groups {err}')
+        return
+    return groups, None
 
-def upsert_external_agents(sender, client):
+def upsert_external_functions(sender):
     function_models = []
     for func in external_function_specs:
         func["last_updater"] = sender.name
@@ -85,12 +83,12 @@ def query(input: QueryModel):
     openai_client = oai_wrapper._clients[0]
             
     user_model = UpsertAgentModel(
-        name="UserProxyAgent",
+        name="user_proxy_agent",
         auth=input.auth,
         system_message="I am the proxy between agents and the user. Don't make up questions or topics, it has to come from the user through manual input.",
         description="The proxy to the user to get manual input from user or relay response to the user",
         human_input_mode="ALWAYS",
-        default_auto_reply="This is UserProxyAgent speaking.",
+        default_auto_reply="This is user_proxy_agent speaking.",
         category="planning",
     )
     user_assistant_model = UpsertAgentModel(
@@ -126,16 +124,16 @@ def query(input: QueryModel):
         coder_assistant_model
     ]
     management_group_model = UpsertGroupModel(
-        name="ManagementGroup",
+        name="management_group",
         auth=input.auth,
         description="Management group, you will task user problem to other groups.",
-        agents_to_add=["UserProxyAgent", "user_assistant", "manager"]
+        agents_to_add=["user_proxy_agent", "user_assistant", "manager"]
     )
     planning_group_model = UpsertGroupModel(
-        name="PlanningGroup",
+        name="planning_group",
         auth=input.auth,
         description="Planning group, you will get a problem where you need to create a plan, and assemble a hiearchical organization of groups.",
-        agents_to_add=["UserProxyAgent", "user_assistant", "coder_assistant"]
+        agents_to_add=["user_proxy_agent", "user_assistant", "coder_assistant"]
     )
     group_models = [
         management_group_model,
@@ -153,8 +151,12 @@ def query(input: QueryModel):
     err = upsert_external_functions(agents[0])
     if err is not None:
         print(f'Could not upsert external functions err: {err}')
-    external_agents, err = upsert_external_models(external_agent_models, input.auth, openai_client)
+    external_agents, err = upsert_external_agents(external_agent_models, input.auth, openai_client)
     if err is not None:
         print(f'Error creating external agents {err}')
+        return
+    external_groups, err = upsert_external_groups(external_group_models, input.auth)
+    if err is not None:
+        print(f'Error creating external groups {err}')
         return
     agents[0].initiate_chat(groups[0], message=input.query)

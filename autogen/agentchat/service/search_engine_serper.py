@@ -6,7 +6,7 @@
 @File    : search_engine_serpapi.py
 """
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Literal, List
 
 import aiohttp
 import os
@@ -18,7 +18,20 @@ class WebSearchSerperWrapper(BaseModel):
     payload: dict = Field(default={"page": 1, "num": 10})
     serper_api_key: Optional[str] = None
     aiosession: Optional[aiohttp.ClientSession] = None
+    gl: str = "us"
+    hl: str = "en"
+    type: Literal["news", "search", "places", "images", "videos"] = "search"
+    result_key_for_type: Dict = {
+        "news": "news",
+        "places": "places",
+        "images": "images",
+        "search": "organic",
+        "videos": "videos",
+        "shopping": "shopping",
+    }
+    max_results: Optional[int] = 8
 
+    tbs: Optional[str] = None
     class Config:
         arbitrary_types_allowed = True
 
@@ -36,21 +49,21 @@ class WebSearchSerperWrapper(BaseModel):
         return val
 
     @staticmethod
-    async def run(sender, query: str, max_results: int = 8, as_string: bool = True, **args) -> str:
+    async def run(sender, queries: List[str], max_results: int = 8, type: str = 'search', tbs: str = None, **args) -> str:
         """Run query through Serper and parse result async."""
-        wrapper = WebSearchSerperWrapper()
-        if isinstance(query, str):
-            return wrapper._process_response((await wrapper.results([query], max_results))[0], as_string=as_string)
+        wrapper = WebSearchSerperWrapper(type=type, tbs=tbs, max_results=max_results)
+        if isinstance(queries, str):
+            return wrapper._process_response((await wrapper.results(queries))[0])
         else:
-            results = [wrapper._process_response(res, as_string) for res in await wrapper.results(query, max_results)]
-        return "\n".join(results) if as_string else results
+            results = [wrapper._process_response(res) for res in await wrapper.results(queries)]
+        return "\n".join(results)
 
-    async def results(self, queries: list[str], max_results: int = 8) -> dict:
+    async def results(self, queries: list[str]) -> dict:
         """Use aiohttp to run query through Serper and return the results async."""
 
         def construct_url_and_payload_and_headers() -> Tuple[str, Dict[str, str]]:
-            payloads = self.get_payloads(queries, max_results)
-            url = "https://google.serper.dev/search"
+            payloads = self.get_payloads(queries)
+            url = f"https://google.serper.dev/{self.type}"
             headers = self.get_headers()
             return url, payloads, headers
 
@@ -65,13 +78,15 @@ class WebSearchSerperWrapper(BaseModel):
 
         return res
 
-    def get_payloads(self, queries: list[str], max_results: int) -> Dict[str, str]:
+    def get_payloads(self, queries: list[str]) -> Dict[str, str]:
         """Get payloads for Serper."""
         payloads = []
         for query in queries:
             _payload = {
                 "q": query,
-                "num": max_results,
+                "num": self.max_results,
+                "gl": self.gl,
+                "hl": self.hl
             }
             payloads.append({**self.payload, **_payload})
         return json.dumps(payloads, sort_keys=True)
@@ -80,36 +95,95 @@ class WebSearchSerperWrapper(BaseModel):
         headers = {"X-API-KEY": self.serper_api_key, "Content-Type": "application/json"}
         return headers
 
-    @staticmethod
-    def _process_response(res: dict, as_string: bool = False) -> str:
+    def _process_response(self, results: dict) -> str:
         """Process response from SerpAPI."""
         # logger.debug(res)
-        focus = ["title", "snippet", "link"]
-
+        focus = ["title", "snippet", "link", "date"]
+        print(f'res {results}')
         def get_focused(x):
             return {i: j for i, j in x.items() if i in focus}
+        print(f'res keys {results.keys()}')
+        
+        snippets = []
 
-        if "error" in res.keys():
-            raise ValueError(f"Got error from SerpAPI: {res['error']}")
-        if "answer_box" in res.keys() and "answer" in res["answer_box"].keys():
-            toret = res["answer_box"]["answer"]
-        elif "answer_box" in res.keys() and "snippet" in res["answer_box"].keys():
-            toret = res["answer_box"]["snippet"]
-        elif "answer_box" in res.keys() and "snippet_highlighted_words" in res["answer_box"].keys():
-            toret = res["answer_box"]["snippet_highlighted_words"][0]
-        elif "sports_results" in res.keys() and "game_spotlight" in res["sports_results"].keys():
-            toret = res["sports_results"]["game_spotlight"]
-        elif "knowledge_graph" in res.keys() and "description" in res["knowledge_graph"].keys():
-            toret = res["knowledge_graph"]["description"]
-        elif "snippet" in res["organic"][0].keys():
-            toret = res["organic"][0]["snippet"]
-        else:
-            toret = "No good search result found"
+        if results.get("answerBox"):
+            answer_box = results.get("answerBox", {})
+            if answer_box.get("answer"):
+                return answer_box.get("answer")
+            elif answer_box.get("snippet"):
+                return answer_box.get("snippet").replace("\n", " ")
+            elif answer_box.get("snippetHighlighted"):
+                return answer_box.get("snippetHighlighted")
 
-        toret_l = []
-        if "answer_box" in res.keys() and "snippet" in res["answer_box"].keys():
-            toret_l += [get_focused(res["answer_box"])]
-        if res.get("organic"):
-            toret_l += [get_focused(i) for i in res.get("organic")]
+        if results.get("knowledgeGraph"):
+            kg = results.get("knowledgeGraph", {})
+            title = kg.get("title")
+            entity_type = kg.get("type")
+            if entity_type:
+                snippets.append(f"{title}: {entity_type}.")
+            description = kg.get("description")
+            if description:
+                snippets.append(description)
+            for attribute, value in kg.get("attributes", {}).items():
+                snippets.append(f"{title} {attribute}: {value}.")
 
-        return str(toret) + "\n" + str(toret_l) if as_string else toret_l
+        for result in results[self.result_key_for_type[self.type]][:self.max_results]:
+            # Common attribute for all types
+            if "title" in result:
+                snippets.append(f"Title: {result['title']}")
+            # Handling different types of results
+            if self.type == "images":
+                if "link" in result:
+                    snippets.append(f"Image URL: {result['link']}")
+                if "snippet" in result:
+                    snippets.append(f"Description: {result['snippet']}")
+            elif self.type == "videos":
+                if "link" in result:
+                    snippets.append(f"Video URL: {result['link']}")
+                if "date" in result:
+                    snippets.append(f"Date: {result['date']}")
+                if "snippet" in result:
+                    snippets.append(f"Description: {result['snippet']}")
+            elif self.type == "places":
+                if "address" in result:
+                    snippets.append(f"Address: {result['address']}")
+                if "latitude" in result and "longitude" in result:
+                    snippets.append(f"Location: Latitude {result['latitude']}, Longitude {result['longitude']}")
+                if "rating" in result:
+                    snippets.append(f"Rating: {result['rating']} ({result.get('ratingCount', 'N/A')} reviews)")
+            elif self.type == "news":
+                if "link" in result:
+                    snippets.append(f"News URL: {result['link']}")
+                if "date" in result:
+                    snippets.append(f"Date: {result['date']}")
+                if "source" in result:
+                    snippets.append(f"Source: {result['source']}")
+            elif self.type == "shopping":
+                if "price" in result:
+                    snippets.append(f"Price: {result['price']}")
+                if "source" in result:
+                    snippets.append(f"Source: {result['source']}")
+                if "link" in result:
+                    snippets.append(f"Product URL: {result['link']}")
+                if "delivery" in result:
+                    snippets.append(f"Delivery: {result['delivery']}")
+                if "rating" in result:
+                    snippets.append(f"Rating: {result['rating']} ({result.get('ratingCount', 'N/A')} reviews)")
+                if "offers" in result:
+                    snippets.append(f"Offers: {result['offers']}")
+                if "productId" in result:
+                    snippets.append(f"Product ID: {result['productId']}")
+
+            # Add a separator for readability between different results
+            snippets.append("---")
+
+        if results.get("organic"):
+            for item in results.get("organic"):
+                focused_item = get_focused(item)
+                item_str = ", ".join([f"{key}: {value}" for key, value in focused_item.items()])
+                snippets.append(item_str)
+        
+        if len(snippets) == 0:
+            return "No good Google Search Result was found"
+        
+        return "\n".join(snippets)
