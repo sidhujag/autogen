@@ -302,7 +302,7 @@ class GroupChatManager(ConversableAgent):
                 message = self.exit_response
                 if not message:
                     message = self.last_message(speaker)
-                self.send(message, speaker, request_reply=False, silent=True)
+                self.send(message, speaker, request_reply=False)
                 self.running = True
                 self.tasking = None
                 self.tasking_message = None
