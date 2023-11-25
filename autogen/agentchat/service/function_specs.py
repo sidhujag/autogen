@@ -66,7 +66,7 @@ get_group_info_spec = {
     "name": "get_group_info",
     "category": "communication",
     "class_name": "GroupService.get_group_info",
-    "description": "Retrieves information about a group including communication stats and members.",
+    "description": "Retrieves information about a group including communication stats and members. Don't re-request group info. Check your context to see if you already have this group information before asking again.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -83,7 +83,7 @@ get_function_info_spec = {
     "name": "get_function_info",
     "category": "communication",
     "class_name": "FunctionsService.get_function_info",
-    "description": "Provides information about a specific function.",
+    "description": "Provides information about a specific function. Don't re-request function info. Check your context to see if you already have this function information before asking again.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -100,7 +100,7 @@ get_agent_info_spec = {
     "name": "get_agent_info",
     "category": "communication",
     "class_name": "AgentService.get_agent_info",
-    "description": "Fetches details about a specific agent.",
+    "description": "Fetches details about a specific agent. Don't re-request agent info. Check your context to see if you already have this agent information before asking again.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -403,6 +403,48 @@ serper_spec = {
         "required": ["queries", "type"]
     }
 }
+
+call_api_url_spec = {
+    "name": "call_api_url",
+    "category": "communication",
+    "class_name": "MakeService.call_api_url",
+    "description": (
+        "Makes a generic API call to a specified URL with given parameters. "
+        "Can handle various types of requests (GET, POST, etc.) based on input."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "The URL to which the API call is made."
+            },
+            "method": {
+                "type": "string",
+                "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+                "description": "HTTP method to use for the API call."
+            },
+            "headers": {
+                "type": "object",
+                "description": "HTTP headers to include in the request.",
+                "additionalProperties": {"type": "string"}
+            },
+            "params": {
+                "type": "object",
+                "description": "Parameters for the API call, structured as key-value pairs.",
+                "additionalProperties": True
+            },
+            "body": {
+                "type": "object",
+                "description": "Request body for methods like POST or PUT, structured as key-value pairs.",
+                "additionalProperties": True
+            }
+        },
+        "required": ["url", "method"]
+    }
+}
+
+
 group_info_function_specs = [
     get_group_info_spec,
     get_function_info_spec,
@@ -432,4 +474,5 @@ files_function_specs = [
 
 external_function_specs = [
     serper_spec,
+    call_api_url_spec
 ]

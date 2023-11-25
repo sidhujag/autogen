@@ -158,6 +158,28 @@ function_manager_model = UpsertAgentModel(
     human_input_mode="NEVER",
     capability=TERMINATE
 )
+
+api_caller_model = UpsertAgentModel(
+    auth=AuthAgent(api_key='', namespace_id=''),
+    name="api_caller",
+    category="communication",
+    description="Handles the execution of API calls as defined in the OpenAPI specification.",
+    system_message="Read the conversation in the group. As the api_caller_agent, your primary role is to execute API calls based on the provided OpenAPI SCHEMA. You need to interpret these specifications, construct the appropriate HTTP requests, and send them to the designated endpoints. Ensure that you handle different request methods (GET, POST, etc.), and accurately pass parameters and headers as required. After making an API call, forward the response to the api_tester for validation and further processing. Ask user to manually browse to configuration links as necessary to authenticate actions and ask for any relevant authentication info needed for API calls.",
+    human_input_mode="ALWAYS",
+    capability=TERMINATE,
+    functions_to_add=["call_api_url"]
+)
+
+api_tester_model = UpsertAgentModel(
+    auth=AuthAgent(api_key='', namespace_id=''),
+    name="api_tester",
+    category="communication",
+    description="Responsible for testing the endpoints found in the OpenAPI specification as well as auditing the responses from api_caller.",
+    system_message="Read the conversation in the group. As the api_tester, your responsibility is to oversee the API interaction process. This includes receiving responses from the api_caller, validating these responses against expected outcomes, and ensuring they align with the OpenAPI SCHEMA. Also conduct thorough tests on endpoints in the SCHEMA to check for correctness, handle errors gracefully, and provide feedback for any necessary adjustments. Additionally, manage the workflow of API interactions, coordinating between different agents and functions to ensure smooth and efficient operations.",
+    human_input_mode="NEVER",
+    capability=TERMINATE,
+    functions_to_add=["call_api_url"]
+)
 external_agent_models = [
     web_search_planner_model,
     web_search_worker_model,
@@ -174,5 +196,7 @@ external_agent_models = [
     function_manager_model,
     local_code_worker_model,
     local_code_checker_model,
-    local_code_manager_model
+    local_code_manager_model,
+    api_caller_model,
+    api_tester_model
 ]
