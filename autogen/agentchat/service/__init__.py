@@ -1,5 +1,6 @@
 from .agent_service import AgentService
 from .search_engine_serper import WebSearchSerperWrapper
+from .zapier_service import ZapierService
 from .functions_service import FunctionsService
 from .make_service import MakeService
 from .group_service import GroupService, INFO, TERMINATE, OPENAI_CODE_INTERPRETER, LOCAL_CODE_INTERPRETER, FUNCTION_CODER, OPENAI_RETRIEVAL, OPENAI_FILES, MANAGEMENT
@@ -65,5 +66,6 @@ __all__ = [
     "FUNCTION_CODER",
     "OPENAI_RETRIEVAL",
     "OPENAI_FILES",
-    "MANAGEMENT"
+    "MANAGEMENT",
+    "ZapierService"
 ]

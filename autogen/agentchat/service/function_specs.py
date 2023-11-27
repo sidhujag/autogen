@@ -404,47 +404,124 @@ serper_spec = {
     }
 }
 
-call_api_url_spec = {
-    "name": "call_api_url",
+zapier_api_check_spec = {
+    "name": "zapier_api_check",
     "category": "communication",
-    "class_name": "MakeService.call_api_url",
-    "description": (
-        "Makes a generic API call to a specified URL with given parameters. "
-        "Can handle various types of requests (GET, POST, etc.) based on input."
-    ),
+    "class_name": "ZapierService.zapier_api_check",
+    "description": "Test that the API and auth are working.",
     "parameters": {
         "type": "object",
         "properties": {
-            "url": {
+            "APIKEY": {
                 "type": "string",
-                "description": "The URL to which the API call is made."
+                "description": "Authorization to Zapier API.",
             },
-            "method": {
-                "type": "string",
-                "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
-                "description": "HTTP method to use for the API call."
-            },
-            "headers": {
-                "type": "object",
-                "description": "HTTP headers to include in the request.",
-                "additionalProperties": {"type": "string"}
-            },
-            "params": {
-                "type": "object",
-                "description": "Parameters for the API call, structured as key-value pairs.",
-                "additionalProperties": True
-            },
-            "body": {
-                "type": "object",
-                "description": "Request body for methods like POST or PUT, structured as key-value pairs.",
-                "additionalProperties": True
-            }
         },
-        "required": ["url", "method"]
+        "required": ["APIKEY"]
     }
 }
+zapier_api_get_configuration_link_spec = {
+    "name": "zapier_api_get_configuration_link",
+    "category": "communication",
+    "class_name": "ZapierService.zapier_api_get_configuration_link",
+    "description": "Provides a link to configure more AI Actions. Alternatively, searching through apps and actions will provide more specific configuration links.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "APIKEY": {
+                "type": "string",
+                "description": "Authorization to Zapier API.",
+            },
+        },
+        "required": ["APIKEY"]
+    }
+}   
+zapier_api_list_exposed_actions_spec = {
+    "name": "zapier_api_list_exposed_actions",
+    "category": "communication",
+    "class_name": "ZapierService.zapier_api_list_exposed_actions",
+    "description": "List all the currently exposed actions for the given account.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "APIKEY": {
+                "type": "string",
+                "description": "Authorization to Zapier API.",
+            },
+        },
+        "required": ["APIKEY"]
+    }
+} 
 
+zapier_api_execute_action_spec = {
+    "name": "zapier_api_execute_action",
+    "category": "communication",
+    "class_name": "ZapierService.zapier_api_execute_action",
+    "description": "Execute an action with parameters in the HTTP POST API call to Zapier.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "APIKEY": {
+                "type": "string",
+                "description": "Authorization to Zapier API.",
+            },
+            "exposed_app_action_id": {
+                "type": "string",
+                "description": "Action ID found through zapier_api_list_exposed_actions. Example: 01ARZ3NDEKTSV4RRFFQ69G5FAV.",
+            },
+            "action_parameters": {
+                "type": "string",
+                "description":"Parameters into the action, structured as JSON string representation of key-value pairs. You will have seen the parameters via zapier_api_list_exposed_actions before. Required for fields that you don't want AI to guess and auto-fill. json.loads() is used to parse this property and update() the body dictionary which is passed into the HTTP POST for requests package which calls Zapier.",
+            },
+            "preview_only": {
+                "type": "boolean",
+                "description":"If we should be doing a preview of the action as a test to see the AI generated fields are acceptable.",
+            }
+        },
+        "required": ["APIKEY", "exposed_app_action_id", "action_parameters"]
+    }
+}
+zapier_api_execute_log_spec = {
+    "name": "zapier_api_execute_log",
+    "category": "communication",
+    "class_name": "ZapierService.zapier_api_execute_log",
+    "description": "Get the execution log for a given execution log id.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "APIKEY": {
+                "type": "string",
+                "description": "Authorization to Zapier API.",
+            },
+            "execution_log_id ": {
+                "type": "string",
+                "description": "Execution Log ID found through zapier_api_execute_action. Example: 01ARZ3NDEKTSV4RRFFQ69G5FAV.",
+            },
 
+        },
+        "required": ["APIKEY", "execution_log_id"]
+    }
+}
+zapier_api_create_action_spec = {
+    "name": "zapier_api_create_action",
+    "category": "communication",
+    "class_name": "ZapierService.zapier_api_create_action",
+    "description": "Gives URL to create a new AI Action within Zapier API. Always make sure you don't have this action already before making a new one. He must tell you he has successfully configured it before you can consider an action completely setup. If user says the action isn't showing up change the description and try again a few times. To check the logs post execution you can use zapier_api_execute_log.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "configuration_link": {
+                "type": "string",
+                "description": "Configuration link for configuring AI Actions. Double check this is the same link as zapier_api_get_configuration_link gives.",
+            },
+            "action_description": {
+                "type": "string",
+                "description": "Give a plain english description of exact action you want to do. Start with the API you want like Google Calender or Gmail etc followed by the event description. There should be dynamically generated documentation for this endpoint for each action that is exposed. Example: Gmail: Send Email, Telegram: Send Message, Google Calendar: Find Event, Google Calendar: Quick Add Event, Google Sheets: Create Spreadsheet, Discord: Send Channel Message.",
+            },
+        },
+        "required": ["configuration_link", "action_description"]
+    }
+} 
 group_info_function_specs = [
     get_group_info_spec,
     get_function_info_spec,
@@ -474,5 +551,10 @@ files_function_specs = [
 
 external_function_specs = [
     serper_spec,
-    call_api_url_spec
+    zapier_api_check_spec,
+    zapier_api_get_configuration_link_spec,
+    zapier_api_list_exposed_actions_spec,
+    zapier_api_execute_action_spec,
+    zapier_api_execute_log_spec,
+    zapier_api_create_action_spec
 ]

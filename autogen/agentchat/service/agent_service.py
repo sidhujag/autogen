@@ -85,7 +85,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def get_agent_info(sender: GPTAssistantAgent, name: str) -> str:
-        from . import GetAgentModel, AgentService, FunctionsService, GetFunctionModel, AgentInfo, FunctionInfo
+        from . import GetAgentModel, AgentService, MakeService, FunctionsService, GetFunctionModel, AgentInfo, FunctionInfo
         if sender is None:
             return json.dumps({"error": "Sender not found"})
         agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
@@ -100,8 +100,8 @@ Group Stats: {group_stats}
 
         agentInfo = AgentInfo(
             name=agent.name,
-            description=agent.description,
-            system_message=agent.system_message,
+            description=MakeService._get_short_description(agent.description),
+            system_message=MakeService._get_short_description(agent.system_message),
             capability=agent.capability,
             files=agent.files,
             functions=function_info_list

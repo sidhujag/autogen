@@ -26,7 +26,7 @@ class GroupService:
         return group
     
     @staticmethod
-    def get_group_info(sender: GPTAssistantAgent, name: str) -> str:
+    def get_group_info(sender: GPTAssistantAgent, name: str, full_description: bool = False) -> str:
         from . import GetGroupModel, GroupInfo, AgentService, MakeService, GetAgentModel
         if sender is None:
             return json.dumps({"error": "Sender not found"})
@@ -48,16 +48,17 @@ class GroupService:
                 "description": short_description,
                 "files": agent.files
             }
+        group_description = backend_group.description if full_description else MakeService._get_short_description(backend_group.description)
         group_info = GroupInfo(
             name=name,
             auth=backend_group.auth,
-            description=backend_group.description,
+            description=group_description,
             agents=agents_dict,
             incoming=backend_group.incoming,
             outgoing=backend_group.outgoing,
             locked=backend_group.locked
         )
-        groups_info.append(group_info.dict(exclude=['agent_names', 'auth']))
+        groups_info.append(group_info.dict(exclude={'agent_names', 'auth'}))
         # Return the JSON representation of the groups info
         return json.dumps({"response": groups_info})
 

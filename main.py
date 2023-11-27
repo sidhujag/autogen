@@ -49,7 +49,7 @@ def upsert_external_functions(sender):
         function_model, error_message = FunctionsService._create_function_model(sender, func)
         if error_message:
             return error_message
-    function_models.append(function_model)
+        function_models.append(function_model)
     err = BackendService.upsert_backend_functions(function_models)
     if err is not None:
         return err
