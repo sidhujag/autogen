@@ -310,6 +310,11 @@ class GroupChatManager(ConversableAgent):
             if message["role"] != "function":
                 message["name"] = speaker.name
             groupchat.messages.append(message)
+
+            if self._is_termination_msg(message):
+                # The conversation is over
+                break
+
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
                 AgentService.update_agent_system_message(agent, self)
@@ -371,6 +376,11 @@ class GroupChatManager(ConversableAgent):
             if message["role"] != "function":
                 message["name"] = speaker.name
             groupchat.messages.append(message)
+
+            if self._is_termination_msg(message):
+                # The conversation is over
+                break
+
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
                 AgentService.update_agent_system_message(speaker, self)
