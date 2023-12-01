@@ -23,6 +23,9 @@ Include speaker/group in the assistant message just like the user messages in 's
 
 Locked groups are good at specific jobs. Unlocked groups are good for abstract or further delegation of roles/tasks downstream.
 
+If you are responding it means your group is not paused and all other groups are terminated. If a group has terminated it means all relevant agents within the group have done their job, you don't need to double-check against individual agents in a group after it terminates. 
+Groups do not operate in parallel and thus you CANNOT wait for a group under any context. If you are talking it means your group is the active group.
+
 Custom Instructions: {custom_instructions}
 """
 
@@ -44,6 +47,9 @@ If you have termination access, don't terminate if a path doesn't work out right
 Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
 
 Locked groups are good at specific jobs. Unlocked groups are good for abstract or further delegation of roles/tasks downstream.
+
+If you are responding it means your group is not paused and all other groups are terminated. If a group has terminated it means all relevant agents within the group have done their job, you don't need to double-check against individual agents in a group after it terminates. 
+Groups do not operate in parallel and thus you CANNOT wait for a group under any context. If you are talking it means your group is the active group.
 
 Custom Instructions: {custom_instructions}
 

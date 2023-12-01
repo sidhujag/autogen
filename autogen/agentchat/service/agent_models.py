@@ -14,8 +14,8 @@ web_search_checker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="web_search_checker",
     category="information_retrieval",
-    description="Critically evaluates the accuracy and relevance of search results, ensuring high-quality information. Usually works in web_search_group alongside web_search_worker, web_search_planner and web_search_manager.",
-    system_message="Read the conversation in the group. Usually you work in the web_search_group. Review the latest search results for accuracy and relevance. Approve or suggest modifications based on the search mood.",
+    description="Search result critic. Usually works in web_search_group alongside web_search_worker, web_search_planner and web_search_manager.",
+    system_message="Read the conversation in the group. Usually you work in the web_search_group. Review the latest search results for accuracy and relevance. Ensure to default to use the latest information by date. Critically evaluate the accuracy and relevance of search results, ensuring high-quality information. Approve or suggest modifications based on the search mood.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )
@@ -35,9 +35,9 @@ web_search_manager_model = UpsertAgentModel(
     name="web_search_manager",
     category="information_retrieval",
     description="Coordinates group activities, ensuring efficient collaboration and high-quality, clear, and comprehensive final outputs. Usually works in web_search_group alongside web_search_worker, web_search_checker and web_search_planner.",
-    system_message="Read the conversation in the group. Usually you work in the web_search_group. Coordinate the group's activities, monitor progress, and ensure the final output meets quality standards.",
+    system_message="Read the conversation in the group. Usually you work in the web_search_group. Coordinate the group's activities, monitor progress, and ensure the final output meets quality standards. You will yourself double check against search results.",
     human_input_mode="NEVER",
-    capability=0
+    capability=TERMINATE
 )
 
 plan_worker_model = UpsertAgentModel(

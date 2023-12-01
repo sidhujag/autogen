@@ -27,7 +27,7 @@ terminate_group_spec = {
     "name": "terminate_group",
     "category": "communication",
     "class_name": "GroupService.terminate_group",
-    "description": "Terminates a group, returning control with a response if tasked by another group. Make sure to include all of the context in the response as the group that tasked you does not have the messages in this group.",
+    "description": "Terminates a group, returning control with a full-context response if tasked by another group. Groups do not share context, they are black-boxes so make the response as such making no assumptions of internal group knowledge.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -35,8 +35,12 @@ terminate_group_spec = {
                 "type": "string",
                 "description": "Group to terminate. Most of the time this is the group you are in that you are terminating."
             },
+            "rating": {
+                "type": "number",
+                "description": "Grading for the group like a teacher would grade. On a scale of 10 how well did the group complete the task it was assigned with by another group. 0 - fail, 5 - improvements needed, 7 - satisfactory, 10 - exceptional."
+            },
         },
-        "required": ["group"]
+        "required": ["group", "rating"]
     }
 }
 
@@ -66,7 +70,7 @@ get_group_info_spec = {
     "name": "get_group_info",
     "category": "communication",
     "class_name": "GroupService.get_group_info",
-    "description": "Retrieves information about a group including communication stats and members. Don't re-request group info. Check your context to see if you already have this group information before asking again.",
+    "description": "Retrieves information about a group including communication stats and members. Don't re-request group info. Check your context to see if you already have this group information before asking again. The incoming/outgoing stats are between successful interactions (but not necessarily the only possible interactions), naturally forming a graph of groups connected with each other through prior interactions.",
     "parameters": {
         "type": "object",
         "properties": {

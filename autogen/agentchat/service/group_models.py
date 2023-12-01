@@ -2,7 +2,7 @@ from autogen.agentchat.service import UpsertGroupModel, AuthAgent
 web_search_group_model = UpsertGroupModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="web_search_group",
-    description="The web_search_group specializes in conducting comprehensive web searches, delivering well-structured and detailed information on diverse topics. It consists of the web_search_planner, web_search_worker, web_search_checker, and web_search_manager. The planner formulates effective search queries, the agent executes these queries and gathers information, and the QA ensures accuracy and relevance. The manager oversees operations, ensuring smooth collaboration and that the final output is self-contained, clear, and ready for presentation to the calling group. The group operates under three search moods: 'Strict' for precise and specific queries, 'Relaxed' for broader searches, and 'Abstract' for conceptual and thematic searches. Only web_search_checker can terminate the group.",
+    description="The web_search_group specializes in conducting comprehensive web searches, delivering well-structured and detailed information on diverse topics. It consists of web_search_planner, web_search_worker, web_search_checker, and web_search_manager. The planner formulates effective search queries, the agent executes these queries and gathers information, and the QA ensures accuracy and relevance. The manager oversees operations, ensuring smooth collaboration and that the final output is self-contained, clear, and ready for presentation to the calling group. The group operates under three search moods: 'Strict' for precise and specific queries, 'Relaxed' for broader searches, and 'Abstract' for conceptual and thematic searches. Only web_search_checker or web_search_manager can terminate the group.",
     agents_to_add=["web_search_planner", "web_search_worker", "web_search_checker", "web_search_manager"],
     locked = True
 )
@@ -10,7 +10,7 @@ web_search_group_model = UpsertGroupModel(
 planning_group_model = UpsertGroupModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="planning_group",
-    description="The Planning Group tackles problems by creating detailed, step-by-step plans for their resolution. plan_worker will create the plan, plan_checker will check the plan and plan_manager will coordinate the group and ensure worker and checker work effectively to create an optimal detailed plan. Only plan_manager can terminate the group.",
+    description="The Planning Group tackles problems by creating detailed, step-by-step plans for the task resolution. plan_worker will create the plan, plan_checker will check the plan and plan_manager will coordinate the group and ensure worker and checker work effectively to create an optimal detailed plan. Only plan_manager can terminate the group. The group consuming answers from planning likely will work in a chain-of-thought or tree-of-thought pattern to delegate tasks from the plan to other groups. Sometimes based on feedback from other groups during task delegation the plan will need to be updated, in which case the planner can be invoked to update a plan.",
     agents_to_add=["plan_worker", "plan_checker", "plan_manager"],
     locked = True
 )

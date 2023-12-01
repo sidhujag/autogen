@@ -103,7 +103,6 @@ class WebSearchSerperWrapper(BaseModel):
             return {i: j for i, j in x.items() if i in focus}
         
         snippets = []
-
         if results.get("answerBox"):
             answer_box = results.get("answerBox", {})
             if answer_box.get("answer"):
@@ -126,37 +125,48 @@ class WebSearchSerperWrapper(BaseModel):
                 snippets.append(f"{title} {attribute}: {value}.")
 
         for result in results[self.result_key_for_type[self.type]][:self.max_results]:
-            # Common attribute for all types
-            if "title" in result:
-                snippets.append(f"Title: {result['title']}")
             # Handling different types of results
             if self.type == "images":
+                if "title" in result:
+                    snippets.append(f"Title: {result['title']}")
                 if "link" in result:
                     snippets.append(f"Image URL: {result['link']}")
                 if "snippet" in result:
                     snippets.append(f"Description: {result['snippet']}")
+                snippets.append("---")
             elif self.type == "videos":
+                if "title" in result:
+                    snippets.append(f"Title: {result['title']}")
                 if "link" in result:
                     snippets.append(f"Video URL: {result['link']}")
                 if "date" in result:
                     snippets.append(f"Date: {result['date']}")
                 if "snippet" in result:
                     snippets.append(f"Description: {result['snippet']}")
+                snippets.append("---")
             elif self.type == "places":
+                if "title" in result:
+                    snippets.append(f"Title: {result['title']}")
                 if "address" in result:
                     snippets.append(f"Address: {result['address']}")
                 if "latitude" in result and "longitude" in result:
                     snippets.append(f"Location: Latitude {result['latitude']}, Longitude {result['longitude']}")
                 if "rating" in result:
                     snippets.append(f"Rating: {result['rating']} ({result.get('ratingCount', 'N/A')} reviews)")
+                snippets.append("---")
             elif self.type == "news":
+                if "title" in result:
+                    snippets.append(f"Title: {result['title']}")
                 if "link" in result:
                     snippets.append(f"News URL: {result['link']}")
                 if "date" in result:
                     snippets.append(f"Date: {result['date']}")
                 if "source" in result:
                     snippets.append(f"Source: {result['source']}")
+                snippets.append("---")
             elif self.type == "shopping":
+                if "title" in result:
+                    snippets.append(f"Title: {result['title']}")
                 if "price" in result:
                     snippets.append(f"Price: {result['price']}")
                 if "source" in result:
@@ -171,9 +181,7 @@ class WebSearchSerperWrapper(BaseModel):
                     snippets.append(f"Offers: {result['offers']}")
                 if "productId" in result:
                     snippets.append(f"Product ID: {result['productId']}")
-
-            # Add a separator for readability between different results
-            snippets.append("---")
+                snippets.append("---")
 
         if results.get("organic"):
             for item in results.get("organic"):
