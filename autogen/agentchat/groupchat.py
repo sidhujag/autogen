@@ -1,9 +1,11 @@
 import logging
-import sys
 import random
+import re
+import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
-import re
+
+from ..code_utils import content_str
 from .agent import Agent
 from .conversable_agent import ConversableAgent
 
@@ -50,6 +52,14 @@ class GroupChat:
         """Reset the group chat."""
         self.messages.clear()
 
+    def append(self, message: Dict):
+        """Append a message to the group chat.
+        We cast the content to str here so that it can be managed by text-based
+        model.
+        """
+        message["content"] = content_str(message["content"])
+        self.messages.append(message)
+
     def agent_by_name(self, name: str) -> Agent:
         """Returns the agent with a given name."""
         return self.agents[self.agent_names.index(name)]
@@ -64,7 +74,7 @@ class GroupChat:
                 if self.agents[(offset + i) % len(self.agents)] in agents:
                     return self.agents[(offset + i) % len(self.agents)]
 
-    def select_speaker_msg(self, agents: List[Agent]):
+    def select_speaker_msg(self, agents: List[Agent]) -> str:
         """Return the message for selecting the next speaker."""
         from autogen.agentchat.service import AgentService
         return f"""You are a speaker selector in a chat group. The following speakers are available:
@@ -75,7 +85,7 @@ class GroupChat:
 Read the following conversation.
 Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities for deciding the next role. Don't select the same role repeatedly unless its intentional. For assistant responses that don't have a role prepended, assume the role is one from the message prior. Only return the role."""
 
-    def manual_select_speaker(self, agents: List[Agent]) -> Agent:
+    def manual_select_speaker(self, agents: List[Agent]) -> Union[Agent, None]:
         """Manually select the next speaker."""
 
         print("Please select the next speaker from the following list:")
@@ -194,7 +204,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
 
         roles = []
         for agent in agents:
-            if agent.system_message.strip() == "":
+            if content_str(agent.system_message).strip() == "":
                 logger.warning(
                     f"The agent '{agent.name}' has an empty system_message, and may not work well with GroupChat."
                 )
@@ -203,12 +213,19 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
             roles.append(f"Role: {agent.name}, Description: {agent.description}, Capabilities: {capability_text}")
         return "\n".join(roles)
 
-    def _mentioned_agents(self, message_content: str, agents: List[Agent]) -> Dict:
-        """
-        Finds and counts agent mentions in the string message_content, taking word boundaries into account.
+    def _mentioned_agents(self, message_content: Union[str, List], agents: List[Agent]) -> Dict:
+        """Counts the number of times each agent is mentioned in the provided message content.
 
-        Returns: A dictionary mapping agent names to mention counts (to be included, at least one mention must occur)
+        Args:
+            message_content (Union[str, List]): The content of the message, either as a single string or a list of strings.
+            agents (List[Agent]): A list of Agent objects, each having a 'name' attribute to be searched in the message content.
+
+        Returns:
+            Dict: a counter for mentioned agents.
         """
+        # Cast message content to str
+        message_content = content_str(message_content)
+
         mentions = dict()
         for agent in agents:
             regex = (
@@ -235,7 +252,7 @@ class GroupChatManager(ConversableAgent):
         # unlimited consecutive auto reply by default
         max_consecutive_auto_reply: Optional[int] = sys.maxsize,
         human_input_mode: Optional[str] = "NEVER",
-        system_message: Optional[str] = "Group chat manager.",
+        system_message: Optional[Union[str, List]] = "Group chat manager.",
         **kwargs,
     ):
         super().__init__(
@@ -309,12 +326,12 @@ class GroupChatManager(ConversableAgent):
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
                 message["name"] = speaker.name
-            groupchat.messages.append(message)
+
+            groupchat.append(message)
 
             if self._is_termination_msg(message):
                 # The conversation is over
                 break
-
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
                 AgentService.update_agent_system_message(agent, self)
@@ -375,7 +392,8 @@ class GroupChatManager(ConversableAgent):
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
                 message["name"] = speaker.name
-            groupchat.messages.append(message)
+
+            groupchat.append(message)
 
             if self._is_termination_msg(message):
                 # The conversation is over
