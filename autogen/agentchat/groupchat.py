@@ -310,7 +310,7 @@ class GroupChatManager(ConversableAgent):
                 # set the name to speaker's name if the role is not function
                 if message["role"] != "function":
                     message["name"] = speaker.name
-                groupchat.messages.append(message)
+                groupchat.append(message)
                 # broadcast the message to all agents except the speaker
                 for agent in groupchat.agents:
                     if agent != speaker:
