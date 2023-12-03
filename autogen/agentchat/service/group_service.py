@@ -107,8 +107,8 @@ class GroupService:
 
 
     @staticmethod
-    def terminate_group(sender: GPTAssistantAgent, group: str) -> str:
-        from . import GetGroupModel
+    def terminate_group(sender: GPTAssistantAgent, group: str, rating: int) -> str:
+        from . import GetGroupModel, BackendService, UpdateComms
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
         group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
@@ -116,13 +116,23 @@ class GroupService:
             return json.dumps({"error": f"Could not send message: group({group}) not found"})
         if not group_obj.running:
             return json.dumps({"error": f"Could not terminate group({group}): group is currently not running, perhaps already terminated."})
+        print(f'terminate_group group {group} rating: {rating} group_obj.dependent: {group_obj.dependent} sender: {sender.name} exit msg: {group_obj.last_message(sender)}')
         if group_obj.dependent:
             group_obj.dependent.exit_response = group_obj.last_message(sender)
+            if rating >= 7:
+                # Increment the communication stats
+                group_obj.dependent.outgoing[group_obj.name] = group_obj.dependent.outgoing.get(group_obj.name, 0) + 1
+                group_obj.incoming[group_obj.dependent.name] = group_obj.incoming.get(group_obj.dependent.name, 0) + 1
+                err = BackendService.update_communication_stats(UpdateComms(auth=sender.auth, 
+                                                                            sender=group_obj.dependent.name, 
+                                                                            receiver=group_obj.name))
+                if err:
+                    return err
         group_obj.exiting = True
         return json.dumps({"response": f"Group({group}) terminating!"})
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
-        from . import GetGroupModel, BackendService, UpdateComms
+        from . import GetGroupModel
         if sender is None:
             return json.dumps({"error": "Could not send message: sender not found"})
         if from_group == to_group:
@@ -141,14 +151,6 @@ class GroupService:
             return json.dumps({"error": f"Could not send message: to_group({to_group}) already depends on a task from {to_group_obj.dependent.name}."})
         if from_group_obj.dependent and to_group == from_group_obj.dependent.name:
             return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
-        # Increment the communication stats
-        from_group_obj.outgoing[to_group_obj.name] = from_group_obj.outgoing.get(to_group_obj.name, 0) + 1
-        to_group_obj.incoming[from_group_obj.name] = to_group_obj.incoming.get(from_group_obj.name, 0) + 1
-        err = BackendService.update_communication_stats(UpdateComms(auth=sender.auth, 
-                                                                    sender=from_group_obj.name, 
-                                                                    receiver=to_group_obj.name))
-        if err:
-            return err
         to_group_obj.dependent = from_group_obj
         from_group_obj.tasking = to_group_obj
         from_group_obj.tasking_message = f'{sender.name} (to {to_group}):\n{message}'
