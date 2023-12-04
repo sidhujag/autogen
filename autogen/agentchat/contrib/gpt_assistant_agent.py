@@ -44,6 +44,9 @@ class GPTAssistantAgent(ConversableAgent):
                         or build your own tools using Function calling. ref https://platform.openai.com/docs/assistants/tools
                 - file_ids: files used by retrieval in run
             overwrite_instructions (bool): whether to overwrite the instructions of an existing assistant.
+            kwargs (dict): Additional configuration options for the agent.
+                - verbose (bool): If set to True, enables more detailed output from the assistant thread.
+                - Other kwargs: Except verbose, others are passed directly to ConversableAgent.
         """
         # Use AutoGen OpenAIWrapper to create a client
         oai_wrapper = OpenAIWrapper(**llm_config)
@@ -98,11 +101,10 @@ class GPTAssistantAgent(ConversableAgent):
                 logger.warning(
                     "overwrite_instructions is False. Provided instructions will be used without permanently modifying the assistant in the API."
                 )
+
+        self._verbose = kwargs.pop("verbose", False)
         super().__init__(
-            name=name,
-            system_message=instructions,
-            llm_config=llm_config,
-            **kwargs
+            name=name, system_message=instructions, human_input_mode="NEVER", llm_config=llm_config, **kwargs
         )
         self.cancellation_requested = False
         # lazly create thread
@@ -271,7 +273,7 @@ class GPTAssistantAgent(ConversableAgent):
                         if function:
                             response = FunctionsService.define_function_internal(self, function[0])
                             logger.info(f"Tool definition on demand ({function_dict['name']}), response: {response}")
-                    is_exec_success, tool_response = self.execute_function(function_dict)
+                    is_exec_success, tool_response = self.execute_function(function_dict, self._verbose)
                     tool_response["metadata"] = {
                         "tool_call_id": tool_call.id,
                         "run_id": run.id,
