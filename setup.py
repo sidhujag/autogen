@@ -23,6 +23,7 @@ install_requires = [
     "uvicorn",
     "gunicorn",
     "tiktoken",
+    "aider"
 ]
 
 setuptools.setup(
