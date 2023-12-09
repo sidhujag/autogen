@@ -549,18 +549,34 @@ code_assistant_function_spec = {
                 "type": "string",
                 "description": "Name of the repository of the assistant."
             },
+            "command_checkout_branch": {
+                "type": "string",
+                "description": "Check out a specific branch for development."
+            },
+            "command_sync_branch": {
+                "type": "boolean",
+                "description": "Sync the current branch with the latest changes from the main branch."
+            },
+            "command_push_changes": {
+                "type": "boolean",
+                "description": "Push committed changes to the remote repository."
+            },
+            "command_pull_request": {
+                "type": "boolean",
+                "description": "Create or check the status of a pull request for the current branch."
+            },
             "command_commit": {
                 "type": "boolean",
                 "default": False,
-                "description": "Commit changes (use commit_message if desired) to a valid repository."
+                "description": "Commit changes (use commit_message if desired) to your local branch."
             },
             "command_commit_message": {
                 "type": "string",
-                "description": "Commit edits to the valid repo made outside the chat. The commit message is optional."
+                "description": "Commit message that goes along with command_commit. The commit message is optional."
             },
             "command_apply": {
                 "type": "string",
-                "description": "Apply changes from a specified file in a valid repository."
+                "description": "Apply changes from a specified file instead of running the chat (debug)."
             },
             "command_show_repo_map": {
                 "type": "boolean",
@@ -573,35 +589,35 @@ code_assistant_function_spec = {
             },
             "command_add": {
                 "type": "string",
-                "description": "Add matching files to the chat session using glob patterns in a valid repository."
+                "description": "Add matching files to the chat session using glob patterns to your local branch."
             },
             "command_drop": {
                 "type": "string",
-                "description": "Remove matching files from the chat session using glob patterns in a valid repository."
+                "description": "Remove matching files from the chat session using glob patterns from your local branch."
             },
             "command_clear": {
                 "type": "boolean",
-                "description": "Clear the coding assistant chat history of a valid repository."
+                "description": "Clear the coding assistant chat history of your local branch."
             },
             "command_ls": {
                 "type": "boolean",
-                "description": "List all known files from a valid repository and those included in the chat session."
+                "description": "List all known files from in your local branch and those included in the chat session."
             },
             "command_tokens": {
                 "type": "boolean",
-                "description": "Report on the number of tokens used by the current chat context dealing with a valid repository."
+                "description": "Report on the number of tokens used by the current chat context dealing with your local branch."
             },
             "command_undo": {
                 "type": "boolean",
-                "description": "Undo the last git commit in a valid repository if it was done by code assistant."
+                "description": "Undo the last git commit your local branch if it was done by code assistant."
             },
             "command_diff": {
                 "type": "boolean",
-                "description": "Display the diff of the last code assistant commit in a valid repository."
+                "description": "Display the diff of the last code assistant commit in your local branch."
             },
             "command_git_command": {
                 "type": "string",
-                "description": "Run a specified git command against a valid repository. Uses using Python subprocess.run where 'git ' + command_git_command is the args (first parameter)"
+                "description": "Run a specified git command against the local branch. Uses using Python subprocess.run where 'git ' + command_git_command is the args (first parameter)"
             },
         },
         "required": ["repository_name"]
@@ -614,7 +630,7 @@ upsert_code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.upsert_coding_assistant",
     "description": (
-        "Endpoint for defining or updating coding assistant designed to streamline development workflows. Coding assistants are uniquely identified by repository_name. Git details are required and repository will be cloned locally. Prior to creating a new coding assistant you should check if there already is one for your use case using discover_coding_assistants."
+        "Use this function to define or update a coding assistant. It requires the Git user and personal access token for setting up or accessing the remote repository. When working with an existing repository, provide its details. This function is key to initializing the coding assistant for repository operations. Will clone repository locally preparing for work."
     ),
     "parameters": {
         "type": "object",
@@ -633,7 +649,7 @@ upsert_code_assistant_function_spec = {
             },
             "github_auth_token": {
                 "type": "string",
-                "description": "GH OAUTH token. When creating a new assistant this should always be provided."
+                "description": "GH personal access token. When creating a new assistant this should always be provided."
             },
             "model": {
                 "type": "string",
