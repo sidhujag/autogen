@@ -104,7 +104,7 @@ class GPTAssistantAgent(ConversableAgent):
 
         self._verbose = kwargs.pop("verbose", False)
         super().__init__(
-            name=name, system_message=instructions, human_input_mode="NEVER", llm_config=llm_config, **kwargs
+            name=name, system_message=instructions, llm_config=llm_config, **kwargs
         )
         self.cancellation_requested = False
         # lazly create thread
@@ -120,6 +120,46 @@ class GPTAssistantAgent(ConversableAgent):
         """
         return self.cancellation_requested
 
+    def execute_run(self, assistant_thread, max_retries=5):
+        retries = 0
+        run = None
+        response = None
+
+        while retries < max_retries:
+            try:
+                # Attempt to create a new run to get responses from the assistant
+                run = self._openai_client.beta.threads.runs.create(
+                    thread_id=assistant_thread.id,
+                    assistant_id=self._openai_assistant.id,
+                    instructions=self.system_message,
+                )
+                # If the run was created successfully, get the response
+                response, run = self._get_run_response(assistant_thread, run)
+                # Check if the run failed due to a server error
+                if run and run.status == "failed" and run.last_error:
+                    if (run.last_error.code == 'server_error' and 
+                        run.last_error.message == 'Sorry, something went wrong.'):
+                        retries += 1
+                        print(f"Attempt {retries} failed with server error: {run.last_error.message}")
+                        if retries < max_retries:
+                            print("Retrying...")
+                            continue
+                        else:
+                            print("Max retries reached. Giving up.")
+                            break
+                    else:
+                        # Handle other types of errors that might be present
+                        print(f"Run failed with a different error: {run.last_error.message}")
+                        break
+                break  # Exit loop if successful
+            except Exception as e:
+                # If run is None or there's no last_error, it's an unexpected situation
+                print(f"An unexpected error occurred: {e}")
+                break
+
+        self.cancellation_requested = False
+        return response
+    
     def _invoke_assistant(
         self,
         messages: Optional[List[Dict]] = None,
@@ -165,15 +205,7 @@ class GPTAssistantAgent(ConversableAgent):
                 role="user",
             )
         #self.pretty_print_thread(assistant_thread)
-        # Create a new run to get responses from the assistant
-        run = self._openai_client.beta.threads.runs.create(
-            thread_id=assistant_thread.id,
-            assistant_id=self._openai_assistant.id,
-            # pass the latest system message as instructions
-            instructions=self.system_message,
-        )
-        self.cancellation_requested = False
-        response = self._get_run_response(assistant_thread, run)
+        response = self.execute_run(assistant_thread)
         self._unread_index[sender] = len(self._oai_messages[sender]) + 1
         if response["content"]:
             return True, response
@@ -199,21 +231,21 @@ class GPTAssistantAgent(ConversableAgent):
                     "role": "assistant",
                     "content": 'Failed',
                 }
-            return response
+            return response, run
         elif run.status == "expired":
             logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: expired...')
             response = {
                 "role": "assistant",
                 "content": 'Expired',
             }
-            return new_messages
+            return new_messages, run
         elif run.status == "cancelled":
             logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: cancelled...')
             response = {
                 "role": "assistant",
                 "content": 'Cancelled',
             }
-            return response
+            return response, run
         elif run.status == "completed":
             logger.info(f'Run: {run.id} Thread: {assistant_thread.id}: completed...')
             response_messages = self._openai_client.beta.threads.messages.list(assistant_thread.id, order="asc")
@@ -242,7 +274,7 @@ class GPTAssistantAgent(ConversableAgent):
                 if len(response["content"]) > 0:
                     response["content"] += "\n\n"
                 response["content"] += message["content"]
-            return response
+            return response, run
 
     def _get_run_response(self, assistant_thread, run):
         """
@@ -256,7 +288,6 @@ class GPTAssistantAgent(ConversableAgent):
             run = self._openai_client.beta.threads.runs.retrieve(run.id, thread_id=assistant_thread.id)
             if run.status == "in_progress" or run.status == "queued":
                 time.sleep(self.llm_config.get("check_every_ms", 1000) / 1000)
-                run = self._openai_client.beta.threads.runs.retrieve(run.id, thread_id=assistant_thread.id)
             elif run.status == "completed" or run.status == "cancelled" or run.status == "expired" or run.status == "failed":
                 return self._process_messages(assistant_thread, run)
             elif run.status == "cancelling":
