@@ -1,6 +1,6 @@
 
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
-from typing import List, Optional
+from typing import Optional
 from aider import models
 from aider.coders import Coder
 from aider.io import InputOutput
@@ -170,7 +170,7 @@ class CodingAssistantService:
         command_git_command: Optional[str] = None,
         command_run_command: Optional[str] = None
     ) -> str:
-        from . import GetCodingAssistantModel
+        from . import GetCodingAssistantModel, UpsertCodingAssistantModel
         coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=sender.auth, repository_name=repository_name))
         if coder is None:
             return json.dumps({"error": f"Could not send message to coding_assistant: repository_name({repository_name}) does not exist."})
@@ -182,9 +182,23 @@ class CodingAssistantService:
         elif command_add:
             coder.commands.cmd_add(command_add)
             cmd = 'add'
+            coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
+                auth=sender.auth,
+                repository_name=repository_name,
+                files=coder.abs_fnames
+            )])
+            if err is not None:
+                return err
         elif command_drop:
             coder.commands.cmd_drop(command_drop)
             cmd = 'drop'
+            coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
+                auth=sender.auth,
+                repository_name=repository_name,
+                files=coder.abs_fnames
+            )])
+            if err is not None:
+                return err
         elif command_clear:
             coder.commands.cmd_clear(None)
             cmd = 'clear'

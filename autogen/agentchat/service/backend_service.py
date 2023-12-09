@@ -78,6 +78,7 @@ class UpsertCodingAssistantModel(BaseModel):
     github_user: Optional[str] = None
     github_auth_token: Optional[str] = None
     model: Optional[str] = None
+    files: Optional[List[str]] = None
     show_diffs: Optional[bool] = None
     dry_run: Optional[bool] = None
     map_tokens: Optional[int] = None
@@ -142,6 +143,7 @@ class BaseCodingAssistant(BaseModel):
     github_user: str = Field(default="")
     github_auth_token: str = Field(default="")
     model: str = Field(default="")
+    files: List[str] = Field(default=[])
     show_diffs: bool = Field(default=False)
     dry_run: bool = Field(default=False)
     map_tokens: int = Field(default=1024)
