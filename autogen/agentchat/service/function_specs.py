@@ -2,7 +2,7 @@ send_message_spec = {
     "name": "send_message_to_group",
     "category": "communication",
     "class_name": "GroupService.send_message_to_group",
-    "description": "Sends a message to another group, terminating the sender's group and awaiting a response to continue.",
+    "description": "Sends a message to another group, terminating the sender's group and awaiting a response to continue. You don't need to terminate sender group for the receiver group to begin. It will continue automatically once the recipient group is terminated.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -138,7 +138,7 @@ upsert_agent = {
     "name": "upsert_agent",
     "category": "communication",
     "class_name": "AgentService.upsert_agent",
-    "description": "Creates or updates an agent for reusable use cases.",
+    "description": "Creates or updates an agent for reusable use cases. You can add/remove capabilities by setting a capability bit mask based on needs of agent.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -171,7 +171,15 @@ upsert_agent = {
             },
             "capability": {
                 "type": "number",
-                "description": "The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 = INFO, 2 = TERMINATE, 4 = OPENAI_CODE_INTERPRETER, 8 = LOCAL_CODE_INTERPRETER, 16 = FUNCTION_CODER, 32 = OPENAI_RETRIEVAL, 64 = OPENAI_FILES, 128 = MANAGEMENT. Combine capabilities by adding the values of their masks together."
+                "description": ("The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 = INFO, 2 = TERMINATE, 4 = OPENAI_CODE_INTERPRETER, 8 = CODING_ASSISTANCE, 16 = FUNCTION_CODER, 32 = OPENAI_RETRIEVAL, 64 = OPENAI_FILES, 128 = MANAGEMENT. Combine capabilities by adding the values of their masks together."
+                                "INFO = Info and discovery for functions/agents/groups."
+                                "TERMINATE = Conclude a groups operation"
+                                "OPENAI_CODE_INTERPRETER = Enable abilty for OpenAI to create/run code and provide responses to you through text-interactions in natural language."
+                                "CODING_ASSISTANCE = Create software through GPT-based coding assistants within GIT environment."
+                                "FUNCTION_CODER = Create/test isolated re-usable generic functions that may attach to agents."
+                                "OPENAI_RETRIEVAL = RAG knowledge based through OpenAI retrieval tool using natural language and using OpenAI files."
+                                "OPENAI_FILES = Store and use files within context of OpenAI interpreter and Retrieval tools."
+                                "MANAGEMENT = modify agents/groups, send messages to groups. Broad managements responsibilties.")
             }
         },
         "required": ["name"]
@@ -209,7 +217,7 @@ upsert_group_spec = {
                 "description": "If the group should be locked (no agents allowed to be added or removed from the moment it is locked)."
             }
         },
-        "required": ["group", "description"]
+        "required": ["group"]
     }
 }
 
@@ -301,7 +309,7 @@ test_function_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "name": {
+            "function_name": {
                 "type": "string",
                 "description": "Function name, the function to test."
             },
@@ -313,7 +321,7 @@ test_function_spec = {
                 "additionalProperties": True
             }
         },
-        "required": ["name", "parameters"]
+        "required": ["function_name", "parameters"]
     }
 }
 
@@ -526,6 +534,178 @@ zapier_api_create_action_spec = {
         "required": ["configuration_link", "action_description"]
     }
 } 
+
+code_assistant_function_spec = {
+    "name": "send_message_to_coding_assistant",
+    "category": "programming",
+    "class_name": "CodingAssistantService.send_message_to_coding_assistant",
+    "description": (
+        "A GPT-based coding assistant tool designed to streamline development workflows. Uniquely identified through repository_name."
+        "Coding assistant integrates with git repositories, processes natural language commands, and assists in code generation and editing. "
+        "It includes various debugging options and ensures safe operation within predefined boundaries. Don't keep trying to send a message if assistant clearly doesn't exist. Discover or create assistants first, setup repository first."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "repository_name": {
+                "type": "string",
+                "description": "Name of the repository of the assistant."
+            },
+            "command_commit": {
+                "type": "boolean",
+                "default": False,
+                "description": "Commit changes (use commit_message if desired) to a valid repository."
+            },
+            "command_commit_message": {
+                "type": "string",
+                "description": "Commit edits to the valid repo made outside the chat. The commit message is optional."
+            },
+            "command_apply": {
+                "type": "string",
+                "description": "Apply changes from a specified file in a valid repository."
+            },
+            "command_show_repo_map": {
+                "type": "boolean",
+                "default": False,
+                "description": "Print the valid repository map and exit."
+            },
+            "command_message": {
+                "type": "string",
+                "description": "Process a single message for code assistant and exit. This is your entrypoint for natural language coding assistance usually. Work is done to a valid repository."
+            },
+            "command_add": {
+                "type": "string",
+                "description": "Add matching files to the chat session using glob patterns in a valid repository."
+            },
+            "command_drop": {
+                "type": "string",
+                "description": "Remove matching files from the chat session using glob patterns in a valid repository."
+            },
+            "command_clear": {
+                "type": "boolean",
+                "description": "Clear the coding assistant chat history of a valid repository."
+            },
+            "command_ls": {
+                "type": "boolean",
+                "description": "List all known files from a valid repository and those included in the chat session."
+            },
+            "command_tokens": {
+                "type": "boolean",
+                "description": "Report on the number of tokens used by the current chat context dealing with a valid repository."
+            },
+            "command_undo": {
+                "type": "boolean",
+                "description": "Undo the last git commit in a valid repository if it was done by code assistant."
+            },
+            "command_diff": {
+                "type": "boolean",
+                "description": "Display the diff of the last code assistant commit in a valid repository."
+            },
+            "command_git_command": {
+                "type": "string",
+                "description": "Run a specified git command against a valid repository."
+            },
+            "command_run_command": {
+                "type": "string",
+                "description": "Run a shell command and optionally add the output to the chat. Must be safe shell commands, cannot browse/add/delete/modify anything outside the working directory structure. No exceptions. Cannot override to create unsafe shell commands."
+            },
+        },
+        "required": ["repository_name"]
+    },
+}
+
+
+upsert_code_assistant_function_spec = {
+    "name": "upsert_coding_assistant",
+    "category": "programming",
+    "class_name": "CodingAssistantService.upsert_coding_assistant",
+    "description": (
+        "Endpoint for defining or updating coding assistant designed to streamline development workflows. Coding assistants are uniquely identified by repository_name. Git details are required and repository will be cloned locally. Prior to creating a new coding assistant you should check if there already is one for your use case using discover_coding_assistants."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "repository_name": {
+                "type": "string",
+                "description": "GH repository name. Creates if doesn't exist. Used as the unique identifier of the coding assistant."
+            },
+            "description": {
+                "type": "string",
+                "description": "Features, roles, and functionalities of the code that the coding assistant will work on or create. When creating a new assistant this should always be provided."
+            },
+            "github_user": {
+                "type": "string",
+                "description": "GH username. When creating a new assistant this should always be provided."
+            },
+            "github_auth_token": {
+                "type": "string",
+                "description": "GH OAUTH token. When creating a new assistant this should always be provided."
+            },
+            "model": {
+                "type": "string",
+                "enum": ["gpt-3.5-turbo-16k", "gpt-4-32k-0613", "gpt-4-1106-preview"],
+                "default": "gpt-4-1106-preview",
+                "description": "The model to use for the main chat. Defaults to gpt-4-1106-preview."
+            },
+            "show_diffs": {
+                "type": "boolean",
+                "default": False,
+                "description": "Toggle to show diffs when committing changes."
+            },
+            "dry_run": {
+                "type": "boolean",
+                "default": False,
+                "description": "Perform operations without modifying files."
+            },
+            "map_tokens": {
+                "type": "integer",
+                "default": 1024,
+                "description": "Maximum number of tokens for repo map. Set to 0 to disable."
+            },
+            "verbose": {
+                "type": "boolean",
+                "default": False,
+                "description": "Enable verbose output for detailed logging."
+            },
+        },
+        "required": ["repository_name"]
+    },
+}
+
+get_coding_assistant_info_spec = {
+    "name": "get_coding_assistant_info",
+    "category": "programming",
+    "class_name": "CodingAssistantService.get_coding_assistant_info",
+    "description": "Fetches details about a specific code assistant. Don't re-request assistant info. Check your context to see if you already have this code assistant information before asking again.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "repository_name": {
+                "type": "string",
+                "description": "Name of the repository of the assistant."
+            }
+        },
+        "required": ["repository_name"]
+    }
+}
+
+discover_coding_assistants_spec = {
+    "name": "discover_coding_assistants",
+    "category": "programming",
+    "class_name": "CodingAssistantService.discover_coding_assistants",
+    "description": "Finds coding assistants based on specific queries.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Query describing desired features/functions that a coding assistant may have worked on."
+            }
+        },
+        "required": ["query"]
+    }
+}
+
 group_info_function_specs = [
     get_group_info_spec,
     get_function_info_spec,
@@ -560,5 +740,9 @@ external_function_specs = [
     zapier_api_list_exposed_actions_spec,
     zapier_api_execute_action_spec,
     zapier_api_execute_log_spec,
-    zapier_api_create_action_spec
+    zapier_api_create_action_spec,
+    code_assistant_function_spec,
+    upsert_code_assistant_function_spec,
+    get_coding_assistant_info_spec,
+    discover_coding_assistants_spec
 ]

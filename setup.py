@@ -14,7 +14,7 @@ with open(os.path.join(here, "autogen/version.py")) as fp:
 __version__ = version["__version__"]
 
 install_requires = [
-    "openai~=1.2,<1.3",
+    "openai~=1.3",
     "diskcache",
     "termcolor",
     "flaml",
@@ -23,7 +23,7 @@ install_requires = [
     "uvicorn",
     "gunicorn",
     "tiktoken",
-    "aider"
+    "aider-chat @ git+https://github.com/paul-gauthier/aider.git"
 ]
 
 setuptools.setup(

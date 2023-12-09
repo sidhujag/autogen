@@ -80,8 +80,6 @@ class GroupChat:
         return f"""You are a speaker selector in a chat group. The following speakers are available:
 {self._participant_roles(agents)}.
 
-{AgentService.CAPABILITY_SYSTEM_MESSAGE}
-
 Read the following conversation.
 Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities for deciding the next role. Don't select the same role repeatedly unless its intentional. For assistant responses that don't have a role prepended, assume the role is one from the message prior. Only return the role."""
 
@@ -208,9 +206,8 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
                 logger.warning(
                     f"The agent '{agent.name}' has an empty system_message, and may not work well with GroupChat."
                 )
-            capability_names = AgentService.get_capability_names(agent.capability)
-            capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
-            roles.append(f"Role: {agent.name}, Description: {agent.description}, Capabilities: {capability_text}")
+            capability_instr = AgentService.get_capability_instructions(agent.capability)
+            roles.append(f"Role: {agent.name}, Description: {agent.description}, {capability_instr}")
         return "\n".join(roles)
 
     def _mentioned_agents(self, message_content: Union[str, List], agents: List[Agent]) -> Dict:
@@ -306,7 +303,6 @@ class GroupChatManager(ConversableAgent):
                 # Pattern does not exist, prepend it
                 message["content"] = f'{speaker.name} (to {self.name}):\n{message["content"]}'
             if self.tasking and self.tasking_message:
-                self.running = False
                 # set the name to speaker's name if the role is not function
                 if message["role"] != "function":
                     message["name"] = speaker.name
@@ -320,7 +316,6 @@ class GroupChatManager(ConversableAgent):
                 if not message:
                     message = self.last_message(speaker)
                 self.send(message, speaker, request_reply=False)
-                self.running = True
                 self.tasking = None
                 self.tasking_message = None
             # set the name to speaker's name if the role is not function

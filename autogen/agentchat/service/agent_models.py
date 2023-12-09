@@ -1,4 +1,4 @@
-from autogen.agentchat.service import UpsertAgentModel, AuthAgent, TERMINATE, OPENAI_FILES, OPENAI_RETRIEVAL, OPENAI_CODE_INTERPRETER, LOCAL_CODE_INTERPRETER, FUNCTION_CODER     
+from autogen.agentchat.service import UpsertAgentModel, AuthAgent, TERMINATE, OPENAI_FILES, OPENAI_RETRIEVAL, OPENAI_CODE_INTERPRETER, CODING_ASSISTANCE, FUNCTION_CODER     
 web_search_worker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="web_search_worker",
@@ -45,7 +45,7 @@ plan_worker_model = UpsertAgentModel(
     name="plan_worker",
     category="planning",
     description="Develops detailed, step-by-step plans for addressing complex problems. Usually works in planning_group alongside plan_manager and plan_checker.",
-    system_message="Read the conversation in the group. Usually you work in the planning_group. Outline a detailed plan for provided problem, ensuring a step-by-step approach.",
+    system_message="Read the conversation in the group. Usually you work in the planning_group. Outline a detailed plan for provided problem, ensuring a step-by-step approach. To manage efficient creation of documentation you may want to use coding assistance via git repository.",
     human_input_mode="NEVER",
     capability=0
 )
@@ -55,7 +55,7 @@ plan_checker_model = UpsertAgentModel(
     name="plan_checker",
     category="planning",
     description="Assesses plans for completeness, feasibility, and effectiveness. Usually works in planning_group alongside plan_manager and plan_worker.",
-    system_message="Read the conversation in the group. Usually you work in the planning_group. Evaluate the proposed plan for completeness and feasibility. Provide feedback or approval.",
+    system_message="Read the conversation in the group. Usually you work in the planning_group. Evaluate the proposed plan for completeness and feasibility. Provide feedback or approval. To manage efficient creation of documentation you may want to use coding assistance via git repository.",
     human_input_mode="NEVER",
     capability=0
 )
@@ -65,7 +65,7 @@ plan_manager_model = UpsertAgentModel(
     name="plan_manager",
     category="planning",
     description="Oversee the planning process, ensuring effective collaboration and timely completion of plans. Usually works in planning_group alongside plan_checker and plan_worker.",
-    system_message="Read the conversation in the group. Usually you work in the planning_group. Manage the planning process, ensuring collaboration and adherence to timelines.",
+    system_message="Read the conversation in the group. Usually you work in the planning_group. Manage the planning process, ensuring collaboration and adherence to timelines. To manage efficient creation of documentation you may want to use coding assistance via git repository.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )
@@ -74,57 +74,50 @@ openai_code_worker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="openai_code_worker",
     category="programming",
-    description="Develops code based on provided plans, focusing on functionality and adherence to specifications. Usually works in openai_coding_group alongside openai_code_manager and openai_code_checker.",
-    system_message="Read the conversation in the group. Usually you work in the openai_coding_group. Query a tool to create and run code for the provided segment of the plan or otherwise the standalone task, focusing on functionality and specifications. Invoke the OpenAI Code Interpreter tool to run code in a sandbox.",
+    description="Enabled OpenAI files and interpreter tools to create/run code and provide responses through natural language. Ideal for algorithmics, data science, visualization or mathematical calculations that require code generation to solve.",
+    system_message="In natural language request, explicitly state that you are invoking the OpenAI interpreter (outputting OpenAI files as needed for example visualization or analysis), describing what code is needed and expected response. This will create and run code in a sandbox in OpenAI servers and return the code response.",
     human_input_mode="NEVER",
     capability=OPENAI_FILES | OPENAI_CODE_INTERPRETER
 )
 
-openai_code_checker_model = UpsertAgentModel(
+openai_retrieval_rag_worker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
-    name="openai_code_checker",
+    name="openai_retrieval_rag_worker",
     category="programming",
-    description="Ensures code quality through testing, review, and writing tests, maintaining high standards. Usually works in openai_coding_group alongside openai_code_manager and openai_code_worker.",
-    system_message="Read the conversation in the group. Usually you work in the openai_coding_group. Conduct a thorough review and testing for the latest interpreter result. Provide feedback or approval.",
+    description="Enabled RAG with OpenAI files and to answer questions against a knowledge base using natural language.",
+    system_message="In natural language request, explicitly state that you are invoking the OpenAI retrieval tool to answer questions about a knowledge base. The knowledge base comes from OpenAI files which is indexed in a database automatically by specifying the file id's in the text-interaction. This will index the file contents specified, create a RAG, do semantic searches based on the knowledge in OpenAI servers and return the summarized response.",
     human_input_mode="NEVER",
-    capability=OPENAI_FILES | OPENAI_CODE_INTERPRETER
+    capability=OPENAI_FILES | OPENAI_RETRIEVAL
 )
 
-openai_code_manager_model = UpsertAgentModel(
+code_assistant_worker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
-    name="openai_code_manager",
+    name="code_assistant_worker",
     category="programming",
-    description="Coordinates coding activities, ensuring efficient progress and high-quality code development. Usually works in openai_coding_group alongside openai_code_checker and openai_code_worker.",
-    system_message="Read the conversation in the group. Usually you work in the openai_coding_group. Oversee the coding process, track progress, and ensure code quality and deadline adherence.",
+    description="Develops code based on provided plans, focusing on functionality and adherence to specifications. Usually works in coding_assistance_group alongside code_assistant_manager and code_assistant_checker.",
+    system_message="Read the conversation in the group. Use the function you are given. Usually you work in the coding_assistance_group. Based on the plan, instruct the code assistant to create code through the 'message' parameter. You will manage the code assistant state through the function parameters provided. Ensure repository is setup already remotely and locally prior to working. Add files to work on as well as you go. When constructing the message to code assistant, make sure to tell it to return the full code and not comments replacing code.",
+    capability=CODING_ASSISTANCE,
     human_input_mode="NEVER",
-    capability=TERMINATE
+    functions_to_add=["upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
-local_code_worker_model = UpsertAgentModel(
+code_assistant_checker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
-    name="local_code_worker",
+    name="code_assistant_checker",
     category="programming",
-    description="Develops code based on provided plans, focusing on functionality and adherence to specifications. Usually works in local_coding_group alongside local_code_manager and local_code_checker.",
-    system_message="Read the conversation in the group. Usually you work in the local_coding_group. Create Python code block(s) through text-interaction, for the provided segment of the plan or otherwise the standalone task, focusing on functionality and specifications. You may manage outputs and internal state with files programmatically. Code in code blocks will automatically run when you provide the response.",
-    human_input_mode="NEVER",
+    description="Ensures code quality through code review, feedback to coder and writing tests, maintaining high standards. Usually works in coding_assistance_group alongside code_assistant_worker and code_assistant_manager.",
+    system_message="Read the conversation in the group. Usually you work in the coding_assistance_group. Use the functions you are given. Ensure a remote git repository is setup prior to working, ask for username and auth token as needed to setup the assistant. Add files to work on as well as you go. Conduct a thorough review and testing for the code in the local git repository. You may write code like tests or debugging through code assistant functions. You should approve the quality of the code prior to group termination. For acceptance there should be tests and test criteria. Upon acceptance you should create a PR to the remote repository. Example git auth URL: https://user:<MYTOKEN>@github.com/repository/repo.git. When constructing the message to code assistant, make sure to tell it to return the full code and not comments replacing code. Once code assistant is setup, you can send messages to the code assistant to do the work.",
+    human_input_mode="ALWAYS",
+    capability=CODING_ASSISTANCE,
+    functions_to_add=["upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
-local_code_checker_model = UpsertAgentModel(
+code_assistant_manager_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
-    name="local_code_checker",
+    name="code_assistant_manager",
     category="programming",
-    description="Ensures code quality through testing, review, and writing tests, maintaining high standards. Usually works in local_coding_group alongside local_code_worker and local_code_manager.",
-    system_message="Read the conversation in the group. Usually you work in the local_coding_group. Conduct a thorough review and testing for the latest local interpreter result. You may write code like tests or debugging through code blocks. The code will automatically run upon your response. Provide feedback or approval.",
-    human_input_mode="NEVER",
-    capability=LOCAL_CODE_INTERPRETER
-)
-
-local_code_manager_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
-    name="local_code_manager",
-    category="programming",
-    description="Coordinates coding activities, ensuring efficient progress and high-quality code development. Usually works in local_coding_group alongside local_code_worker and local_code_checker.",
-    system_message="Read the conversation in the group. Usually you work in the local_coding_group. Oversee the coding process, track progress, and ensure code quality and deadline adherence.",
+    description="Coordinates coding activities, ensuring efficient progress and high-quality code development. Usually works in coding_assistance_group alongside code_assistant_worker and code_assistant_checker.",
+    system_message="Read the conversation in the group. Usually you work in the coding_assistance_group. Oversee the coding process, track progress, and ensure code quality and deadline adherence. Start with code_assistant_checker to make sure a remote repo is provided/created by asking for username and auth token, then create if needed and clone it remotely and begin working.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )
@@ -134,7 +127,7 @@ function_code_worker_model = UpsertAgentModel(
     name="function_code_worker",
     category="programming",
     description="Specializes in creating reusable, efficient functions based on given requirements. Usually works in function_creation_group alongside function_checker and function_manager.",
-    system_message="Read the conversation in the group. Usually you work in the function_creation_group. Develop a reusable function for the provided requirements, focusing on efficiency and adaptability.",
+    system_message="Read the conversation in the group. Usually you work in the function_creation_group. Develop a reusable function for the provided requirements, focusing on efficiency and adaptability. For complex functions you may need to use coding assistance to provide you with working code to work into a function.",
     human_input_mode="NEVER",
     capability=FUNCTION_CODER
 )
@@ -144,7 +137,7 @@ function_checker_model = UpsertAgentModel(
     name="function_checker",
     category="programming",
     description="Tests functions for reliability and provides feedback for enhancements. Usually works in function_creation_group alongside function_code_worker and function_manager.",
-    system_message="Read the converation in the group. Usually you work in the function_creation_group. Test the created function for reliability and provide constructive feedback. Update the development status accordingly.",
+    system_message="Read the converation in the group. Usually you work in the function_creation_group. Test the created function for reliability and provide constructive feedback. Update the development status accordingly. For complex functions you may need to use coding assistance to provide you with working code to work into a function.",
     human_input_mode="NEVER",
     capability=FUNCTION_CODER
 )
@@ -154,7 +147,7 @@ function_manager_model = UpsertAgentModel(
     name="function_manager",
     category="programming",
     description="Ensures the development of high-quality, reliable functions, overseeing the entire creation process. Usually works in function_creation_group alongside function_checker and function_code_worker.",
-    system_message="Read the conversation in the group. Usually you work in the function_creation_group. Manage the function creation process, ensuring quality, reliability, and adherence to requirements.",
+    system_message="Read the conversation in the group. Usually you work in the function_creation_group. Manage the function creation process, ensuring quality, reliability, and adherence to requirements. For complex functions you may need to use coding assistance to provide you with working code to work into a function.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )
@@ -204,15 +197,14 @@ external_agent_models = [
     plan_worker_model,
     plan_checker_model,
     plan_manager_model,
-    openai_code_manager_model,
     openai_code_worker_model,
-    openai_code_checker_model,
+    openai_retrieval_rag_worker_model,
     function_code_worker_model,
     function_checker_model,
     function_manager_model,
-    local_code_worker_model,
-    local_code_checker_model,
-    local_code_manager_model,
+    code_assistant_worker_model,
+    code_assistant_checker_model,
+    code_assistant_manager_model,
     zapier_api_caller_model,
     zapier_api_manager_model,
     zapier_api_tester_model

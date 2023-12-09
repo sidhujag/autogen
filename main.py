@@ -46,6 +46,7 @@ def upsert_external_functions(sender):
     function_models = []
     for func in external_function_specs:
         func["last_updater"] = sender.name
+        func["status"] = "accepted"
         function_model, error_message = FunctionsService._create_function_model(sender, func)
         if error_message:
             return error_message
@@ -99,14 +100,14 @@ def query(input: QueryModel):
         human_input_mode="NEVER",
         default_auto_reply="This is the manager_assistant speaking.",
         category="planning",
-        capability=INFO
+        capability=0
     )
     manager_model = UpsertAgentModel(
         name="manager",
         auth=input.auth,
         system_message="Delegate tasks and plans across hiearchy of agents and solves the problem before terminating the group. If the problem is complex and requires a plan you will include part(s) of the plan the groups you task should work on, when you message them. You will coordinate the hiearchy of agents and groups based on this plan. You work in a chain-of-thought or tree-of-thought pattern. You can use user_proxy to get user feedback. You will get feedback from manager_assistant as needed.",
         description="A general manager that will analyze if the task is solved, delegate tasks and terminate the program.",
-        human_input_mode="NEVER",
+        human_input_mode="ALWAYS",
         default_auto_reply="This is the manager speaking.",
         category="planning",
         capability=MANAGEMENT | INFO | TERMINATE

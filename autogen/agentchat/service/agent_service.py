@@ -7,9 +7,7 @@ import requests
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """
-Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, Capabilities: {capabilities}
-
-{capability_instruction}
+Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, {capability_instruction}
 
 As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. Functions are used within agents which are used withing groups. You can tag the manager in your group through text-interaction to have agents/groups modified. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Be cautious with non-accepted functions; if you do choose them then repair them rather than creating new versions. Prefer to use accepted functions over non-accepted. Always consider the group's message history in your responses.
 
@@ -30,9 +28,7 @@ Custom Instructions: {custom_instructions}
 """
 
     MANAGER_AGENT_SYSTEM_MESSAGE: str = """
-Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, Capabilities: {capabilities}
-
-{capability_instruction}
+Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, {capability_instruction}
 
 As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. Functions are used within agents which are used withing groups. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them if you do choose them. Prefer to use accepted functions over non-accepted. Ensure your responses reflect the group's message history.
 
@@ -56,16 +52,15 @@ Custom Instructions: {custom_instructions}
 Group Stats: {group_stats}
 """
 
-    CAPABILITY_SYSTEM_MESSAGE: str = """Agent Capability Breakdown:
-- INFO: Access and manage information on functions, agents, and groups. Discover entities and gather relevant data.
-- TERMINATE: Ability to terminate a group, concluding its operations.
-- OPENAI_CODE_INTERPRETER: Execute code using the OpenAI Code Interpreter, ideal for isolated, internet-independent tasks.
-- LOCAL_CODE_INTERPRETER: Execute code using a local interpreter, suitable for comprehensive application development and tasks requiring internet access.
-- FUNCTION_CODER: Develop and execute reusable functions, crucial for tasks that require modularity and reusability in code.
-- OPENAI_RETRIEVAL: Leverage OpenAI's capabilities to enhance knowledge retrieval, utilizing external documents and data.
-- OPENAI_FILES: Manage and utilize OpenAI Files for data processing, sharing, and state management across OpenAI Code Interpreter and Retrieval tools.
-- MANAGEMENT: Oversee and modify agents/groups, facilitate inter-group communication, and manage overall group activities.
-"""
+    # Define capability instruction variables
+    INFO_INSTRUCTIONS = "Access and manage information on functions, agents, and groups. Discover entities and gather relevant data."
+    TERMINATE_INSTRUCTIONS = "Ability to terminate a group, concluding its operations."
+    OPENAI_CODE_INTERPRETER_INSTRUCTIONS = "Create and executes simple code through natural language using the OpenAI Code Interpreter and provides response in interactions. Ideal for isolated, internet-independent tasks."
+    CODING_ASSISTANCE_INSTRUCTIONS = "Use coding assistant to coordinate amongst agents to create/test/develop code suitable for comprehensive application development."
+    FUNCTION_CODER_INSTRUCTIONS = "Develop and execute reusable functions, crucial for tasks that require modularity and reusability in code."
+    OPENAI_RETRIEVAL_INSTRUCTIONS = "Leverage OpenAI's capabilities to enhance knowledge retrieval, utilizing external documents and data."
+    OPENAI_FILES_INSTRUCTIONS = "Manage and utilize OpenAI Files for data processing, sharing, and state management across OpenAI Code Interpreter and Retrieval tools."
+    MANAGEMENT_INSTRUCTIONS = "Oversee and modify agents/groups, facilitate inter-group communication, and manage overall group activities."
 
     @staticmethod
     def get_agent(agent_model) -> GPTAssistantAgent:
@@ -250,7 +245,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _update_capability(agent):
-        from . import FunctionsService, MakeService, INFO, TERMINATE, OPENAI_RETRIEVAL, MANAGEMENT, FUNCTION_CODER, LOCAL_CODE_INTERPRETER, OPENAI_FILES, OPENAI_CODE_INTERPRETER
+        from . import FunctionsService, MakeService, INFO, TERMINATE, OPENAI_RETRIEVAL, MANAGEMENT, FUNCTION_CODER, CODING_ASSISTANCE, OPENAI_FILES, OPENAI_CODE_INTERPRETER
         agent.llm_config["tools"] = []
         agent._code_execution_config = {}
         if agent.capability & INFO:
@@ -267,11 +262,6 @@ Group Stats: {group_stats}
                 FunctionsService.define_function_internal(agent, function_model)
         if agent.capability & OPENAI_CODE_INTERPRETER:
             agent.llm_config["tools"].append({"type": "code_interpreter"})
-        if agent.capability & LOCAL_CODE_INTERPRETER:
-            agent._code_execution_config={
-                "work_dir": f"coding/{agent.name}",
-                "use_docker": "python:3",
-            }
         if agent.capability & OPENAI_RETRIEVAL:
             agent.llm_config["tools"].append({"type": "retrieval"})
         if agent.capability & OPENAI_FILES:
@@ -299,11 +289,11 @@ Group Stats: {group_stats}
         llm_config = {"api_key": backend_agent.auth.api_key, "assistant_id": backend_agent.assistant_id}
         agent = GPTAssistantAgent(
                 name=backend_agent.name,
-                human_input_mode=backend_agent.human_input_mode,
                 default_auto_reply=backend_agent.default_auto_reply,
                 instructions=backend_agent.system_message,
                 is_termination_msg=lambda x: "TERMINATE" in x.get("content", ""),
-                llm_config=llm_config
+                llm_config=llm_config,
+                human_input_mode=backend_agent.human_input_mode,
             )
         agent.auth = backend_agent.auth
         return agent
@@ -421,29 +411,38 @@ Group Stats: {group_stats}
             communications = f"{communications}\nCurrent Dependent Group:\n{group_manager.dependent.name}"
         return communications.strip()
 
-
     @staticmethod
-    def get_capability_names(capability_number):
-        from . import INFO, TERMINATE, OPENAI_CODE_INTERPRETER, LOCAL_CODE_INTERPRETER, OPENAI_RETRIEVAL, OPENAI_FILES, MANAGEMENT
+    def get_capability_instructions(capability_number) -> str:
+        # Define a list of capabilities, each with name, bit, and instructions
         capabilities = [
-            ("INFO", INFO),
-            ("TERMINATE", TERMINATE),
-            ("OPENAI_CODE_INTERPRETER", OPENAI_CODE_INTERPRETER),
-            ("LOCAL_CODE_INTERPRETER", LOCAL_CODE_INTERPRETER),
-            ("OPENAI_RETRIEVAL", OPENAI_RETRIEVAL),
-            ("OPENAI_FILES", OPENAI_FILES),
-            ("MANAGEMENT", MANAGEMENT),
+            ("INFO", 1, AgentService.INFO_INSTRUCTIONS),
+            ("TERMINATE", 2, AgentService.TERMINATE_INSTRUCTIONS),
+            ("OPENAI_CODE_INTERPRETER", 4, AgentService.OPENAI_CODE_INTERPRETER_INSTRUCTIONS),
+            ("CODING_ASSISTANCE", 8, AgentService.CODING_ASSISTANCE_INSTRUCTIONS),
+            ("FUNCTION_CODER", 16, AgentService.FUNCTION_CODER_INSTRUCTIONS),
+            ("OPENAI_RETRIEVAL", 32, AgentService.OPENAI_RETRIEVAL_INSTRUCTIONS),
+            ("OPENAI_FILES", 64, AgentService.OPENAI_FILES_INSTRUCTIONS),
+            ("MANAGEMENT", 128, AgentService.MANAGEMENT_INSTRUCTIONS),
         ]
-        capability_names = [name for name, bit in capabilities if capability_number & bit]
-        return capability_names
+
+        # Extract instructions for each enabled capability
+        capability_instructions = []
+        for name, bit, instr in capabilities:
+            if capability_number & bit:
+                capability_instructions.append(f"{name} ({bit}): {instr}")
+        if not capability_instructions:
+            capability_instructions.append("No capabilities")
+        capability_instructions_str = "\n".join(capability_instructions)
+        return f"Agent Capability Breakdown:\n{capability_instructions_str}"
 
     @staticmethod
     def update_agent_system_message(agent: GPTAssistantAgent, group_manager: GroupChatManager) -> None:
         from . import MakeService, MANAGEMENT
-        capability_names = AgentService.get_capability_names(agent.capability)
-        capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
         formatted_message = ""
         dependent = f', dependent group: {group_manager.dependent.name}' if group_manager.dependent else ''
+        # Get capability instructions
+        capability_instructions_instr = AgentService.get_capability_instructions(agent.capability)
+
         # Update the system message based on the agent type
         if agent.capability & MANAGEMENT:
             # Define the new agent system message with placeholders filled in
@@ -453,8 +452,7 @@ Group Stats: {group_stats}
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_instructions,
                 dependent=dependent,
-                capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
-                capabilities=capability_text,
+                capability_instruction=capability_instructions_instr,
                 group_stats=AgentService._generate_group_stats_text(group_manager),
             )
         else:
@@ -465,7 +463,6 @@ Group Stats: {group_stats}
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_instructions,
                 dependent=dependent,
-                capability_instruction=AgentService.CAPABILITY_SYSTEM_MESSAGE,
-                capabilities=capability_text
+                capability_instruction=capability_instructions_instr,
             )
         agent.update_system_message(formatted_message)

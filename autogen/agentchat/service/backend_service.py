@@ -26,6 +26,10 @@ class GetFunctionModel(BaseModel):
     name: str
     auth: AuthAgent
     
+class GetCodingAssistantModel(BaseModel):
+    repository_name: str
+    auth: AuthAgent
+
 class DiscoverAgentsModel(BaseModel):
     query: str
     category: Optional[str] = None
@@ -40,6 +44,9 @@ class DiscoverFunctionsModel(BaseModel):
     category: str
     auth: AuthAgent
 
+class DiscoverCodingAssistantModel(BaseModel):
+    query: str
+    auth: AuthAgent
 
 class UpsertAgentModel(BaseModel):
     name: str
@@ -64,6 +71,18 @@ class UpsertGroupModel(BaseModel):
     agents_to_remove: Optional[List[str]] = None
     locked: Optional[bool] = None
 
+class UpsertCodingAssistantModel(BaseModel):
+    repository_name: str
+    auth: AuthAgent
+    description: Optional[str] = None
+    github_user: Optional[str] = None
+    github_auth_token: Optional[str] = None
+    model: Optional[str] = None
+    show_diffs: Optional[bool] = None
+    dry_run: Optional[bool] = None
+    map_tokens: Optional[int] = None
+    verbose: Optional[bool] = None
+    
 class BaseAgent(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent
@@ -115,7 +134,30 @@ class BaseFunction(BaseModel):
     category: str = Field(default="")
     function_code: str = Field(default="")
     class_name: str = Field(default="")
-    
+
+class BaseCodingAssistant(BaseModel):
+    repository_name: str = Field(default="")
+    auth: AuthAgent
+    description: str = Field(default="")
+    github_user: str = Field(default="")
+    github_auth_token: str = Field(default="")
+    model: str = Field(default="")
+    show_diffs: bool = Field(default=False)
+    dry_run: bool = Field(default=False)
+    map_tokens: int = Field(default=1024)
+    verbose: bool = Field(default=False)
+
+class CodingAssistantInfo(BaseModel):
+    repository_name: str = Field(default="")
+    description: str = Field(default="")
+    model: str = Field(default="")
+    git_dir: str = Field(default="")
+    files: set[str] = Field(default=set())
+    show_diffs: bool = Field(default=False)
+    dry_run: bool = Field(default=False)
+    map_tokens: int = Field(default=1024)
+    verbose: bool = Field(default=False)
+
 class AddFunctionModel(BaseFunction):
     auth: AuthAgent
     
@@ -123,6 +165,7 @@ class UpdateComms(BaseModel):
     auth: AuthAgent
     sender: str
     receiver: str
+
 
 class BackendService:
     @staticmethod
@@ -185,6 +228,16 @@ class BackendService:
         return [BaseGroup(**agent) for agent in response], None
 
     @staticmethod
+    def get_backend_coding_assistants(data_models: List[GetCodingAssistantModel]) -> Tuple[Optional[List[BaseCodingAssistant]], Optional[str]]:
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("get_coding_assistants", list_of_dicts)
+        if err is not None:
+            return None, err
+        if not isinstance(response, list):
+            return None, json.dumps({"error": "Unexpected response format: backend response is not a list"})
+        return [BaseCodingAssistant(**assistant) for assistant in response], None
+
+    @staticmethod
     def get_backend_functions(data_models: List[GetFunctionModel]) -> Tuple[Optional[List[BaseFunction]], Optional[str]]:
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("get_functions", list_of_dicts)
@@ -200,6 +253,18 @@ class BackendService:
         list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
         # Make the backend call with the list of dictionaries
         response, err = BackendService.call("upsert_functions", list_of_dicts)
+        if response != "success":
+            return response
+        if err is not None:
+            return err
+        return None
+
+    @staticmethod
+    def upsert_backend_coding_assistants(list_data_model: List[UpsertCodingAssistantModel]):
+        # Convert each object in the list to a dictionary
+        list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
+        # Make the backend call with the list of dictionaries
+        response, err = BackendService.call("upsert_coding_assistants", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -226,7 +291,14 @@ class BackendService:
         if err != None:
             return None, err
         return response, None
-    
+
+    @staticmethod
+    def discover_backend_coding_assistants(data_model: DiscoverGroupsModel):
+        response, err = BackendService.call("discover_coding_assistants", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+
     @staticmethod
     def call(endpoint, json_input):   
         try:

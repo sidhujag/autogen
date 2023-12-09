@@ -6,7 +6,8 @@ import json
 INFO = 1
 TERMINATE = 2
 OPENAI_CODE_INTERPRETER = 4
-LOCAL_CODE_INTERPRETER = 8
+CODING_ASSISTANCE = 8
+FUNCTION_CODER = 16
 FUNCTION_CODER = 16
 OPENAI_RETRIEVAL = 32
 OPENAI_FILES = 64
@@ -21,7 +22,7 @@ class GroupService:
             backend_groups, err = BackendService.get_backend_groups([group_model])
             if err is None and backend_groups:
                 group, err = GroupService.make_group(backend_groups[0])
-                if err is not None:
+                if err is None and group:
                     MakeService.GROUP_REGISTRY[group_model.name] = group
         return group
     
@@ -41,10 +42,9 @@ class GroupService:
                 return json.dumps({"error": f"Could not get group agent: {agent_name}"})
 
             short_description = MakeService._get_short_description(agent.description)
-            capability_names = AgentService.get_capability_names(agent.capability)
-            capability_text = ", ".join(capability_names) if capability_names else "No capabilities"
+            capability_instr = AgentService.get_capability_instructions(agent.capability)
             agents_dict[agent_name] = {
-                "capabilities": capability_text,
+                "capabilities": capability_instr,
                 "description": short_description,
                 "files": agent.files
             }
@@ -116,7 +116,7 @@ class GroupService:
             return json.dumps({"error": f"Could not send message: group({group}) not found"})
         if not group_obj.running:
             return json.dumps({"error": f"Could not terminate group({group}): group is currently not running, perhaps already terminated."})
-        print(f'terminate_group group {group} rating: {rating} group_obj.dependent: {group_obj.dependent} sender: {sender.name} exit msg: {group_obj.last_message(sender)}')
+
         if group_obj.dependent:
             group_obj.dependent.exit_response = group_obj.last_message(sender)
             if rating >= 7:
@@ -128,7 +128,9 @@ class GroupService:
                                                                             receiver=group_obj.name))
                 if err:
                     return err
+            group_obj.dependent.running = True
         group_obj.exiting = True
+        group_obj.running = False
         return json.dumps({"response": f"Group({group}) terminating!"})
 
     def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
@@ -153,6 +155,8 @@ class GroupService:
             return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
         to_group_obj.dependent = from_group_obj
         from_group_obj.tasking = to_group_obj
+        from_group_obj.running = False
+        to_group_obj.running = True
         from_group_obj.tasking_message = f'{sender.name} (to {to_group}):\n{message}'
         return json.dumps({"response": f"Message sent from group ({from_group}) to group ({to_group})!"})
     
