@@ -540,9 +540,7 @@ code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.send_message_to_coding_assistant",
     "description": (
-        "A GPT-based coding assistant tool designed to streamline development workflows. Uniquely identified through repository_name."
-        "Coding assistant integrates with git repositories, processes natural language commands, and assists in code generation and editing. "
-        "It includes various debugging options and ensures safe operation within predefined boundaries. Don't keep trying to send a message if assistant clearly doesn't exist. Discover or create assistants first, setup repository first."
+        "This function serves as a central interface for agents to interact with the coding assistant, facilitating a range of git operations within a repository. It supports the entire development cycle, from branch management and local development to preparing code for peer review. The command_message parameter is particularly crucial as it acts as the primary Natural Language Assistant entry point, enabling agents to issue commands for code generation and modification within the repository. Additionally, this function allows agents to execute specific git commands, manage local changes, sync with the main branch, and handle pull requests. Its design ensures seamless collaboration and synchronization, making it an essential tool for efficient and streamlined coding workflows."
     ),
     "parameters": {
         "type": "object",

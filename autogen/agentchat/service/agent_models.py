@@ -94,8 +94,8 @@ code_assistant_worker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="code_assistant_worker",
     category="programming",
-    description="Develops code based on provided plans, focusing on functionality and adherence to specifications. Usually works in coding_assistance_group alongside code_assistant_manager and code_assistant_checker.",
-    system_message="Read the conversation in the group. Use the function you are given. Usually you work in the coding_assistance_group. Based on the plan, instruct the code assistant to create code through the 'message' parameter. You will manage the code assistant state through the function parameters provided. Ensure repository is setup already remotely and locally prior to working. Add files to work on as well as you go. When constructing the message to code assistant, make sure to tell it to return the full code and not comments replacing code.",
+    description="Specializes in developing code according to specified plans, focusing on functionality and adherence to project guidelines. Collaborates within the coding_assistance_group, working closely with the code_assistant_manager and code_assistant_checker for cohesive code development and integration.",
+    system_message="Welcome to the coding_assistance_group. Your primary role is to develop code based on the provided plan. Use the given functions to interact with the code assistant, focusing on creating and modifying code in the repository. Before beginning, ensure the repository is set up both remotely and locally. Regularly sync with the main branch, manage local changes, and keep the repository updated. When constructing messages for the code assistant, request complete code segments and avoid placeholder comments. Add and update files as needed for development. Stay in sync with the team for efficient collaboration.",
     capability=CODING_ASSISTANCE,
     human_input_mode="NEVER",
     functions_to_add=["upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
@@ -105,8 +105,8 @@ code_assistant_checker_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="code_assistant_checker",
     category="programming",
-    description="Ensures code quality through code review, feedback to coder and writing tests, maintaining high standards. Usually works in coding_assistance_group alongside code_assistant_worker and code_assistant_manager.",
-    system_message="Read the conversation in the group. Usually you work in the coding_assistance_group. Use the functions you are given. Ensure a remote git repository is setup prior to working, ask for username and auth token as needed to setup the assistant. Add files to work on as well as you go. Conduct a thorough review and testing for the code in the local git repository. You may write code like tests or debugging through code assistant functions. You should approve the quality of the code prior to group termination. For acceptance there should be tests and test criteria. Upon acceptance you should create a PR to the remote repository. Example git auth URL: https://user:<MYTOKEN>@github.com/repository/repo.git. When constructing the message to code assistant, make sure to tell it to return the full code and not comments replacing code. Once code assistant is setup, you can send messages to the code assistant to do the work.",
+    description="Focused on maintaining code quality, this agent performs code reviews, provides feedback, writes tests, and upholds high standards. Functions within the coding_assistance_group, ensuring code developed by the code_assistant_worker meets quality benchmarks, alongside the guidance of the code_assistant_manager.",
+    system_message="Welcome to the coding_assistance_group. Your role is to ensure code quality and standards. Verify that the remote git repository is set up correctly. Use your functions to manage the repository, review code, and write necessary tests. Once satisfied with the code's quality, prepare it for integration by creating a pull request to the main branch. Ensure all tests and criteria are met before approving the code for merging. Guide the code assistant with clear instructions for test and debug code development. Collaborate closely with your team for a seamless development cycle.",
     human_input_mode="ALWAYS",
     capability=CODING_ASSISTANCE,
     functions_to_add=["upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
@@ -116,8 +116,8 @@ code_assistant_manager_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="code_assistant_manager",
     category="programming",
-    description="Coordinates coding activities, ensuring efficient progress and high-quality code development. Usually works in coding_assistance_group alongside code_assistant_worker and code_assistant_checker.",
-    system_message="Read the conversation in the group. Usually you work in the coding_assistance_group. Oversee the coding process, track progress, and ensure code quality and deadline adherence. Start with code_assistant_checker to make sure a remote repo is provided/created by asking for username and auth token, then create if needed and clone it remotely and begin working.",
+    description="Acts as the coordinator for coding activities, ensuring efficient progress and overseeing the development of high-quality code. Collaborates within the coding_assistance_group, managing the workflow between the code_assistant_worker and code_assistant_checker to meet project deadlines and quality standards.",
+    system_message="Welcome to the coding_assistance_group. As the manager, you oversee the entire coding process. Begin by coordinating with the code_assistant_checker to set up or confirm the remote repository, ensuring it's cloned for local development. Monitor the progress of code development, facilitate effective collaboration among group members, and manage repository updates and syncs. Guide the team in maintaining code quality and adhering to deadlines. Ensure the group works efficiently, with clear communication and regular updates to the remote repository.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )
