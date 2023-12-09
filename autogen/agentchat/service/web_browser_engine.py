@@ -8,7 +8,7 @@ import importlib
 class WebBrowserEngine:
     @staticmethod
     async def run(
-        url: str, *urls: str
+        url: str, *urls: str, **args
     ):
         module = "autogen.agentchat.tools.web_browser_engine_playwright"
         run_func = importlib.import_module(module).PlaywrightWrapper().run
