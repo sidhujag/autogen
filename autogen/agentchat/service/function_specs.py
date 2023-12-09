@@ -603,11 +603,7 @@ code_assistant_function_spec = {
             },
             "command_git_command": {
                 "type": "string",
-                "description": "Run a specified git command against a valid repository."
-            },
-            "command_run_command": {
-                "type": "string",
-                "description": "Run a shell command and optionally add the output to the chat. Must be safe shell commands, cannot browse/add/delete/modify anything outside the working directory structure. No exceptions. Cannot override to create unsafe shell commands."
+                "description": "Run a specified git command against a valid repository. Uses using Python subprocess.run where 'git ' + command_git_command is the args (first parameter)"
             },
         },
         "required": ["repository_name"]

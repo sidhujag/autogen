@@ -93,6 +93,7 @@ class CodingAssistantService:
             return None, err
         coding_assistant.description = backend_coding_assistant.description
         coding_assistant.auth = backend_coding_assistant.auth
+        coding_assistant.model = backend_coding_assistant.model
         coding_assistant.github_user = backend_coding_assistant.github_user
         coding_assistant.github_auth_token = backend_coding_assistant.github_auth_token
         coding_assistant.repository_name = backend_coding_assistant.repository_name
@@ -167,8 +168,7 @@ class CodingAssistantService:
         command_undo: Optional[bool] = None,
         command_diff: Optional[bool] = None,
         command_commit_message: Optional[str] = None,
-        command_git_command: Optional[str] = None,
-        command_run_command: Optional[str] = None
+        command_git_command: Optional[str] = None
     ) -> str:
         from . import GetCodingAssistantModel, UpsertCodingAssistantModel
         coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=sender.auth, repository_name=repository_name))
@@ -217,9 +217,6 @@ class CodingAssistantService:
         elif command_git_command:
             coder.commands.cmd_git(command_git_command)
             cmd = 'git_command'
-        elif command_run_command:
-            coder.commands.cmd_run(command_run_command)
-            cmd = 'run_command'
         elif command_show_repo_map:
             repo_map = coder.get_repo_map()
             if repo_map:
