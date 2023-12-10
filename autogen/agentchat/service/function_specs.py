@@ -540,7 +540,7 @@ code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.send_message_to_coding_assistant",
     "description": (
-        "This function serves as a central interface for agents to interact with the coding assistant, facilitating a range of git operations within a repository. It supports the entire development cycle, from branch management and local development to preparing code for peer review. The command_message parameter is particularly crucial as it acts as the primary Natural Language Assistant entry point, enabling agents to issue commands for code generation and modification within the repository. Additionally, this function allows agents to execute specific git commands, manage local changes, sync with the main branch, and handle pull requests. Its design ensures seamless collaboration and synchronization, making it an essential tool for efficient and streamlined coding workflows."
+        "This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. It supports the full development cycle, facilitating branch management, local development, and code preparation for peer review. The `command_message` parameter is key as the primary entry point for natural language coding assistance, enabling agents to command code generation and edits. Additionally, this function manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding workflows. The `command_git_command` is also a key parameter for all git commands executed through GitPython. Only one command should be sent per call to this function. Any errors in responses can help guide you in correcting your commands."
     ),
     "parameters": {
         "type": "object",
@@ -549,30 +549,9 @@ code_assistant_function_spec = {
                 "type": "string",
                 "description": "Name of the repository of the assistant."
             },
-            "command_checkout_branch": {
-                "type": "string",
-                "description": "Check out a specific branch for development."
-            },
-            "command_sync_branch": {
-                "type": "boolean",
-                "description": "Sync the current branch with the latest changes from the main branch."
-            },
-            "command_push_changes": {
-                "type": "boolean",
-                "description": "Push committed changes to the remote repository."
-            },
             "command_pull_request": {
                 "type": "boolean",
-                "description": "Create or check the status of a pull request for the current branch."
-            },
-            "command_commit": {
-                "type": "boolean",
-                "default": False,
-                "description": "Commit changes (use commit_message if desired) to your local branch."
-            },
-            "command_commit_message": {
-                "type": "string",
-                "description": "Commit message that goes along with command_commit. The commit message is optional."
+                "description": "Create or check the status of a pull request for the current local branch."
             },
             "command_apply": {
                 "type": "string",
@@ -581,15 +560,15 @@ code_assistant_function_spec = {
             "command_show_repo_map": {
                 "type": "boolean",
                 "default": False,
-                "description": "Print the valid repository map and exit."
+                "description": "Print the local repository map and exit."
             },
             "command_message": {
                 "type": "string",
-                "description": "Process a single message for code assistant and exit. This is your entrypoint for natural language coding assistance usually. Work is done to a valid repository."
+                "description": "Process a single message for code assistant and exit. This is your entrypoint for natural language coding assistance usually. Work is done in your local branch."
             },
             "command_add": {
                 "type": "string",
-                "description": "Add matching files to the chat session using glob patterns to your local branch."
+                "description": "Add matching files to the chat session using glob patterns to your local branch. This is not equivalent to `git add`."
             },
             "command_drop": {
                 "type": "string",
@@ -617,7 +596,7 @@ code_assistant_function_spec = {
             },
             "command_git_command": {
                 "type": "string",
-                "description": "Run a specified git command against the local branch. Uses using Python subprocess.run where 'git ' + command_git_command is the args (first parameter)"
+                "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'clone [url]' to clone remote Git URL, 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push origin feature-branch' to push to remote, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
             },
         },
         "required": ["repository_name"]
@@ -630,7 +609,7 @@ upsert_code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.upsert_coding_assistant",
     "description": (
-        "Use this function to define or update a coding assistant. It requires the Git user and personal access token for setting up or accessing the remote repository. When working with an existing repository, provide its details. This function is key to initializing the coding assistant for repository operations. Will clone repository locally preparing for work."
+        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. It requires a Git personal access token to set up or access remote repositories. When initializing a new assistant or working with an existing repository, this function clones the repository locally, readying it for development work. It plays a pivotal role in preparing the coding environment, ensuring that the coding assistant is fully integrated with the repository for efficient code management."
     ),
     "parameters": {
         "type": "object",
@@ -642,10 +621,6 @@ upsert_code_assistant_function_spec = {
             "description": {
                 "type": "string",
                 "description": "Features, roles, and functionalities of the code that the coding assistant will work on or create. When creating a new assistant this should always be provided."
-            },
-            "github_user": {
-                "type": "string",
-                "description": "GH username. When creating a new assistant this should always be provided."
             },
             "github_auth_token": {
                 "type": "string",

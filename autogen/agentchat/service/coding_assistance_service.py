@@ -6,6 +6,7 @@ from aider.coders import Coder
 from aider.io import InputOutput
 from openai import OpenAI
 import json
+import requests
 class CodingAssistantService:
     @staticmethod
     def get_coding_assistant(coding_assistant_model) -> Coder:
@@ -60,7 +61,6 @@ class CodingAssistantService:
         sender: GPTAssistantAgent,
         repository_name: str,
         description: Optional[str] = None,
-        github_user: Optional[str] = None,
         github_auth_token: Optional[str] = None,
         model: Optional[str] = None,
         show_diffs: Optional[bool] = None,
@@ -73,7 +73,6 @@ class CodingAssistantService:
             auth=sender.auth,
             repository_name=repository_name,
             description=description,
-            github_user=github_user,
             github_auth_token=github_auth_token,
             model=model,
             show_diffs=show_diffs,
@@ -94,7 +93,6 @@ class CodingAssistantService:
         coding_assistant.description = backend_coding_assistant.description
         coding_assistant.auth = backend_coding_assistant.auth
         coding_assistant.model = backend_coding_assistant.model
-        coding_assistant.github_user = backend_coding_assistant.github_user
         coding_assistant.github_auth_token = backend_coding_assistant.github_auth_token
         coding_assistant.repository_name = backend_coding_assistant.repository_name
         MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant.repository_name] = coding_assistant
@@ -128,6 +126,43 @@ class CodingAssistantService:
         return successful_coding_assistants, None
     
     @staticmethod
+    def execute_git_command(coder, git_command):
+        try:
+            result = coder.repo.git.execute(git_command.split())
+            return json.dumps({"response": f"Git command executed successfully: {result}"})
+        except coder.repo.git.exc.GitCommandError as e:
+            return json.dumps({"error": f"Error executing Git command: {e}"})
+
+    @staticmethod
+    def create_github_pull_request(token, repo, title, body, head, base="main"):
+        """
+        Create a pull request on GitHub.
+        
+        :param token: Personal access token for the GitHub API
+        :param repo: Repository name with owner (e.g., "owner/repo")
+        :param title: Title of the pull request
+        :param body: Content of the pull request
+        :param head: Name of the branch where your changes are implemented
+        :param base: Branch you want the changes pulled into (default "main")
+        """
+        url = f"https://api.github.com/repos/{repo}/pulls"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        data = {
+            "title": title,
+            "body": body,
+            "head": head,
+            "base": base,
+        }
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 201:
+            return json.dumps({"error": f"Pull request created successfully, URL: {response.json()['html_url']}"})
+        else:
+            return json.dumps({"error": f"Failed to create pull request: {response.content}"})
+
+    @staticmethod
     def _create_coding_assistant(backend_coding_assistant):
         coder = None
         try:
@@ -156,7 +191,7 @@ class CodingAssistantService:
     def send_message_to_coding_assistant(
         sender: GPTAssistantAgent,
         repository_name: str,
-        command_commit: Optional[bool] = None,
+        command_pull_request: Optional[bool] = None,
         command_apply: Optional[str] = None,
         command_show_repo_map: Optional[bool] = None,
         command_message: Optional[str] = None,
@@ -167,7 +202,6 @@ class CodingAssistantService:
         command_tokens: Optional[bool] = None,
         command_undo: Optional[bool] = None,
         command_diff: Optional[bool] = None,
-        command_commit_message: Optional[str] = None,
         command_git_command: Optional[str] = None
     ) -> str:
         from . import GetCodingAssistantModel, UpsertCodingAssistantModel
@@ -176,10 +210,7 @@ class CodingAssistantService:
             return json.dumps({"error": f"Could not send message to coding_assistant: repository_name({repository_name}) does not exist."})
         coder.io.console.begin_capture()
         cmd = None
-        if command_commit:
-            coder.commands.cmd_commit(command_commit_message)
-            cmd = 'commit'
-        elif command_add:
+        if command_add:
             coder.commands.cmd_add(command_add)
             cmd = 'add'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
@@ -214,9 +245,16 @@ class CodingAssistantService:
         elif command_diff:
             coder.commands.cmd_diff(None)
             cmd = 'diff'
+        elif command_pull_request:
+            pr_title = f"Feature: Adding new features by agent: {sender.name}"
+            pr_body = coder.description
+            return CodingAssistantService.create_github_pull_request(coder.github_auth, 
+                                                                     repository_name, 
+                                                                     pr_title,
+                                                                     pr_body,
+                                                                     coder.repo.active_branch)
         elif command_git_command:
-            coder.commands.cmd_git(command_git_command)
-            cmd = 'git_command'
+            return CodingAssistantService.execute_git_command(coder, command_git_command)  
         elif command_show_repo_map:
             repo_map = coder.get_repo_map()
             if repo_map:
@@ -233,12 +271,10 @@ class CodingAssistantService:
         if cmd is not None:
             str_output = coder.io.console.end_capture()
             return json.dumps({"success": f"Command ({cmd}) ran and output was: {str_output}"})
-
         if command_message:
             coder.io.tool_output()
             coder.run(with_message=command_message)
         else:
             return json.dumps({"error": "Could not run code assistant, no commands or message provided"})
-        
         str_output = coder.io.console.end_capture()
         return json.dumps({"success": f"Message ({command_message}) was sent and output was: {str_output}"})

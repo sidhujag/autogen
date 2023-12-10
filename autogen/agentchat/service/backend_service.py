@@ -75,7 +75,6 @@ class UpsertCodingAssistantModel(BaseModel):
     repository_name: str
     auth: AuthAgent
     description: Optional[str] = None
-    github_user: Optional[str] = None
     github_auth_token: Optional[str] = None
     model: Optional[str] = None
     files: Optional[List[str]] = None
@@ -140,7 +139,6 @@ class BaseCodingAssistant(BaseModel):
     repository_name: str = Field(default="")
     auth: AuthAgent
     description: str = Field(default="")
-    github_user: str = Field(default="")
     github_auth_token: str = Field(default="")
     model: str = Field(default="")
     files: List[str] = Field(default=[])
