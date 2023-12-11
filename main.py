@@ -25,17 +25,20 @@ class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
 
-def upsert_external_agents(agent_models, auth, client):
-    agents, err = upsert_agents(agent_models, auth, client)
+def upsert_external_agents(agent_models, client):
+    agents, err = upsert_agents(agent_models, client)
     if err is not None:
         print(f'Could not upsert external agents err: {err}')
+        return None, None
     return agents, None
 
-def upsert_external_groups(group_models, auth):
+def upsert_external_groups(group_models):
+    for model in group_models:
+        model.auth = MakeService.auth
     groups, err = GroupService.upsert_groups(group_models)
     if err is not None:
         print(f'Error creating groups {err}')
-        return
+        return None, None
     return groups, None
 
 def upsert_external_functions(sender):
@@ -52,9 +55,10 @@ def upsert_external_functions(sender):
         return err
     return None
 
-def upsert_agents(models, auth, client):
+def upsert_agents(models, client):
     for model in models:
-        agent = AgentService.get_agent(GetAgentModel(auth=auth, name=model.name))
+        model.auth = MakeService.auth
+        agent = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=model.name))
         id = None
         if agent is None:
             # place holder to get assistant id
@@ -125,7 +129,7 @@ def query(input: QueryModel):
         management_group_model,
     ]
     agents: List[GPTAssistantAgent] = None
-    agents, err = upsert_agents(agent_models, input.auth, openai_client)
+    agents, err = upsert_agents(agent_models, openai_client)
     if err is not None:
         print(f'Error creating agents {err}')
         return
@@ -136,11 +140,11 @@ def query(input: QueryModel):
     err = upsert_external_functions(agents[0])
     if err is not None:
         print(f'Could not upsert external functions err: {err}')
-    external_agents, err = upsert_external_agents(external_agent_models, input.auth, openai_client)
+    external_agents, err = upsert_external_agents(external_agent_models, openai_client)
     if err is not None:
         print(f'Error creating external agents {err}')
         return
-    external_groups, err = upsert_external_groups(external_group_models, input.auth)
+    external_groups, err = upsert_external_groups(external_group_models)
     if err is not None:
         print(f'Error creating external groups {err}')
         return

@@ -306,7 +306,7 @@ Group Stats: {group_stats}
                     return json.dumps({"error": f"Function({function_name}) not found"})
 
             for function in functions:
-                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=agent.auth))
+                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=MakeService.auth))
         agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
@@ -341,7 +341,7 @@ Group Stats: {group_stats}
                     return json.dumps({"error": f"Function({function_name}) not found"})
 
             for function in functions:
-                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=agent.auth))
+                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=MakeService.auth))
         agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
