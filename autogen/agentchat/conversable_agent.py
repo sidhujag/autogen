@@ -3,7 +3,6 @@ import copy
 import functools
 import json
 import logging
-import inspect # MAKEAI
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Type, Union
 
@@ -1201,12 +1200,7 @@ class ConversableAgent(Agent):
                     flush=True,
                 )
                 try:
-                    # MAKEAI
-                    func_args = inspect.signature(func).parameters
-                    if 'sender' in func_args:
-                        content = func(**arguments, sender=self)
-                    else:
-                        content = func(**arguments)
+                    content = func(**arguments)
                     is_exec_success = True
                 except Exception as e:
                     content = f"Error: {e}"

@@ -27,17 +27,15 @@ class GroupService:
         return group
     
     @staticmethod
-    def get_group_info(sender: GPTAssistantAgent, name: str, full_description: bool = False) -> str:
+    def get_group_info(name: str, full_description: bool = False) -> str:
         from . import GetGroupModel, GroupInfo, AgentService, MakeService, GetAgentModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        backend_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=name))
+        backend_group = GroupService.get_group(GetGroupModel(auth=MakeService.auth, name=name))
         if not backend_group:
             return json.dumps({"error": f"Group({name}) not found"})
         groups_info = []
         agents_dict = {}
         for agent_name in backend_group.agent_names:
-            agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
+            agent = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=agent_name))
             if agent is None:
                 return json.dumps({"error": f"Could not get group agent: {agent_name}"})
 
@@ -51,7 +49,7 @@ class GroupService:
         group_description = backend_group.description if full_description else MakeService._get_short_description(backend_group.description)
         group_info = GroupInfo(
             name=name,
-            auth=backend_group.auth,
+            auth=MakeService.auth,
             description=group_description,
             agents=agents_dict,
             incoming=backend_group.incoming,
@@ -64,19 +62,17 @@ class GroupService:
 
 
     @staticmethod
-    def discover_groups(sender: GPTAssistantAgent, query: str) -> str:
-        from . import BackendService, DiscoverGroupsModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        response, err = BackendService.discover_backend_groups(DiscoverGroupsModel(auth=sender.auth, query=query))
+    def discover_groups(query: str) -> str:
+        from . import BackendService, DiscoverGroupsModel, MakeService
+        response, err = BackendService.discover_backend_groups(DiscoverGroupsModel(auth=MakeService.auth, query=query))
         if err is not None:
             return err
         return response
 
     @staticmethod
-    def upsert_group(sender: GPTAssistantAgent, group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None, locked: bool = None) -> str:
-        from . import UpsertGroupModel, GetGroupModel, GetAgentModel, AgentService
-        backend_group = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
+    def upsert_group(group: str, description: str, agents_to_add: List[str] = None, agents_to_remove: List[str] = None, locked: bool = None) -> str:
+        from . import UpsertGroupModel, GetGroupModel, GetAgentModel, AgentService, MakeService
+        backend_group = GroupService.get_group(GetGroupModel(auth=MakeService.auth, name=group))
         if backend_group:
             if backend_group.locked and (agents_to_add or agents_to_remove or (locked and locked != backend_group.locked) ):
                 return json.dumps({"error": f"Group({group}) is locked, agents cannot be added/removed and locked field cannot be modified"})
@@ -85,7 +81,7 @@ class GroupService:
                 return json.dumps({"error": f"Could not create group: does not have sufficient agents, at least 3 are needed. Current agents proposed: {', '.join(agents_to_add)}"})
             found_term = False
             for agent_name in agents_to_add:
-                agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
+                agent = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=agent_name))
                 if agent is None:
                     return json.dumps({"error": f"Could not get agent: {agent_name}"})
                 if agent.capability & TERMINATE:
@@ -94,7 +90,7 @@ class GroupService:
             if not found_term:
                 return json.dumps({"error": f"Could not create group: does not have someone who can TERMINATE the group. Current agents proposed: {', '.join(agents_to_add)}"})
         group_managers, err = GroupService.upsert_groups([UpsertGroupModel(
-            auth=sender.auth,
+            auth=MakeService.auth,
             name=group,
             description=description,
             agents_to_add=agents_to_add,
@@ -107,23 +103,21 @@ class GroupService:
 
 
     @staticmethod
-    def terminate_group(sender: GPTAssistantAgent, group: str, rating: int) -> str:
-        from . import GetGroupModel, BackendService, UpdateComms
-        if sender is None:
-            return json.dumps({"error": "Could not send message: sender not found"})
-        group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=group))
+    def terminate_group(exit_response: str, group: str, rating: int) -> str:
+        from . import GetGroupModel, BackendService, UpdateComms, MakeService
+        group_obj = GroupService.get_group(GetGroupModel(auth=MakeService.auth, name=group))
         if group_obj is None:
             return json.dumps({"error": f"Could not send message: group({group}) not found"})
         if not group_obj.running:
             return json.dumps({"error": f"Could not terminate group({group}): group is currently not running, perhaps already terminated."})
 
         if group_obj.dependent:
-            group_obj.dependent.exit_response = group_obj.last_message(sender)
+            group_obj.dependent.exit_response = exit_response
             if rating >= 7:
                 # Increment the communication stats
                 group_obj.dependent.outgoing[group_obj.name] = group_obj.dependent.outgoing.get(group_obj.name, 0) + 1
                 group_obj.incoming[group_obj.dependent.name] = group_obj.incoming.get(group_obj.dependent.name, 0) + 1
-                err = BackendService.update_communication_stats(UpdateComms(auth=sender.auth, 
+                err = BackendService.update_communication_stats(UpdateComms(auth=MakeService.auth, 
                                                                             sender=group_obj.dependent.name, 
                                                                             receiver=group_obj.name))
                 if err:
@@ -133,18 +127,16 @@ class GroupService:
         group_obj.running = False
         return json.dumps({"response": f"Group({group}) terminating!"})
 
-    def send_message_to_group(sender: GPTAssistantAgent, from_group: str, to_group: str, message: str) -> str:
-        from . import GetGroupModel
-        if sender is None:
-            return json.dumps({"error": "Could not send message: sender not found"})
+    def send_message_to_group(from_group: str, to_group: str, message: str) -> str:
+        from . import GetGroupModel, MakeService
         if from_group == to_group:
             return json.dumps({"error": "Could not send message: cannot send message to the same group you are sending from"})
-        from_group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=from_group))
+        from_group_obj = GroupService.get_group(GetGroupModel(auth=MakeService.auth, name=from_group))
         if from_group_obj is None:
             return json.dumps({"error": f"Could not send message: from_group({from_group}) not found"})
         if not from_group_obj.running:
             return json.dumps({"error": f"Could not send message: from_group({from_group}) is not running"})
-        to_group_obj = GroupService.get_group(GetGroupModel(auth=sender.auth, name=to_group))
+        to_group_obj = GroupService.get_group(GetGroupModel(auth=MakeService.auth, name=to_group))
         if to_group_obj is None:
             return json.dumps({"error": f"Could not send message: to_group({to_group}) not found"})
         if to_group_obj.running:
@@ -157,15 +149,15 @@ class GroupService:
         from_group_obj.tasking = to_group_obj
         from_group_obj.running = False
         to_group_obj.running = True
-        from_group_obj.tasking_message = f'{sender.name} (to {to_group}):\n{message}'
+        from_group_obj.tasking_message = f'{from_group} (to {to_group}):\n{message}'
         return json.dumps({"response": f"Message sent from group ({from_group}) to group ({to_group})!"})
     
     @staticmethod
     def _create_group(backend_group):
-        from . import GetAgentModel, AgentService
+        from . import GetAgentModel, AgentService, MakeService
         group_agents = []
         for agent_name in backend_group.agent_names:
-            agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
+            agent = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=agent_name))
             if agent is None:
                 return None, json.dumps({"error": f"Could not get group agent: {agent_name}"})
             group_agents.append(agent)
@@ -178,7 +170,7 @@ class GroupService:
         return GroupChatManager(
                 groupchat=groupchat,
                 name=backend_group.name,
-                llm_config={"api_key": backend_group.auth.api_key}
+                llm_config={"api_key": MakeService.auth.api_key}
             ), None
 
     @staticmethod
@@ -191,7 +183,7 @@ class GroupService:
         agent_names = group.agent_names
         for agent_name in backend_group.agent_names:
             if agent_name not in agent_names:
-                agent = AgentService.get_agent(GetAgentModel(auth=backend_group.auth, name=agent_name))
+                agent = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=agent_name))
                 if agent is None:
                     return None, json.dumps({"error": f"Could not get group agent: {agent_name}"})
                 group.groupchat.agents.append(agent)
@@ -208,7 +200,6 @@ class GroupService:
         group.incoming = backend_group.incoming
         group.outgoing = backend_group.outgoing
         group.locked = backend_group.locked
-        group.auth = backend_group.auth
         MakeService.GROUP_REGISTRY[group.name] = group
         return group, None
 
@@ -221,7 +212,7 @@ class GroupService:
             return None, err
 
         # Step 2: Retrieve all groups from backend in batch
-        get_group_models = [GetGroupModel(auth=model.auth, name=model.name) for model in upsert_models]
+        get_group_models = [GetGroupModel(auth=MakeService.auth, name=model.name) for model in upsert_models]
         backend_groups, err = BackendService.get_backend_groups(get_group_models)
         if err:
             return None, err
@@ -254,12 +245,13 @@ class GroupService:
 
     @staticmethod
     def _generate_communication_stats_text(group_manager: GroupChatManager) -> str:
+        from . import MakeService
         incoming_communications = "\n".join(
-            f"- Group Name: {group_name}: {count} message(s), Group Description: {GroupService._get_short_group_description(group_name, group_manager.auth)}"
+            f"- Group Name: {group_name}: {count} message(s), Group Description: {GroupService._get_short_group_description(group_name, MakeService.auth)}"
             for group_name, count in group_manager.incoming.items()
         )
         outgoing_communications = "\n".join(
-            f"- Group Name: {group_name}: {count} message(s), Group Description: {GroupService._get_short_group_description(group_name, group_manager.auth)}"
+            f"- Group Name: {group_name}: {count} message(s), Group Description: {GroupService._get_short_group_description(group_name, MakeService.auth)}"
             for group_name, count in group_manager.outgoing.items()
         )
 

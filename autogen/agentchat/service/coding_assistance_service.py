@@ -21,11 +21,9 @@ class CodingAssistantService:
         return coding_assistant
     
     @staticmethod
-    def get_coding_assistant_info(sender: GPTAssistantAgent, repository_name: str) -> str:
+    def get_coding_assistant_info(repository_name: str) -> str:
         from . import MakeService, CodingAssistantInfo, GetCodingAssistantModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        backend_coding_assistant = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=sender.auth, repository_name=repository_name))
+        backend_coding_assistant = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, repository_name=repository_name))
         if not backend_coding_assistant:
             return json.dumps({"error": f"Coding assistant(repository name: {repository_name}) not found"})
         group_description = MakeService._get_short_description(backend_coding_assistant.description)
@@ -47,18 +45,15 @@ class CodingAssistantService:
         return json.dumps({"response": backend_coding_assistant_info.dict()})
 
     @staticmethod
-    def discover_coding_assistants(sender: GPTAssistantAgent, query: str) -> str:
-        from . import BackendService, DiscoverCodingAssistantModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        response, err = BackendService.discover_backend_coding_assistants(DiscoverCodingAssistantModel(auth=sender.auth, query=query))
+    def discover_coding_assistants(query: str) -> str:
+        from . import BackendService, DiscoverCodingAssistantModel, MakeService
+        response, err = BackendService.discover_backend_coding_assistants(DiscoverCodingAssistantModel(auth=MakeService.auth, query=query))
         if err is not None:
             return err
         return response
 
     @staticmethod
     def upsert_coding_assistant(
-        sender: GPTAssistantAgent,
         repository_name: str,
         description: Optional[str] = None,
         github_auth_token: Optional[str] = None,
@@ -68,9 +63,9 @@ class CodingAssistantService:
         map_tokens: Optional[int] = None,
         verbose: Optional[bool] = None,
     ) -> str:
-        from . import UpsertCodingAssistantModel
+        from . import UpsertCodingAssistantModel, MakeService
         coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-            auth=sender.auth,
+            auth=MakeService.auth,
             repository_name=repository_name,
             description=description,
             github_auth_token=github_auth_token,
@@ -91,7 +86,6 @@ class CodingAssistantService:
         if err is not None:
             return None, err
         coding_assistant.description = backend_coding_assistant.description
-        coding_assistant.auth = backend_coding_assistant.auth
         coding_assistant.model = backend_coding_assistant.model
         coding_assistant.github_auth_token = backend_coding_assistant.github_auth_token
         coding_assistant.repository_name = backend_coding_assistant.repository_name
@@ -107,7 +101,7 @@ class CodingAssistantService:
             return None, err
 
         # Step 2: Retrieve all coding assistants from backend in batch
-        get_coding_assistant_models = [GetCodingAssistantModel(auth=model.auth, repository_name=model.repository_name) for model in upsert_models]
+        get_coding_assistant_models = [GetCodingAssistantModel(auth=MakeService.auth, repository_name=model.repository_name) for model in upsert_models]
         backend_coding_assistants, err = BackendService.get_backend_coding_assistants(get_coding_assistant_models)
         if err:
             return None, err
@@ -164,10 +158,11 @@ class CodingAssistantService:
 
     @staticmethod
     def _create_coding_assistant(backend_coding_assistant):
+        from . import MakeService
         coder = None
         try:
             io = InputOutput(pretty=False, yes=True, input_history_file=f".aider.input.history-{backend_coding_assistant.repository_name}", chat_history_file=f".aider.chat.history-{backend_coding_assistant.repository_name}.md")
-            client = OpenAI(api_key=backend_coding_assistant.auth.api_key)
+            client = OpenAI(api_key=MakeService.auth.api_key)
             main_model = models.Model.create(backend_coding_assistant.model or "gpt-4-1106-preview", client)
             coder = Coder.create(
                 main_model=main_model,
@@ -189,7 +184,6 @@ class CodingAssistantService:
 
     @staticmethod
     def send_message_to_coding_assistant(
-        sender: GPTAssistantAgent,
         repository_name: str,
         command_pull_request: Optional[bool] = None,
         command_apply: Optional[str] = None,
@@ -204,8 +198,8 @@ class CodingAssistantService:
         command_diff: Optional[bool] = None,
         command_git_command: Optional[str] = None
     ) -> str:
-        from . import GetCodingAssistantModel, UpsertCodingAssistantModel
-        coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=sender.auth, repository_name=repository_name))
+        from . import GetCodingAssistantModel, UpsertCodingAssistantModel, MakeService
+        coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, repository_name=repository_name))
         if coder is None:
             return json.dumps({"error": f"Could not send message to coding_assistant: repository_name({repository_name}) does not exist."})
         coder.io.console.begin_capture()
@@ -214,7 +208,7 @@ class CodingAssistantService:
             coder.commands.cmd_add(command_add)
             cmd = 'add'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-                auth=sender.auth,
+                auth=MakeService.auth,
                 repository_name=repository_name,
                 files=coder.abs_fnames
             )])
@@ -224,7 +218,7 @@ class CodingAssistantService:
             coder.commands.cmd_drop(command_drop)
             cmd = 'drop'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-                auth=sender.auth,
+                auth=MakeService.auth,
                 repository_name=repository_name,
                 files=coder.abs_fnames
             )])
@@ -246,7 +240,7 @@ class CodingAssistantService:
             coder.commands.cmd_diff(None)
             cmd = 'diff'
         elif command_pull_request:
-            pr_title = f"Feature: Adding new features by agent: {sender.name}"
+            pr_title = "Feature: Adding new features by agent"
             pr_body = coder.description
             return CodingAssistantService.create_github_pull_request(coder.github_auth, 
                                                                      repository_name, 

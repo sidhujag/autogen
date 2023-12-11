@@ -75,25 +75,21 @@ Group Stats: {group_stats}
         return agent
 
     @staticmethod
-    def discover_agents(sender: GPTAssistantAgent, query: str, category: str = None) -> str:
-        from . import BackendService, DiscoverAgentsModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        response, err = BackendService.discover_backend_agents(DiscoverAgentsModel(auth=sender.auth, query=query,category=category))
+    def discover_agents(query: str, category: str = None) -> str:
+        from . import BackendService, DiscoverAgentsModel, MakeService
+        response, err = BackendService.discover_backend_agents(DiscoverAgentsModel(auth=MakeService.auth, query=query,category=category))
         if err is not None:
             return err
         return response
 
     @staticmethod
-    def get_agent_info(sender: GPTAssistantAgent, name: str) -> str:
+    def get_agent_info(name: str) -> str:
         from . import GetAgentModel, AgentService, MakeService, FunctionsService, GetFunctionModel, AgentInfo, FunctionInfo
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
+        agent = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=name))
         if agent is None:
             return json.dumps({"error": f"Agent({name}) not found"})
 
-        function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in agent.function_names]
+        function_models = [GetFunctionModel(auth=MakeService.auth, name=function_name) for function_name in agent.function_names]
         functions = FunctionsService.get_functions(function_models)
 
         # Convert BaseFunction objects to FunctionInfo objects
@@ -111,27 +107,24 @@ Group Stats: {group_stats}
 
     
     @staticmethod
-    def upsert_agent(sender: GPTAssistantAgent, name: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
-        from . import UpsertAgentModel, INFO, GetAgentModel, FunctionsService, GetFunctionModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        print(f'upserting agent sender {sender.name}')
-        agent = AgentService.get_agent(GetAgentModel(auth=sender.auth, name=name))
+    def upsert_agent(agent: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
+        from . import UpsertAgentModel, INFO, GetAgentModel, FunctionsService, GetFunctionModel, MakeService
+        agent_obj = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=agent))
         id = None
         created_assistant = False
         if agent is None:
             created_assistant = True
             # place holder to get assistant id
-            openai_assistant = sender.openai_client.beta.assistants.create(
-                name=name,
+            openai_assistant = MakeService.openai_client.beta.assistants.create(
+                name=agent,
                 instructions="",
                 tools=[],
                 model="gpt-4-1106-preview",
             )
             id = openai_assistant.id
         else:
-            id = agent._openai_assistant.id
-        function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in functions_to_add]
+            id = agent_obj._openai_assistant.id
+        function_models = [GetFunctionModel(auth=MakeService.auth, name=function_name) for function_name in functions_to_add]
         functions = FunctionsService.get_functions(function_models)
         if not functions and functions_to_add:
             return json.dumps({"error": "Functions you are trying to add are not found"})
@@ -141,11 +134,11 @@ Group Stats: {group_stats}
         for function_to_add in functions_to_add:
             if function_to_add not in retrieved_function_names:
                 if created_assistant:
-                    sender.openai_client.beta.assistants.delete(assistant_id=id)
+                    MakeService.openai_client.beta.assistants.delete(assistant_id=id)
                 return json.dumps({"error": f"Function({function_to_add}) not found"})
-        agent, err = AgentService.upsert_agents([UpsertAgentModel(
-            auth=sender.auth,
-            name=name,
+        agent_obj, err = AgentService.upsert_agents([UpsertAgentModel(
+            auth=MakeService.auth,
+            name=agent,
             description=description,
             system_message=custom_instructions,
             functions_to_add=functions_to_add,
@@ -156,15 +149,13 @@ Group Stats: {group_stats}
         )])
         if err is not None:
             if created_assistant:
-                sender.openai_client.beta.assistants.delete(assistant_id=id)
+                MakeService.openai_client.beta.assistants.delete(assistant_id=id)
             return err
-        return json.dumps({"response": f"Agent({name}) upserted!"})
+        return json.dumps({"response": f"Agent({agent}) upserted!"})
 
     @staticmethod
-    def upload_file(sender: GPTAssistantAgent, description: str, data_or_url: str) -> str:
-        from . import UpsertAgentModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
+    def upload_file(agent: str, description: str, data_or_url: str) -> str:
+        from . import UpsertAgentModel, MakeService
 
         # Step 1: Download the file if `data_or_url` is a URL
         if data_or_url.startswith('http://') or data_or_url.startswith('https://'):
@@ -176,16 +167,16 @@ Group Stats: {group_stats}
             file_data = data_or_url
 
         # Step 2: Upload the file to OpenAI
-        response = sender.openai_client.files.upload(file=file_data, purpose='assistants')
+        response = MakeService.openai_client.files.upload(file=file_data, purpose='assistants')
         if 'id' not in response:
             return json.dumps({"error": "Failed to upload the file to OpenAI"})
 
         file_id = response['id']
 
         # Step 3: Update the agent's record to include the new file_id
-        agent, err = AgentService.upsert_agents([UpsertAgentModel(
-            auth=sender.auth,
-            name=sender.name,
+        agent_obj, err = AgentService.upsert_agents([UpsertAgentModel(
+            auth=MakeService.auth,
+            name=agent,
             files_to_add={file_id: description}
         )])
         if err is not None:
@@ -193,16 +184,13 @@ Group Stats: {group_stats}
         return json.dumps({"response": "File uploaded and agent updated successfully!"})
 
     @staticmethod
-    def delete_files(sender: GPTAssistantAgent, file_ids: List[str]) -> str:
-        from . import UpsertAgentModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-
+    def delete_files(agent: str, file_ids: List[str]) -> str:
+        from . import UpsertAgentModel, MakeService
         # Step 1: Delete each file using OpenAI File API
         errors = []
         for file_id in file_ids:
             try:
-                response = sender.openai_client.files.delete(file_id)
+                response = MakeService.openai_client.files.delete(file_id)
                 if 'error' in response:
                     errors.append(f"Failed to delete file {file_id}: {response['error']}")
             except Exception as e:
@@ -214,8 +202,8 @@ Group Stats: {group_stats}
         # Step 2: Update the agent's record to remove the file_ids
         try:
             agent, err = AgentService.upsert_agents([UpsertAgentModel(
-                auth=sender.auth,
-                name=sender.name,
+                auth=MakeService.auth,
+                name=agent,
                 files_to_remove=file_ids
             )])
             if err is not None:
@@ -226,13 +214,11 @@ Group Stats: {group_stats}
         return json.dumps({"response": "Files deleted and agent updated successfully!"})
 
     @staticmethod
-    def get_file_content(sender: GPTAssistantAgent, file_id: str) -> str:
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-
+    def get_file_content(file_id: str) -> str:
+        from . import MakeService
         try:
             # Use the OpenAI client to retrieve the file content directly
-            api_response = sender.openai_client.files.with_raw_response.retrieve_content(file_id)
+            api_response = MakeService.openai_client.files.with_raw_response.retrieve_content(file_id)
             
             # Check if the request was successful
             if api_response.status_code == 200:
@@ -286,7 +272,8 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _create_agent(backend_agent) -> GPTAssistantAgent:
-        llm_config = {"api_key": backend_agent.auth.api_key, "assistant_id": backend_agent.assistant_id}
+        from . import MakeService
+        llm_config = {"api_key": MakeService.auth.api_key, "assistant_id": backend_agent.assistant_id}
         agent = GPTAssistantAgent(
                 name=backend_agent.name,
                 default_auto_reply=backend_agent.default_auto_reply,
@@ -295,12 +282,11 @@ Group Stats: {group_stats}
                 llm_config=llm_config,
                 human_input_mode=backend_agent.human_input_mode,
             )
-        agent.auth = backend_agent.auth
         return agent
 
     @staticmethod
     def update_agent(agent, backend_agent):
-        from . import FunctionsService, AddFunctionModel, GetFunctionModel
+        from . import FunctionsService, GetFunctionModel, MakeService, AddFunctionModel
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
@@ -308,7 +294,7 @@ Group Stats: {group_stats}
         agent.function_names = backend_agent.function_names
         AgentService._update_capability(agent)
         if backend_agent.function_names:
-            function_models = [GetFunctionModel(auth=agent.auth, name=function_name) for function_name in backend_agent.function_names]
+            function_models = [GetFunctionModel(auth=MakeService.auth, name=function_name) for function_name in backend_agent.function_names]
             functions = FunctionsService.get_functions(function_models)
 
             # Create a set of function names for easy lookup
@@ -321,7 +307,7 @@ Group Stats: {group_stats}
 
             for function in functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=agent.auth))
-        agent._openai_assistant = agent.openai_client.beta.assistants.update(
+        agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
             description=agent.description,
@@ -332,7 +318,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def make_agent(backend_agent):
-        from . import FunctionsService, AddFunctionModel, GetFunctionModel
+        from . import FunctionsService, GetFunctionModel, MakeService, AddFunctionModel
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
@@ -343,7 +329,7 @@ Group Stats: {group_stats}
         agent.function_names = backend_agent.function_names
         AgentService._update_capability(agent)
         if backend_agent.function_names:
-            function_models = [GetFunctionModel(auth=agent.auth, name=function_name) for function_name in backend_agent.function_names]
+            function_models = [GetFunctionModel(auth=MakeService.auth, name=function_name) for function_name in backend_agent.function_names]
             functions = FunctionsService.get_functions(function_models)
 
             # Create a set of function names for easy lookup
@@ -356,7 +342,7 @@ Group Stats: {group_stats}
 
             for function in functions:
                 FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict(), auth=agent.auth))
-        agent._openai_assistant = agent.openai_client.beta.assistants.update(
+        agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
             description=agent.description,
@@ -374,7 +360,7 @@ Group Stats: {group_stats}
             return None, err
 
         # Step 2: Retrieve all agents from backend in batch
-        get_agent_models = [GetAgentModel(auth=model.auth, name=model.name) for model in upsert_models]
+        get_agent_models = [GetAgentModel(auth=MakeService.auth, name=model.name) for model in upsert_models]
         backend_agents, err = BackendService.get_backend_agents(get_agent_models)
         if err:
             return None, err

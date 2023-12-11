@@ -10,7 +10,7 @@ from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service.function_specs import external_function_specs
 from autogen.agentchat.service.agent_models import external_agent_models
 from autogen.agentchat.service.group_models import external_group_models
-from autogen.agentchat.service import FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE
+from autogen.agentchat.service import MakeService, FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE
 from typing import List
 app = FastAPI()
 
@@ -26,16 +26,12 @@ class QueryModel(BaseModel):
     query: str
 
 def upsert_external_agents(agent_models, auth, client):
-    for agent_model in agent_models:
-        agent_model.auth = auth
     agents, err = upsert_agents(agent_models, auth, client)
     if err is not None:
         print(f'Could not upsert external agents err: {err}')
     return agents, None
 
 def upsert_external_groups(group_models, auth):
-    for group_model in group_models:
-        group_model.auth = auth
     groups, err = GroupService.upsert_groups(group_models)
     if err is not None:
         print(f'Error creating groups {err}')
@@ -81,7 +77,8 @@ def upsert_agents(models, auth, client):
 def query(input: QueryModel):
     oai_wrapper = OpenAIWrapper(api_key=input.auth.api_key)
     openai_client = oai_wrapper._clients[0]
-            
+    MakeService.auth = input.auth
+    MakeService.openai_client = openai_client           
     user_model = UpsertAgentModel(
         name="user_proxy",
         auth=input.auth,

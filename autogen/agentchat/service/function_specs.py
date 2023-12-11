@@ -31,6 +31,10 @@ terminate_group_spec = {
     "parameters": {
         "type": "object",
         "properties": {
+             "exit_response": {
+                "type": "string",
+                "description": "Message when terminating group. Includes all important points the caller may care about. Assume caller has no context of what happened within your group."
+            },
             "group": {
                 "type": "string",
                 "description": "Group to terminate. Most of the time this is the group you are in that you are terminating."
@@ -40,7 +44,7 @@ terminate_group_spec = {
                 "description": "Grading for the group like a teacher would grade. On a scale of 10 how well did the group complete the task it was assigned with by another group. 0 - fail, 5 - improvements needed, 7 - satisfactory, 10 - exceptional."
             },
         },
-        "required": ["group", "rating"]
+        "required": ["exit_response", "group", "rating"]
     }
 }
 
@@ -142,9 +146,9 @@ upsert_agent = {
     "parameters": {
         "type": "object",
         "properties": {
-            "name": {
+            "agent": {
                 "type": "string",
-                "description": "Identifier for the agent."
+                "description": "Identifying name for the agent."
             },
             "description": {
                 "type": "string",
@@ -182,7 +186,7 @@ upsert_agent = {
                                 "MANAGEMENT = modify agents/groups, send messages to groups. Broad managements responsibilties.")
             }
         },
-        "required": ["name"]
+        "required": ["agent"]
     }
 }
 
@@ -333,6 +337,10 @@ upload_file_spec = {
     "parameters": {
         "type": "object",
         "properties": {
+            "agent": {
+                "type": "string",
+                "description": "Agent name. Agent to add file to."
+            },
             "description": {
                 "type": "string",
                 "description": "Description of the file."
@@ -342,7 +350,7 @@ upload_file_spec = {
                 "description": "File data or URL for download."
             }
         },
-        "required": ["description", "data_or_url"]
+        "required": ["agent", "description", "data_or_url"]
     }
 }
 
@@ -355,13 +363,17 @@ delete_files_spec = {
     "parameters": {
         "type": "object",
         "properties": {
+            "agent": {
+                "type": "string",
+                "description": "Agent name. Agent to delete file from."
+            },
             "file_ids": {
                 "type": "array",
                 "items": {"type": "string"},
                 "description": "IDs of files to delete."
             }
         },
-        "required": ["file_ids"]
+        "required": ["agent", "file_ids"]
     }
 }
 

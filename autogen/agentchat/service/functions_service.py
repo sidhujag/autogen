@@ -38,19 +38,16 @@ class FunctionsService:
         return functions
 
     @staticmethod
-    def test_function(sender: GPTAssistantAgent, function_name: str, params: Dict[str, Any]) -> str:
-        from . import GetFunctionModel, OpenAIParameter
+    def test_function(function_name: str, params: Dict[str, Any]) -> str:
+        from . import GetFunctionModel, OpenAIParameter, MakeService
         try:
             # Validate parameters
             OpenAIParameter(**params)
         except ValidationError as e:
             return json.dumps({"error": f"Validation error for params: {str(e)}"})
 
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-
         # Retrieve the function
-        function = FunctionsService.get_functions([GetFunctionModel(auth=sender.auth, name=function_name)])
+        function = FunctionsService.get_functions([GetFunctionModel(auth=MakeService.auth, name=function_name)])
         if not function:
             return json.dumps({"error": f"Function({function_name}) not found"})
 
@@ -66,11 +63,11 @@ class FunctionsService:
             return json.dumps({"error": f"Error executing function: {str(e)}"})
 
     @staticmethod
-    def discover_functions(sender: GPTAssistantAgent, category: str, query: str = None) -> str:
-        from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel
+    def discover_functions(category: str, query: str = None) -> str:
+        from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel, MakeService
 
         # Fetch the functions from the backend service
-        response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=sender.auth, query=query, category=category))
+        response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=MakeService.auth, query=query, category=category))
         if err is not None:
             return err
 
@@ -84,7 +81,7 @@ class FunctionsService:
         function_names = [func['name'] for func in response]
 
         # Prepare GetFunctionModel instances for each function name
-        function_models = [GetFunctionModel(auth=sender.auth, name=function_name) for function_name in function_names]
+        function_models = [GetFunctionModel(auth=MakeService.auth, name=function_name) for function_name in function_names]
 
         # Retrieve function statuses
         functions = FunctionsService.get_functions(function_models)
@@ -101,11 +98,9 @@ class FunctionsService:
 
     
     @staticmethod
-    def get_function_info(sender: GPTAssistantAgent, name: str) -> str:
-        from . import GetFunctionModel
-        if sender is None:
-            return json.dumps({"error": "Sender not found"})
-        function = FunctionsService.get_functions([GetFunctionModel(auth=sender.auth, name=name)])
+    def get_function_info(name: str) -> str:
+        from . import GetFunctionModel, MakeService
+        function = FunctionsService.get_functions([GetFunctionModel(auth=MakeService.auth, name=name)])
         if not function:
             return json.dumps({"error": f"Function({name}) not found"})
         return json.dumps({"response": function[0].dict()})
@@ -186,7 +181,7 @@ class FunctionsService:
                         # If method is not async, register it directly
                         agent.register_function(
                             function_map={
-                                function_model.name: lambda sender, **args: method(sender, **args)
+                                function_model.name: lambda **args: method(**args)
                             }
                         )
                 else:
@@ -230,8 +225,8 @@ class FunctionsService:
             return json.dumps({"error": f"The '{field}' field must be a dictonary."})
 
     @staticmethod
-    def _create_function_model(agent: GPTAssistantAgent, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
-        from . import AddFunctionModel
+    def _create_function_model(agent: str, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
+        from . import AddFunctionModel, MakeService
         # for now only validate parameters through JSON string field, add to this list if other fields come up
         for field in ['parameters']:
             error_message = FunctionsService._load_json_field(func_spec, field)
@@ -239,17 +234,17 @@ class FunctionsService:
                 return None, error_message
 
         try:
-            function_model = AddFunctionModel(**func_spec, auth=agent.auth)
+            function_model = AddFunctionModel(**func_spec, auth=MakeService.auth)
             if function_model.function_code:
-                function_model.last_updater = agent.name
+                function_model.last_updater = agent
             return function_model, None
         except ValidationError as e:
             return None, json.dumps({"error": f"Validation error when defining function {func_spec.get('name', '')}: {str(e)}"})
 
     @staticmethod
-    def upsert_function(sender: GPTAssistantAgent, **kwargs: Any) -> str:
+    def upsert_function(agent: str, **kwargs: Any) -> str:
         from . import BackendService, AgentService, UpsertAgentModel, MakeService
-        function_model, error_message = FunctionsService._create_function_model(sender, kwargs)
+        function_model, error_message = FunctionsService._create_function_model(agent, kwargs)
         if error_message:
             return error_message
         err = BackendService.upsert_backend_functions([function_model])
@@ -257,8 +252,8 @@ class FunctionsService:
             return err
         # update the agent to have the function so it can use it
         agent_upserted, err = AgentService.upsert_agents([UpsertAgentModel(
-            auth=sender.auth,
-            name=sender.name,
+            auth=MakeService.auth,
+            name=agent,
             functions_to_add=[function_model.name],
         )])
         if err is not None:
