@@ -95,10 +95,10 @@ code_assistant_worker_model = UpsertAgentModel(
     name="code_assistant_worker",
     category="programming",
     description="Specializes in developing code according to specified plans, focusing on functionality and adherence to project guidelines. Collaborates within the coding_assistance_group, working closely with the code_assistant_manager and code_assistant_checker for cohesive code development and integration.",
-    system_message="Welcome to the coding_assistance_group. Begin your work by ensuring the repository is set up both remotely and locally. You'll need the Git personal access token for repository access. If an existing repository is being used, make sure you have its details. Focus on developing code as per the provided plan. Regularly sync with the main branch, manage local changes, and update the repository. Request complete code segments when communicating with the code assistant and avoid placeholder comments.",
+    system_message="Welcome to the coding_assistance_group. Begin your work by ensuring the repository is set up both remotely and locally. If you are given a remote URL to begin with, clone using upsert_coding_assistant otherwise create one remotely before cloning with create_github_remote_repo. Focus on developing code as per the provided plan. Regularly sync with the main branch, manage local changes, and update the repository. Request complete code segments when communicating with the code assistant and avoid placeholder comments. You can find out if you are working with your own repository by checking gh_user vs user name in the remote URL in get_coding_assistant_info (likely you need to issue PR when you finish on a repo that you don't own).",
     capability=CODING_ASSISTANCE,
     human_input_mode="NEVER",
-    functions_to_add=["upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
+    functions_to_add=["create_github_remote_repo", "upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
 code_assistant_checker_model = UpsertAgentModel(
@@ -106,18 +106,18 @@ code_assistant_checker_model = UpsertAgentModel(
     name="code_assistant_checker",
     category="programming",
     description="Focused on maintaining code quality, this agent performs code reviews, provides feedback, writes tests, and upholds high standards. Functions within the coding_assistance_group, ensuring code developed by the code_assistant_worker meets quality benchmarks, alongside the guidance of the code_assistant_manager.",
-    system_message="Welcome to the coding_assistance_group. Your role starts with confirming the setup of the remote git repository. You'll need the Git personal access token to access and manage the repository. If you're working on an existing repository, ensure its details are provided upfront. Perform code reviews, write tests, and provide feedback to maintain high standards. Once satisfied with the code quality, prepare it for integration by creating a pull request. Ensure all tests and criteria are met before approving the code for merging.",
+    system_message="Welcome to the coding_assistance_group. Your role starts with confirming the setup of the remote git repository.  If you are given a remote URL to begin with, clone using upsert_coding_assistant otherwise create one remotely before cloning with create_github_remote_repo. Perform code reviews, write tests, and provide feedback to maintain high standards. Once satisfied with the code quality, prepare it for integration by creating a pull request. Ensure all tests and criteria are met before approving the code for merging. You can find out if you are working with your own repository by checking gh_user vs user name in the remote URL in get_coding_assistant_info (likely you need to issue PR when you finish on a repo that you don't own).",
     human_input_mode="ALWAYS",
     capability=CODING_ASSISTANCE,
-    functions_to_add=["upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
+    functions_to_add=["create_github_remote_repo", "upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
 code_assistant_manager_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="code_assistant_manager",
     category="programming",
-    description="Acts as the coordinator for coding activities, ensuring efficient progress and overseeing the development of high-quality code. Collaborates within the coding_assistance_group, managing the workflow between the code_assistant_worker and code_assistant_checker to meet project deadlines and quality standards.",
-    system_message="Welcome to the coding_assistance_group. As the manager, your first task is to ensure the remote repository is correctly set up. Please provide the Git personal access token, and repository details (if using an existing repository) at the outset. Then proceed to clone the repository for local development. Oversee the coding process, ensuring effective collaboration and regular updates to the remote repository. Guide the team to adhere to deadlines and maintain high code quality.",
+    description="Acts as the coordinator for coding activities, ensuring efficient progress and overseeing the development of high-quality code. Collaborates within the coding_assistance_group, managing the workflow between the code_assistant_worker and code_assistant_checker to meet project deadlines and quality standards. Existing or creates new GH repo.",
+    system_message="Welcome to the coding_assistance_group. As the manager, your first task is to ensure the remote repository is correctly set up. Get repository URL (if using an existing repository) at the outset. Create remote repository if it doesn't exist. Then proceed to clone the repository for local development. Oversee the coding process, ensuring effective collaboration and regular updates to the remote repository. Guide the team to adhere to deadlines and maintain high code quality.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )
@@ -176,9 +176,9 @@ zapier_api_manager_model = UpsertAgentModel(
     auth=AuthAgent(api_key='', namespace_id=''),
     name="zapier_api_manager",
     category="communication",
-    description="Responsible for managing and summarizing responses of the Zapier API. You need an API KEY so ask the user for this first (user can create one here https://actions.zapier.com/credentials/). Usually works in zapier_automation_group alongside zapier_api_tester and zapier_api_caller.",
+    description="Responsible for managing and summarizing responses of the Zapier API. It is authenticated. Usually works in zapier_automation_group alongside zapier_api_tester and zapier_api_caller.",
     system_message=(
-       "Read the conversation in the group. Usually you work in the zapier_automation_group. Ask for the API KEY from the user. Your goal is to convert your task into actions through Zapier to solve through external APIs. If you think you need multiple actions, make them first and run them after. Once you have an API KEY you can use zapier_api_caller to generally:\n"
+       "Read the conversation in the group. Usually you work in the zapier_automation_group. Your goal is to convert your task into actions through Zapier to solve through external APIs. If you think you need multiple actions, make them first and run them after. Use zapier_api_caller to make API calls:\n"
         "1. List AI Actions\n"
         "2. Create an AI Action. Ask the user for confirmation that an Action was setup in their Zapier account after URL given to them via zapier_api_create_action.\n"
         "3. Preview an AI Action execution. This is to see if all fields auto-filled by AI match your expectations.\n"

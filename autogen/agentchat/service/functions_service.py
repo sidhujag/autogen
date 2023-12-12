@@ -170,8 +170,8 @@ class FunctionsService:
                 if method is not None:
                     if asyncio.coroutines.iscoroutinefunction(method):
                         # If method is async, define a wrapper to run it synchronously
-                        def sync_wrapper(sender, **args):
-                            return asyncio.run(method(sender, **args))
+                        def sync_wrapper(**args):
+                            return asyncio.run(method(**args))
                         agent.register_function(
                             function_map={
                                 function_model.name: sync_wrapper

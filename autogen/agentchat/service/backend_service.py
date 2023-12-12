@@ -8,6 +8,9 @@ AUTOGEN_BACKEND = "127.0.0.1:8001"
 
 class AuthAgent(BaseModel):
     api_key: str
+    zapier_api_key: str
+    gh_pat: str
+    gh_user: str
     namespace_id: str
 
 class DeleteAgentModel(BaseModel):
@@ -27,7 +30,7 @@ class GetFunctionModel(BaseModel):
     auth: AuthAgent
     
 class GetCodingAssistantModel(BaseModel):
-    repository_name: str
+    gh_remote_url: str
     auth: AuthAgent
 
 class DiscoverAgentsModel(BaseModel):
@@ -72,10 +75,9 @@ class UpsertGroupModel(BaseModel):
     locked: Optional[bool] = None
 
 class UpsertCodingAssistantModel(BaseModel):
-    repository_name: str
+    gh_remote_url: str
     auth: AuthAgent
     description: Optional[str] = None
-    github_auth_token: Optional[str] = None
     model: Optional[str] = None
     files: Optional[List[str]] = None
     show_diffs: Optional[bool] = None
@@ -136,10 +138,9 @@ class BaseFunction(BaseModel):
     class_name: str = Field(default="")
 
 class BaseCodingAssistant(BaseModel):
-    repository_name: str = Field(default="")
+    gh_remote_url: str = Field(default="")
     auth: AuthAgent
     description: str = Field(default="")
-    github_auth_token: str = Field(default="")
     model: str = Field(default="")
     files: List[str] = Field(default=[])
     show_diffs: bool = Field(default=False)
@@ -148,7 +149,7 @@ class BaseCodingAssistant(BaseModel):
     verbose: bool = Field(default=False)
 
 class CodingAssistantInfo(BaseModel):
-    repository_name: str = Field(default="")
+    gh_remote_url: str = Field(default="")
     description: str = Field(default="")
     model: str = Field(default="")
     git_dir: str = Field(default="")

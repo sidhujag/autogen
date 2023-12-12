@@ -50,19 +50,23 @@ class ZapierService:
         return headers
 
     @staticmethod
-    def zapier_api_check(sender, APIKEY: str) -> str:
-        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + "/api/v1/check/", method="GET", headers=ZapierService._format_headers(APIKEY)))
+    def zapier_api_check() -> str:
+        from . import MakeService
+        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + "/api/v1/check/", method="GET", headers=ZapierService._format_headers(MakeService.auth.zapier_api_key)))
     
     @staticmethod
-    def zapier_api_get_configuration_link(sender, APIKEY: str) -> str:
-        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + "/api/v1/configuration-link/", method="GET", headers=ZapierService._format_headers(APIKEY)))
+    def zapier_api_get_configuration_link() -> str:
+        from . import MakeService
+        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + "/api/v1/configuration-link/", method="GET", headers=ZapierService._format_headers(MakeService.auth.zapier_api_key)))
     
     @staticmethod
-    def zapier_api_list_exposed_actions(sender, APIKEY: str) -> str:
-        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + "/api/v1/exposed/", method="GET", headers=ZapierService._format_headers(APIKEY)))
+    def zapier_api_list_exposed_actions() -> str:
+        from . import MakeService
+        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + "/api/v1/exposed/", method="GET", headers=ZapierService._format_headers(MakeService.auth.zapier_api_key)))
     
     @staticmethod
-    def zapier_api_execute_action(sender, APIKEY: str, exposed_app_action_id: str, action_parameters: str, preview_only: bool = False) -> str:
+    def zapier_api_execute_action(exposed_app_action_id: str, action_parameters: str, preview_only: bool = False) -> str:
+        from . import MakeService
         try:
             parameters_dict = json.loads(action_parameters)  # Parse the JSON string
         except json.JSONDecodeError:
@@ -70,14 +74,15 @@ class ZapierService:
 
         body = {"preview_only": preview_only, "instructions": "string"}
         body.update(parameters_dict)  # Merge the parameters into the body
-        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + f"/api/v1/exposed/{exposed_app_action_id}/execute/", method="POST", body=body, headers=ZapierService._format_headers(APIKEY)))
+        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + f"/api/v1/exposed/{exposed_app_action_id}/execute/", method="POST", body=body, headers=ZapierService._format_headers(MakeService.auth.zapier_api_key)))
     
     @staticmethod
-    def zapier_api_execute_log(sender, APIKEY: str, execution_log_id: str) -> str:
-        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + f"/api/v1/execution-log/{execution_log_id}/", method="GET", headers=ZapierService._format_headers(APIKEY)))
+    def zapier_api_execute_log(execution_log_id: str) -> str:
+        from . import MakeService
+        return json.dumps(ZapierService.call_api_url(url=ZapierService.base_url + f"/api/v1/execution-log/{execution_log_id}/", method="GET", headers=ZapierService._format_headers(MakeService.auth.zapier_api_key)))
     
     @staticmethod
-    def zapier_api_create_action(sender, configuration_link: str, action_description: str) -> str:
+    def zapier_api_create_action(configuration_link: str, action_description: str) -> str:
         action_url = f'{configuration_link}?setup_action={action_description}'
         return json.dumps({"success": f"Please tell the user to visit this URL to setup the action {action_url}. Then you can list the actions once user confirms to find the ID."})
     

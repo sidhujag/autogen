@@ -1,5 +1,4 @@
 
-from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import Optional
 from aider import models
 from aider.coders import Coder
@@ -11,28 +10,29 @@ class CodingAssistantService:
     @staticmethod
     def get_coding_assistant(coding_assistant_model) -> Coder:
         from . import BackendService, MakeService
-        coding_assistant: Coder = MakeService.CODE_ASSISTANT_REGISTRY.get(coding_assistant_model.repository_name)
+        coding_assistant: Coder = MakeService.CODE_ASSISTANT_REGISTRY.get(coding_assistant_model.gh_remote_url)
         if coding_assistant is None:
             backend_coding_assistants, err = BackendService.get_backend_coding_assistants([coding_assistant_model])
             if err is None and backend_coding_assistants:
                 coding_assistant, err = CodingAssistantService.make_coding_assistant(backend_coding_assistants[0])
                 if err is None and coding_assistant:
-                    MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant_model.repository_name] = coding_assistant
+                    MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant_model.gh_remote_url] = coding_assistant
         return coding_assistant
     
     @staticmethod
-    def get_coding_assistant_info(repository_name: str) -> str:
+    def get_coding_assistant_info(gh_remote_url: str) -> str:
         from . import MakeService, CodingAssistantInfo, GetCodingAssistantModel
-        backend_coding_assistant = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, repository_name=repository_name))
+        backend_coding_assistant = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, gh_remote_url=gh_remote_url))
         if not backend_coding_assistant:
-            return json.dumps({"error": f"Coding assistant(repository name: {repository_name}) not found"})
+            return json.dumps({"error": f"Coding assistant(repository: {gh_remote_url}) not found"})
         group_description = MakeService._get_short_description(backend_coding_assistant.description)
         # Return the JSON representation of the coding_assistants info
         git_dir = None
         if backend_coding_assistant.repo:
             git_dir = backend_coding_assistant.repo.get_rel_repo_dir()
         backend_coding_assistant_info = CodingAssistantInfo(
-            repository_name=backend_coding_assistant.repository_name,
+            gh_remote_url=backend_coding_assistant.gh_remote_url,
+            gh_user=MakeService.auth.gh_user,
             description=group_description,
             files=backend_coding_assistant.abs_fnames,
             git_dir=git_dir,
@@ -53,10 +53,84 @@ class CodingAssistantService:
         return response
 
     @staticmethod
-    def upsert_coding_assistant(
+    def _create_github_repository(token, name, description="", private=False):
+        """
+        Create a new GitHub repository.
+
+        :param token: Personal access token for the GitHub API
+        :param name: Name of the repository
+        :param description: Description of the repository
+        :param private: Boolean indicating whether the repository is private
+        """
+        url = "https://api.github.com/user/repos"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        data = {
+            "name": name,
+            "description": description,
+            "private": private
+        }
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 201:
+            return json.dumps({"response": f"Repository ({name}) created successfully!"})
+        elif response.status_code == 422:
+            return json.dumps({"response": f"Repository ({name}) already exists!"})
+        else:
+            return json.dumps({"error": f"Failed to create repository: {response.json()}"})
+
+    @staticmethod
+    def create_github_remote_repo(
         repository_name: str,
+        description: Optional[str] = "",
+        private: Optional[bool] = False
+    ) -> str:
+        from . import MakeService
+        return CodingAssistantService._create_github_repository(MakeService.auth.gh_pat, repository_name, description, private)
+
+    @staticmethod
+    def _construct_github_remote_url(gh_user, gh_pat, gh_remote_url):
+        """
+        Embed the GitHub username and PAT into the GitHub remote URL.
+
+        :param gh_user: GitHub username
+        :param gh_pat: GitHub Personal Access Token
+        :param gh_remote_url: Original GitHub remote URL
+        :return: GitHub remote URL with embedded username and PAT
+        """
+        # Split the original URL to insert username and PAT
+        url_parts = gh_remote_url.split('://')
+        if len(url_parts) != 2 or not url_parts[1].startswith("github.com"):
+            raise ValueError("Invalid GitHub remote URL")
+
+        # Construct the new URL with username and PAT
+        new_url = f"https://{gh_user}:{gh_pat}@{url_parts[1]}"
+        return new_url
+
+    @staticmethod
+    def _is_repo_cloned(repo, remote_url):
+        """
+        Check if the GitPython Repo object is associated with the given remote URL.
+
+        :param repo: GitPython Repo object
+        :param remote_url: URL of the remote repository to check
+        :return: True if the Repo is cloned from the remote URL, False otherwise
+        """
+        try:
+            for remote in repo.remotes:
+                for url in remote.urls:
+                    if url == remote_url:
+                        return True
+            return False
+        except Exception as e:
+            print(f"Error checking repository remotes: {e}")
+            return False
+
+    @staticmethod
+    def upsert_coding_assistant(
+        gh_remote_url: str,
         description: Optional[str] = None,
-        github_auth_token: Optional[str] = None,
         model: Optional[str] = None,
         show_diffs: Optional[bool] = None,
         dry_run: Optional[bool] = None,
@@ -66,9 +140,8 @@ class CodingAssistantService:
         from . import UpsertCodingAssistantModel, MakeService
         coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
             auth=MakeService.auth,
-            repository_name=repository_name,
+            gh_remote_url=gh_remote_url,
             description=description,
-            github_auth_token=github_auth_token,
             model=model,
             show_diffs=show_diffs,
             dry_run=dry_run,
@@ -77,7 +150,17 @@ class CodingAssistantService:
         )])
         if err is not None:
             return err
-        return json.dumps({"response": f"Coding assistant(repository name: {repository_name}) upserted!"})
+        if not CodingAssistantService._is_repo_cloned(coding_assistants[0].repo):
+            response = CodingAssistantService.execute_git_command(coding_assistants[0], f"clone {gh_remote_url}")
+            if json.loads(response).error:
+                return response
+            remote_auth_url = CodingAssistantService._construct_github_remote_url(MakeService.auth.gh_user, MakeService.auth.gh_pat, gh_remote_url)
+            response = json.loads(CodingAssistantService.execute_git_command(coding_assistants[0], f"remote set-url origin {remote_auth_url}"))
+            if json.loads(response).error:
+                return response
+            return json.dumps({"response": f"Coding assistant(repository: {gh_remote_url}) upserted and repo was cloned locally + authorized using a Personal Access Token."})
+        else:
+            return json.dumps({"response": f"Coding assistant(repository: {gh_remote_url}) upserted! The repository was already cloned successfully."})
 
     @staticmethod
     def make_coding_assistant(backend_coding_assistant):
@@ -87,9 +170,8 @@ class CodingAssistantService:
             return None, err
         coding_assistant.description = backend_coding_assistant.description
         coding_assistant.model = backend_coding_assistant.model
-        coding_assistant.github_auth_token = backend_coding_assistant.github_auth_token
-        coding_assistant.repository_name = backend_coding_assistant.repository_name
-        MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant.repository_name] = coding_assistant
+        coding_assistant.gh_remote_url = backend_coding_assistant.gh_remote_url
+        MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant.gh_remote_url] = coding_assistant
         return coding_assistant, None
 
     @staticmethod
@@ -101,7 +183,7 @@ class CodingAssistantService:
             return None, err
 
         # Step 2: Retrieve all coding assistants from backend in batch
-        get_coding_assistant_models = [GetCodingAssistantModel(auth=MakeService.auth, repository_name=model.repository_name) for model in upsert_models]
+        get_coding_assistant_models = [GetCodingAssistantModel(auth=MakeService.auth, gh_remote_url=model.gh_remote_url) for model in upsert_models]
         backend_coding_assistants, err = BackendService.get_backend_coding_assistants(get_coding_assistant_models)
         if err:
             return None, err
@@ -111,7 +193,7 @@ class CodingAssistantService:
         # Step 3: Update local coding_assistant registry
         successful_coding_assistants = []
         for backend_coding_assistant in backend_coding_assistants:
-            coder = MakeService.CODE_ASSISTANT_REGISTRY.get(backend_coding_assistant.repository_name)
+            coder = MakeService.CODE_ASSISTANT_REGISTRY.get(backend_coding_assistant.gh_remote_url)
             if coder is None:
                 coder, err = CodingAssistantService.make_coding_assistant(backend_coding_assistant)
                 if err is not None:
@@ -157,11 +239,32 @@ class CodingAssistantService:
             return json.dumps({"error": f"Failed to create pull request: {response.content}"})
 
     @staticmethod
+    def _get_repo_name_from_url(remote_url):
+        """
+        Extract the repository name from a GitHub remote URL.
+
+        :param remote_url: The remote URL of the GitHub repository
+        :return: The name of the repository
+        """
+        # Removing the .git part if present
+        if remote_url.endswith('.git'):
+            remote_url = remote_url[:-4]
+
+        # Splitting the URL and extracting the repository name
+        parts = remote_url.split('/')
+        if 'github.com' in remote_url and len(parts) > 1:
+            repo_name = parts[-1]  # The repository name is the last part of the URL
+            return repo_name
+        else:
+            raise ValueError("Invalid GitHub URL")
+
+    @staticmethod
     def _create_coding_assistant(backend_coding_assistant):
         from . import MakeService
         coder = None
         try:
-            io = InputOutput(pretty=False, yes=True, input_history_file=f".aider.input.history-{backend_coding_assistant.repository_name}", chat_history_file=f".aider.chat.history-{backend_coding_assistant.repository_name}.md")
+            repository_name = CodingAssistantService._get_repo_name_from_url(backend_coding_assistant.gh_remote_url)
+            io = InputOutput(pretty=False, yes=True, input_history_file=f".aider.input.history-{repository_name}", chat_history_file=f".aider.chat.history-{repository_name}.md")
             client = OpenAI(api_key=MakeService.auth.api_key)
             main_model = models.Model.create(backend_coding_assistant.model or "gpt-4-1106-preview", client)
             coder = Coder.create(
@@ -172,7 +275,7 @@ class CodingAssistantService:
                 client=client,
                 ##
                 fnames=backend_coding_assistant.files,
-                git_dname=f"coding\{backend_coding_assistant.repository_name}",
+                git_dname=f"coding\{repository_name}",
                 show_diffs=backend_coding_assistant.show_diffs,
                 dry_run=backend_coding_assistant.dry_run,
                 map_tokens=backend_coding_assistant.map_tokens,
@@ -184,7 +287,7 @@ class CodingAssistantService:
 
     @staticmethod
     def send_message_to_coding_assistant(
-        repository_name: str,
+        gh_remote_url: str,
         command_pull_request: Optional[bool] = None,
         command_apply: Optional[str] = None,
         command_show_repo_map: Optional[bool] = None,
@@ -199,9 +302,9 @@ class CodingAssistantService:
         command_git_command: Optional[str] = None
     ) -> str:
         from . import GetCodingAssistantModel, UpsertCodingAssistantModel, MakeService
-        coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, repository_name=repository_name))
+        coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, gh_remote_url=gh_remote_url))
         if coder is None:
-            return json.dumps({"error": f"Could not send message to coding_assistant: repository_name({repository_name}) does not exist."})
+            return json.dumps({"error": f"Could not send message to coding_assistant: repository ({gh_remote_url}) does not exist."})
         coder.io.console.begin_capture()
         cmd = None
         if command_add:
@@ -209,7 +312,7 @@ class CodingAssistantService:
             cmd = 'add'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
                 auth=MakeService.auth,
-                repository_name=repository_name,
+                gh_remote_url=gh_remote_url,
                 files=coder.abs_fnames
             )])
             if err is not None:
@@ -219,7 +322,7 @@ class CodingAssistantService:
             cmd = 'drop'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
                 auth=MakeService.auth,
-                repository_name=repository_name,
+                gh_remote_url=gh_remote_url,
                 files=coder.abs_fnames
             )])
             if err is not None:
@@ -242,7 +345,8 @@ class CodingAssistantService:
         elif command_pull_request:
             pr_title = "Feature: Adding new features by agent"
             pr_body = coder.description
-            return CodingAssistantService.create_github_pull_request(coder.github_auth, 
+            repository_name = CodingAssistantService._get_repo_name_from_url(coder.gh_remote_url)
+            return CodingAssistantService.create_github_pull_request(MakeService.gh_pat, 
                                                                      repository_name, 
                                                                      pr_title,
                                                                      pr_body,

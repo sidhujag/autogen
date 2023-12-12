@@ -436,12 +436,9 @@ zapier_api_check_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "APIKEY": {
-                "type": "string",
-                "description": "Authorization to Zapier API.",
-            },
+           
         },
-        "required": ["APIKEY"]
+        "required": []
     }
 }
 zapier_api_get_configuration_link_spec = {
@@ -452,12 +449,9 @@ zapier_api_get_configuration_link_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "APIKEY": {
-                "type": "string",
-                "description": "Authorization to Zapier API.",
-            },
+    
         },
-        "required": ["APIKEY"]
+        "required": []
     }
 }   
 zapier_api_list_exposed_actions_spec = {
@@ -468,12 +462,8 @@ zapier_api_list_exposed_actions_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "APIKEY": {
-                "type": "string",
-                "description": "Authorization to Zapier API.",
-            },
         },
-        "required": ["APIKEY"]
+        "required": []
     }
 } 
 
@@ -485,10 +475,6 @@ zapier_api_execute_action_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "APIKEY": {
-                "type": "string",
-                "description": "Authorization to Zapier API.",
-            },
             "exposed_app_action_id": {
                 "type": "string",
                 "description": "Action ID found through zapier_api_list_exposed_actions. Example: 01ARZ3NDEKTSV4RRFFQ69G5FAV.",
@@ -502,7 +488,7 @@ zapier_api_execute_action_spec = {
                 "description":"If we should be doing a preview of the action as a test to see the AI generated fields are acceptable.",
             }
         },
-        "required": ["APIKEY", "exposed_app_action_id", "action_parameters"]
+        "required": ["exposed_app_action_id", "action_parameters"]
     }
 }
 zapier_api_execute_log_spec = {
@@ -513,17 +499,13 @@ zapier_api_execute_log_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "APIKEY": {
-                "type": "string",
-                "description": "Authorization to Zapier API.",
-            },
             "execution_log_id ": {
                 "type": "string",
                 "description": "Execution Log ID found through zapier_api_execute_action. Example: 01ARZ3NDEKTSV4RRFFQ69G5FAV.",
             },
 
         },
-        "required": ["APIKEY", "execution_log_id"]
+        "required": ["execution_log_id"]
     }
 }
 zapier_api_create_action_spec = {
@@ -557,9 +539,9 @@ code_assistant_function_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "repository_name": {
+            "gh_remote_url": {
                 "type": "string",
-                "description": "Name of the repository of the assistant."
+                "description": "GH remote repository URL."
             },
             "command_pull_request": {
                 "type": "boolean",
@@ -611,32 +593,56 @@ code_assistant_function_spec = {
                 "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'clone [url]' to clone remote Git URL, 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push origin feature-branch' to push to remote, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
             },
         },
-        "required": ["repository_name"]
+        "required": ["gh_remote_url"]
     },
 }
 
 
-upsert_code_assistant_function_spec = {
-    "name": "upsert_coding_assistant",
+create_remote_gh_repo_spec = {
+    "name": "create_github_remote_repo",
     "category": "programming",
-    "class_name": "CodingAssistantService.upsert_coding_assistant",
+    "class_name": "CodingAssistantService.create_github_remote_repo",
     "description": (
-        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. It requires a Git personal access token to set up or access remote repositories. When initializing a new assistant or working with an existing repository, this function clones the repository locally, readying it for development work. It plays a pivotal role in preparing the coding environment, ensuring that the coding assistant is fully integrated with the repository for efficient code management."
+        "Create a GH remote repository or check a remote GH repository exists under users's github. For use with coding assistance. Will return a gh_remote_url."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "repository_name": {
                 "type": "string",
-                "description": "GH repository name. Creates if doesn't exist. Used as the unique identifier of the coding assistant."
+                "description": "GH repository name. Creates if doesn't exist under the user's github. Assume a PAT is provided by user already."
+            },
+            "description": {
+                "type": "string",
+                "description": "Features and functional description of the new repository."
+            },
+            "private": {
+                "type": "bool",
+                "description": "Is repository private? Only the agents associated with the current github user can see it.",
+                "default": False
+            },
+        },
+        "required": ["repository_name"]
+    },
+}
+
+upsert_code_assistant_function_spec = {
+    "name": "upsert_coding_assistant",
+    "category": "programming",
+    "class_name": "CodingAssistantService.upsert_coding_assistant",
+    "description": (
+        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. When initializing a new assistant or working with an existing repository, this function clones the remote repository (gh_remote_url) locally, readying it for development work. It plays a pivotal role in preparing the coding environment, ensuring that the coding assistant is fully integrated with the repository for efficient code management."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "gh_remote_url": {
+                "type": "string",
+                "description": "GH remote repository URL. Repository must exist. You can create a repository via create_github_remote_repo if needed. Used as the unique identifier of the coding assistant."
             },
             "description": {
                 "type": "string",
                 "description": "Features, roles, and functionalities of the code that the coding assistant will work on or create. When creating a new assistant this should always be provided."
-            },
-            "github_auth_token": {
-                "type": "string",
-                "description": "GH personal access token. When creating a new assistant this should always be provided."
             },
             "model": {
                 "type": "string",
@@ -665,7 +671,7 @@ upsert_code_assistant_function_spec = {
                 "description": "Enable verbose output for detailed logging."
             },
         },
-        "required": ["repository_name"]
+        "required": ["gh_remote_url"]
     },
 }
 
@@ -677,12 +683,12 @@ get_coding_assistant_info_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "repository_name": {
+            "gh_remote_url": {
                 "type": "string",
-                "description": "Name of the repository of the assistant."
+                "description": "GH remote repository URL."
             }
         },
-        "required": ["repository_name"]
+        "required": ["gh_remote_url"]
     }
 }
 
@@ -739,6 +745,7 @@ external_function_specs = [
     zapier_api_execute_log_spec,
     zapier_api_create_action_spec,
     code_assistant_function_spec,
+    create_remote_gh_repo_spec,
     upsert_code_assistant_function_spec,
     get_coding_assistant_info_spec,
     discover_coding_assistants_spec
