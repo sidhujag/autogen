@@ -1,9 +1,10 @@
 from .. import GroupChatManager
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
-from ..service.backend_service import BaseFunction, AuthAgent
+from ..service.backend_service import BaseFunction, AuthAgent, BaseCodeRepository
 from aider.coders import Coder
 class MakeService:
     CODE_ASSISTANT_REGISTRY: dict[str, Coder] = {}
+    CODE_REPOSITORY_REGISTRY: dict[str, BaseCodeRepository] = {}
     AGENT_REGISTRY: dict[str, GPTAssistantAgent] = {}
     GROUP_REGISTRY: dict[str, GroupChatManager] = {}
     FUNCTION_REGISTRY: dict[str, BaseFunction] = {}
@@ -11,7 +12,7 @@ class MakeService:
     openai_client: object = None
     @staticmethod
     def get_service(service_type):
-        from . import AgentService, FunctionsService, GroupService, CodingAssistantService
+        from . import AgentService, FunctionsService, GroupService, CodingAssistantService, CodeRepositoryService
         if service_type == 'agent':
             return AgentService()
         elif service_type == 'function':
@@ -20,7 +21,8 @@ class MakeService:
             return GroupService()
         elif service_type == 'coding_assistance':
             return CodingAssistantService()
-        
+        elif service_type == 'code_repository':
+            return CodeRepositoryService() 
     @staticmethod
     def _get_short_description(full_description: str) -> str:
         return (full_description[:640] + '...') if len(full_description) > 640 else full_description

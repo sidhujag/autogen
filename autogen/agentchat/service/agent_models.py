@@ -95,10 +95,10 @@ code_assistant_worker_model = UpsertAgentModel(
     name="code_assistant_worker",
     category="programming",
     description="Specializes in developing code according to specified plans, focusing on functionality and adherence to project guidelines. Collaborates within the coding_assistance_group, working closely with the code_assistant_manager and code_assistant_checker for cohesive code development and integration.",
-    system_message="Welcome to the coding_assistance_group. Begin your work by ensuring the repository is set up both remotely and locally. If you are given a remote URL to begin with, clone using upsert_coding_assistant otherwise create one remotely before cloning with create_github_remote_repo. Focus on developing code as per the provided plan. Regularly sync with the main branch, manage local changes, and update the repository. Request complete code segments when communicating with the code assistant and avoid placeholder comments. You can find out if you are working with your own repository by checking gh_user vs user name in the remote URL in get_coding_assistant_info (likely you need to issue PR when you finish on a repo that you don't own).",
+    system_message="Welcome to the coding_assistance_group. Read, understand and use the functions provided to you. First create a code repository and then associate it to a assistant. Upon creating the assistant the repo will be cloned locally and you can send messages to the assistant to do code through natural language. Use instructions in get_coding_assistant_info to know if its forked or cloned (to know if you should push or PR at the end). If you startd with a fresh repo you should add a new file using command_add before you begin coding. Focus on developing code as per the provided plan. Regularly sync with the main branch, manage local changes, and update the repository. Request complete code segments when communicating with the code assistant and avoid placeholder comments.",
     capability=CODING_ASSISTANCE,
     human_input_mode="NEVER",
-    functions_to_add=["create_github_remote_repo", "upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
+    functions_to_add=["upsert_code_repository", "get_code_repository_info", "discover_code_repositories", "upsert_coding_assistant", "send_message_to_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
 code_assistant_checker_model = UpsertAgentModel(
@@ -106,10 +106,10 @@ code_assistant_checker_model = UpsertAgentModel(
     name="code_assistant_checker",
     category="programming",
     description="Focused on maintaining code quality, this agent performs code reviews, provides feedback, writes tests, and upholds high standards. Functions within the coding_assistance_group, ensuring code developed by the code_assistant_worker meets quality benchmarks, alongside the guidance of the code_assistant_manager.",
-    system_message="Welcome to the coding_assistance_group. Your role starts with confirming the setup of the remote git repository.  If you are given a remote URL to begin with, clone using upsert_coding_assistant otherwise create one remotely before cloning with create_github_remote_repo. Perform code reviews, write tests, and provide feedback to maintain high standards. Once satisfied with the code quality, prepare it for integration by creating a pull request. Ensure all tests and criteria are met before approving the code for merging. You can find out if you are working with your own repository by checking gh_user vs user name in the remote URL in get_coding_assistant_info (likely you need to issue PR when you finish on a repo that you don't own).",
+    system_message="Welcome to the coding_assistance_group. Read, understand and use the functions provided to you. First create a code repository and then associate it to a assistant. Upon creating the assistant the repo will be cloned locally and you can send messages to the assistant to do code through natural language. Use instructions in get_coding_assistant_info to know if its forked or cloned (to know if you should push or PR at the end). If you startd with a fresh repo you should add a new file using command_add before you begin coding. Perform code reviews, write tests, and provide feedback to maintain high standards. Once satisfied with the code quality, push and possibly (if forked) issue a pull request back upstream. Ensure all tests and criteria are met before approving the code for merging.",
     human_input_mode="ALWAYS",
     capability=CODING_ASSISTANCE,
-    functions_to_add=["create_github_remote_repo", "upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
+    functions_to_add=["upsert_code_repository", "get_code_repository_info", "discover_code_repositories", "upsert_coding_assistant", "send_message_to_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
 code_assistant_manager_model = UpsertAgentModel(
@@ -117,7 +117,7 @@ code_assistant_manager_model = UpsertAgentModel(
     name="code_assistant_manager",
     category="programming",
     description="Acts as the coordinator for coding activities, ensuring efficient progress and overseeing the development of high-quality code. Collaborates within the coding_assistance_group, managing the workflow between the code_assistant_worker and code_assistant_checker to meet project deadlines and quality standards. Existing or creates new GH repo.",
-    system_message="Welcome to the coding_assistance_group. As the manager, your first task is to ensure the remote repository is correctly set up. Get repository URL (if using an existing repository) at the outset. Create remote repository if it doesn't exist. Then proceed to clone the repository for local development. Oversee the coding process, ensuring effective collaboration and regular updates to the remote repository. Guide the team to adhere to deadlines and maintain high code quality.",
+    system_message="Welcome to the coding_assistance_group. As the manager, your first task is to ensure the remote repository is correctly set up. Get repository URL (if using an existing repository) at the outset. Create remote repository if it doesn't exist. If you created a new repo ensure a new file is created to begin. Then proceed to clone the repository for local development. Oversee the coding process, ensuring effective collaboration and regular updates to the remote repository. Guide the team to adhere to deadlines and maintain high code quality. At the end decide if a PR is needed to merge your fork if it is one.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )

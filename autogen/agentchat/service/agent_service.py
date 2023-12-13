@@ -64,7 +64,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def get_agent(agent_model) -> GPTAssistantAgent:
-        from . import BackendService, MakeService
+        from . import BackendService, MakeService, DeleteAgentModel
         agent: GPTAssistantAgent = MakeService.AGENT_REGISTRY.get(agent_model.name)
         if agent is None:
             backend_agents, err = BackendService.get_backend_agents([agent_model])
@@ -72,6 +72,8 @@ Group Stats: {group_stats}
                 agent, err = AgentService.make_agent(backend_agents[0])
                 if err is not None:
                     MakeService.AGENT_REGISTRY[agent_model.name] = agent
+                else:
+                    BackendService.delete_backend_agents([DeleteAgentModel(auth=agent_model.auth, name=agent_model.name)])
         return agent
 
     @staticmethod
@@ -353,7 +355,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def upsert_agents(upsert_models):
-        from . import BackendService, GetAgentModel, MakeService
+        from . import BackendService, GetAgentModel, MakeService, DeleteAgentModel
         # Step 1: Upsert all agents in batch
         err = BackendService.upsert_backend_agents(upsert_models)
         if err and err != json.dumps({"error": "No agents were upserted, no changes found!"}):
@@ -374,6 +376,7 @@ Group Stats: {group_stats}
             if agent is None:
                 agent, err = AgentService.make_agent(backend_agent)
                 if err is not None:
+                    BackendService.delete_backend_agents([DeleteAgentModel(auth=backend_agent.auth, name=backend_agent.name)])
                     return None, err
             else:
                 err = AgentService.update_agent(agent, backend_agent)

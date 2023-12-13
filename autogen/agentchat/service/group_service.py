@@ -16,7 +16,7 @@ MANAGEMENT = 128
 class GroupService:
     @staticmethod
     def get_group(group_model) -> GroupChatManager:
-        from . import BackendService, MakeService
+        from . import BackendService, MakeService, DeleteGroupModel
         group: GroupChatManager = MakeService.GROUP_REGISTRY.get(group_model.name)
         if group is None:
             backend_groups, err = BackendService.get_backend_groups([group_model])
@@ -24,6 +24,8 @@ class GroupService:
                 group, err = GroupService.make_group(backend_groups[0])
                 if err is None and group:
                     MakeService.GROUP_REGISTRY[group_model.name] = group
+                else:
+                    BackendService.delete_groups([DeleteGroupModel(auth=group_model.auth, name=group_model.name)])
         return group
     
     @staticmethod
@@ -205,7 +207,7 @@ class GroupService:
 
     @staticmethod
     def upsert_groups(upsert_models):
-        from . import BackendService, GetGroupModel, MakeService
+        from . import BackendService, GetGroupModel, MakeService, DeleteGroupModel
         # Step 1: Upsert all groups in batch
         err = BackendService.upsert_backend_groups(upsert_models)
         if err and err != json.dumps({"error": "No groups were upserted, no changes found!"}):
@@ -226,6 +228,7 @@ class GroupService:
             if mgr is None:
                 mgr, err = GroupService.make_group(backend_group)
                 if err is not None:
+                    BackendService.delete_groups([DeleteGroupModel(auth=backend_group.auth, name=backend_group.name)])
                     return None, err
             else:
                 mgr, err = GroupService.update_group(mgr, backend_group)

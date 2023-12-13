@@ -4,11 +4,13 @@ from .zapier_service import ZapierService
 from .functions_service import FunctionsService
 from .make_service import MakeService
 from .coding_assistance_service import CodingAssistantService
+from .coding_repository_service import CodeRepositoryService
 from .group_service import GroupService, INFO, TERMINATE, OPENAI_CODE_INTERPRETER, CODING_ASSISTANCE, FUNCTION_CODER, OPENAI_RETRIEVAL, OPENAI_FILES, MANAGEMENT
 from .backend_service import (
     BackendService,
     AuthAgent, 
-    DeleteAgentModel, 
+    DeleteAgentModel,
+    DeleteCodeAssistantsModel,
     GetAgentModel, 
     AgentInfo,
     FunctionInfo,
@@ -19,6 +21,12 @@ from .backend_service import (
     BaseCodingAssistant,
     GetFunctionModel,
     GetCodingAssistantModel,
+    GetCodeRepositoryModel,
+    UpsertCodeRepositoryModel,
+    BaseCodeRepository,
+    DiscoverCodeRepositoryModel,
+    DeleteCodeRepositoryModel,
+    CodeRepositoryInfo,
     CodingAssistantInfo,
     UpsertAgentModel,
     AddFunctionModel,
@@ -27,6 +35,7 @@ from .backend_service import (
     UpsertGroupModel,
     UpsertCodingAssistantModel,
     GetGroupModel,
+    DeleteGroupModel,
     GroupInfo,
     DiscoverGroupsModel
 )
@@ -52,6 +61,7 @@ __all__ = [
     "MakeService",
     "AuthAgent",
     "DeleteAgentModel",
+    "DeleteCodeAssistantsModel",
     "GetAgentModel",
     "DiscoverAgentsModel",
     "DiscoverFunctionsModel",
@@ -60,6 +70,12 @@ __all__ = [
     "BaseCodingAssistant",
     "GetFunctionModel",
     "GetCodingAssistantModel",
+    "GetCodeRepositoryModel",
+    "DiscoverCodeRepositoryModel",
+    "UpsertCodeRepositoryModel",
+    "BaseCodeRepository",
+    "DeleteCodeRepositoryModel",
+    "CodeRepositoryInfo",
     "CodingAssistantInfo",
     "UpsertAgentModel",
     "AddFunctionModel",
@@ -69,6 +85,7 @@ __all__ = [
     "UpsertGroupModel",
     "UpsertCodingAssistantModel",
     "GetGroupModel",
+    "DeleteGroupModel",
     "GroupInfo",
     "DiscoverGroupsModel",
     "INFO",

@@ -16,7 +16,19 @@ class AuthAgent(BaseModel):
 class DeleteAgentModel(BaseModel):
     name: str
     auth: AuthAgent
-    
+
+class DeleteGroupModel(BaseModel):
+    name: str
+    auth: AuthAgent
+
+class DeleteCodeAssistantsModel(BaseModel):
+    name: str
+    auth: AuthAgent
+
+class DeleteCodeRepositoryModel(BaseModel):
+    name: str
+    auth: AuthAgent 
+
 class GetAgentModel(BaseModel):
     name: str
     auth: AuthAgent
@@ -30,9 +42,13 @@ class GetFunctionModel(BaseModel):
     auth: AuthAgent
     
 class GetCodingAssistantModel(BaseModel):
-    gh_remote_url: str
+    name: str
     auth: AuthAgent
 
+class GetCodeRepositoryModel(BaseModel):
+    name: str
+    auth: AuthAgent
+    
 class DiscoverAgentsModel(BaseModel):
     query: str
     category: Optional[str] = None
@@ -51,6 +67,10 @@ class DiscoverCodingAssistantModel(BaseModel):
     query: str
     auth: AuthAgent
 
+class DiscoverCodeRepositoryModel(BaseModel):
+    query: str
+    auth: AuthAgent
+    
 class UpsertAgentModel(BaseModel):
     name: str
     auth: AuthAgent
@@ -75,7 +95,7 @@ class UpsertGroupModel(BaseModel):
     locked: Optional[bool] = None
 
 class UpsertCodingAssistantModel(BaseModel):
-    gh_remote_url: str
+    name: str
     auth: AuthAgent
     description: Optional[str] = None
     model: Optional[str] = None
@@ -84,7 +104,16 @@ class UpsertCodingAssistantModel(BaseModel):
     dry_run: Optional[bool] = None
     map_tokens: Optional[int] = None
     verbose: Optional[bool] = None
-    
+
+class UpsertCodeRepositoryModel(BaseModel):
+    name: str
+    auth: AuthAgent
+    description: Optional[str] = None
+    private: Optional[bool] = None
+    gh_remote_url: Optional[str] = None
+    upstream_gh_remote_url: Optional[str] = None
+    associated_code_assistants: Optional[set[str]] = None
+
 class BaseAgent(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent
@@ -97,7 +126,7 @@ class BaseAgent(BaseModel):
     capability: int = Field(default=0)
     files: Dict[str, str] = Field(default_factory=dict)
     function_names: List[str] = Field(default_factory=list)
-    
+
 class BaseGroup(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent
@@ -138,8 +167,9 @@ class BaseFunction(BaseModel):
     class_name: str = Field(default="")
 
 class BaseCodingAssistant(BaseModel):
-    gh_remote_url: str = Field(default="")
+    name: str = Field(default="")
     auth: AuthAgent
+    repository_name: str = Field(default="")
     description: str = Field(default="")
     model: str = Field(default="")
     files: List[str] = Field(default=[])
@@ -148,8 +178,27 @@ class BaseCodingAssistant(BaseModel):
     map_tokens: int = Field(default=1024)
     verbose: bool = Field(default=False)
 
-class CodingAssistantInfo(BaseModel):
+class BaseCodeRepository(BaseModel):
+    name: str = Field(default="")
+    auth: AuthAgent
+    description: str = Field(default="")
     gh_remote_url: str = Field(default="")
+    upstream_gh_remote_url: str = Field(default="")
+    associated_code_assistants: set[str] = Field(default=set())
+    private: bool = Field(default=False)
+    
+class CodeRepositoryInfo(BaseModel):
+    name: str = Field(default="")
+    description: str = Field(default="")
+    gh_remote_url: str = Field(default="")
+    upstream_gh_remote_url: str = Field(default="")
+    associated_code_assistants: set[str] = Field(default=set())
+    private: bool = Field(default=False)
+    is_forked: bool = Field(default=False)
+
+class CodingAssistantInfo(BaseModel):
+    name: str = Field(default="")
+    gh_user: str = Field(default="")
     description: str = Field(default="")
     model: str = Field(default="")
     git_dir: str = Field(default="")
@@ -158,6 +207,7 @@ class CodingAssistantInfo(BaseModel):
     dry_run: bool = Field(default=False)
     map_tokens: int = Field(default=1024)
     verbose: bool = Field(default=False)
+    repository_info: CodeRepositoryInfo = Field(default=CodeRepositoryInfo)
 
 class AddFunctionModel(BaseFunction):
     auth: AuthAgent
@@ -167,12 +217,41 @@ class UpdateComms(BaseModel):
     sender: str
     receiver: str
 
-
 class BackendService:
     @staticmethod
     def delete_backend_agents(data_models: List[DeleteAgentModel]):
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("delete_agents", list_of_dicts)
+        if response != "success":
+            return response
+        if err is not None:
+            return err
+        return None
+
+    @staticmethod
+    def delete_backend_coding_assistants(data_models: List[DeleteCodeAssistantsModel]):
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("delete_code_assistants", list_of_dicts)
+        if response != "success":
+            return response
+        if err is not None:
+            return err
+        return None
+    
+    @staticmethod
+    def delete_backend_code_repositories(data_models: List[DeleteCodeRepositoryModel]):
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("delete_code_repositories", list_of_dicts)
+        if response != "success":
+            return response
+        if err is not None:
+            return err
+        return None
+    
+    @staticmethod
+    def delete_groups(data_models: List[DeleteGroupModel]):
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("delete_groups", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -239,6 +318,16 @@ class BackendService:
         return [BaseCodingAssistant(**assistant) for assistant in response], None
 
     @staticmethod
+    def get_backend_code_repositories(data_models: List[GetCodeRepositoryModel]) -> Tuple[Optional[List[BaseCodeRepository]], Optional[str]]:
+        list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
+        response, err = BackendService.call("get_code_repositories", list_of_dicts)
+        if err is not None:
+            return None, err
+        if not isinstance(response, list):
+            return None, json.dumps({"error": "Unexpected response format: backend response is not a list"})
+        return [BaseCodeRepository(**assistant) for assistant in response], None
+
+    @staticmethod
     def get_backend_functions(data_models: List[GetFunctionModel]) -> Tuple[Optional[List[BaseFunction]], Optional[str]]:
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
         response, err = BackendService.call("get_functions", list_of_dicts)
@@ -273,6 +362,18 @@ class BackendService:
         return None
 
     @staticmethod
+    def upsert_backend_code_repositories(list_data_model: List[UpsertCodeRepositoryModel]):
+        # Convert each object in the list to a dictionary
+        list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
+        # Make the backend call with the list of dictionaries
+        response, err = BackendService.call("upsert_code_repositories", list_of_dicts)
+        if response != "success":
+            return response
+        if err is not None:
+            return err
+        return None
+    
+    @staticmethod
     def discover_backend_functions(data_model: DiscoverFunctionsModel):
         response, err = BackendService.call("discover_functions", data_model.dict(exclude_none=True))
         if err != None:
@@ -294,12 +395,19 @@ class BackendService:
         return response, None
 
     @staticmethod
-    def discover_backend_coding_assistants(data_model: DiscoverGroupsModel):
+    def discover_backend_coding_assistants(data_model: DiscoverCodingAssistantModel):
         response, err = BackendService.call("discover_coding_assistants", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
+    @staticmethod
+    def discover_backend_code_repositories(data_model: DiscoverCodeRepositoryModel):
+        response, err = BackendService.call("discover_code_repositories", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+    
     @staticmethod
     def call(endpoint, json_input):   
         try:

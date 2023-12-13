@@ -539,13 +539,13 @@ code_assistant_function_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "gh_remote_url": {
+            "name": {
                 "type": "string",
-                "description": "GH remote repository URL."
+                "description": "Code assistant name."
             },
             "command_pull_request": {
                 "type": "boolean",
-                "description": "Create or check the status of a pull request for the current local branch."
+                "description": "Create a pull request for the current local branch to merge your fork upstream."
             },
             "command_apply": {
                 "type": "string",
@@ -562,11 +562,11 @@ code_assistant_function_spec = {
             },
             "command_add": {
                 "type": "string",
-                "description": "Add matching files to the chat session using glob patterns to your local branch. This is not equivalent to `git add`."
+                "description": "Add matching files to the chat session using glob patterns to your local branch. You can specify a file name without pattern as well. This is not equivalent to `git add`. Will touch a new file if the file doesn't exist on disk (not using pattern)."
             },
             "command_drop": {
                 "type": "string",
-                "description": "Remove matching files from the chat session using glob patterns from your local branch."
+                "description": "Remove matching files from the chat session using glob patterns from your local branch. You can specify file name without pattern as well."
             },
             "command_clear": {
                 "type": "boolean",
@@ -590,55 +590,32 @@ code_assistant_function_spec = {
             },
             "command_git_command": {
                 "type": "string",
-                "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'clone [url]' to clone remote Git URL, 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push origin feature-branch' to push to remote, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
+                "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push origin feature-branch' to push to remote, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
             },
         },
-        "required": ["gh_remote_url"]
+        "required": ["name"]
     },
 }
 
 
-create_remote_gh_repo_spec = {
-    "name": "create_github_remote_repo",
-    "category": "programming",
-    "class_name": "CodingAssistantService.create_github_remote_repo",
-    "description": (
-        "Create a GH remote repository or check a remote GH repository exists under users's github. For use with coding assistance. Will return a gh_remote_url."
-    ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "repository_name": {
-                "type": "string",
-                "description": "GH repository name. Creates if doesn't exist under the user's github. Assume a PAT is provided by user already."
-            },
-            "description": {
-                "type": "string",
-                "description": "Features and functional description of the new repository."
-            },
-            "private": {
-                "type": "bool",
-                "description": "Is repository private? Only the agents associated with the current github user can see it.",
-                "default": False
-            },
-        },
-        "required": ["repository_name"]
-    },
-}
 
 upsert_code_assistant_function_spec = {
     "name": "upsert_coding_assistant",
     "category": "programming",
     "class_name": "CodingAssistantService.upsert_coding_assistant",
     "description": (
-        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. When initializing a new assistant or working with an existing repository, this function clones the remote repository (gh_remote_url) locally, readying it for development work. It plays a pivotal role in preparing the coding environment, ensuring that the coding assistant is fully integrated with the repository for efficient code management."
+        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. When initializing a new assistant or working with an existing assistant, this function clones the remote repository (repository_name) locally, readying it for development work. The repository should be setup prior to the assistant."
     ),
     "parameters": {
         "type": "object",
         "properties": {
-            "gh_remote_url": {
+            "name": {
                 "type": "string",
-                "description": "GH remote repository URL. Repository must exist. You can create a repository via create_github_remote_repo if needed. Used as the unique identifier of the coding assistant."
+                "description": "Code assistant name. Used as the unique identifier of the coding assistant."
+            },
+            "repository_name": {
+                "type": "string",
+                "description": "Code repository name. Links the remote repository to the assistant. Created prior via upsert_code_repository. The remote repo is cloned locally."
             },
             "description": {
                 "type": "string",
@@ -671,7 +648,7 @@ upsert_code_assistant_function_spec = {
                 "description": "Enable verbose output for detailed logging."
             },
         },
-        "required": ["gh_remote_url"]
+        "required": ["name", "repository_name"]
     },
 }
 
@@ -683,12 +660,12 @@ get_coding_assistant_info_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "gh_remote_url": {
+            "name": {
                 "type": "string",
-                "description": "GH remote repository URL."
+                "description": "Code assistant name."
             }
         },
-        "required": ["gh_remote_url"]
+        "required": ["name"]
     }
 }
 
@@ -709,6 +686,71 @@ discover_coding_assistants_spec = {
     }
 }
 
+upsert_code_repository_function_spec = {
+    "name": "upsert_code_repository",
+    "category": "programming",
+    "class_name": "CodingAssistantService.upsert_code_repository",
+    "description": (
+        "This function defines or updates a remote github repository for use within coding assistants. The idea is to always create a remote github repo under the users account and fork other repos (when gh_remote_url provided) to your account so you can clone when you create a coding assistant to work locally against your own repo."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "Code repository name. Used as the unique identifier of the code repository. Will use as the name of the repository in github."
+            },
+            "description": {
+                "type": "string",
+                "description": "Features, roles, and functionalities of the code repository. When creating a new assistant this should always be provided."
+            },
+            "private": {
+                "type": "boolean",
+                "default": False,
+                "description": "Set to true if this the repository should be private."
+            },
+            "gh_remote_url": {
+                "type": "string",
+                "description": "If provided will use as the github URL. If the account associated with the remote repository is different, it will fork the repository to your account."
+            },
+        },
+        "required": ["name"]
+    },
+}
+
+get_code_repository_info_spec = {
+    "name": "get_code_repository_info",
+    "category": "programming",
+    "class_name": "CodingAssistantService.get_code_repository_info",
+    "description": "Fetches details about a specific code repository. Don't re-request repository info. Check your context to see if you already have this code repository information before asking again.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "Code repository name."
+            }
+        },
+        "required": ["name"]
+    }
+}
+
+discover_code_repositories_spec = {
+    "name": "discover_code_repositories",
+    "category": "programming",
+    "class_name": "CodingAssistantService.discover_code_repositories",
+    "description": "Finds code repositories based on specific queries.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Query describing desired features/functions of a code repository."
+            }
+        },
+        "required": ["query"]
+    }
+}
 group_info_function_specs = [
     get_group_info_spec,
     get_function_info_spec,
@@ -745,8 +787,10 @@ external_function_specs = [
     zapier_api_execute_log_spec,
     zapier_api_create_action_spec,
     code_assistant_function_spec,
-    create_remote_gh_repo_spec,
+    upsert_code_repository_function_spec,
     upsert_code_assistant_function_spec,
     get_coding_assistant_info_spec,
-    discover_coding_assistants_spec
+    get_code_repository_info_spec,
+    discover_coding_assistants_spec,
+    discover_code_repositories_spec
 ]
