@@ -96,6 +96,7 @@ class UpsertGroupModel(BaseModel):
 
 class UpsertCodingAssistantModel(BaseModel):
     name: str
+    repository_name: str
     auth: AuthAgent
     description: Optional[str] = None
     model: Optional[str] = None
@@ -177,7 +178,7 @@ class BaseCodingAssistant(BaseModel):
     dry_run: bool = Field(default=False)
     map_tokens: int = Field(default=1024)
     verbose: bool = Field(default=False)
-
+        
 class BaseCodeRepository(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent
@@ -186,7 +187,7 @@ class BaseCodeRepository(BaseModel):
     upstream_gh_remote_url: str = Field(default="")
     associated_code_assistants: set[str] = Field(default=set())
     private: bool = Field(default=False)
-    
+
 class CodeRepositoryInfo(BaseModel):
     name: str = Field(default="")
     description: str = Field(default="")
