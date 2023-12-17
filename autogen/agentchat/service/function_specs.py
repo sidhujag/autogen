@@ -534,7 +534,7 @@ code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.send_message_to_coding_assistant",
     "description": (
-        "This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. It supports the full development cycle, facilitating branch management, local development, and code preparation for peer review. The `command_message` parameter is key as the primary entry point for natural language coding assistance, enabling agents to command code generation and edits. Additionally, this function manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding workflows. The `command_git_command` is also a key parameter for all git commands executed through GitPython. Only one command should be sent per call to this function. Any errors in responses can help guide you in correcting your commands."
+        "This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. It supports the full development cycle, facilitating branch management, local development, and code preparation for peer review. The `command_message` parameter is key as the primary entry point for natural language coding assistance, enabling agents to command code generation and edits. Additionally, this function manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding workflows. The `command_git_command` is also a key parameter for any git commands executed through GitPython. Only one command should be sent per call to this function. Any errors in responses can help guide you in correcting your commands."
     ),
     "parameters": {
         "type": "object",
@@ -554,7 +554,7 @@ code_assistant_function_spec = {
             "command_show_repo_map": {
                 "type": "boolean",
                 "default": False,
-                "description": "Print the local repository map and exit."
+                "description": "Print the local repository map and exit. Repository map is how the coding assistant efficiently maps the logical connection between files/objects/classes in the repository."
             },
             "command_message": {
                 "type": "string",
@@ -562,7 +562,7 @@ code_assistant_function_spec = {
             },
             "command_add": {
                 "type": "string",
-                "description": "Add matching files to the chat session using glob patterns to your local branch. You can specify a file name without pattern as well. This is not equivalent to `git add`. Will touch a new file if the file doesn't exist on disk (not using pattern)."
+                "description": "Add matching files to the chat session using glob patterns to your local branch. You can specify a file name without pattern as well. Will touch a new file if the file doesn't exist on disk (not using pattern). If you are considering a `git add` operation use this instead."
             },
             "command_drop": {
                 "type": "string",
@@ -615,11 +615,11 @@ upsert_code_assistant_function_spec = {
             },
             "repository_name": {
                 "type": "string",
-                "description": "Code repository name. Links the remote repository to the assistant. Created prior via upsert_code_repository. The remote repo is cloned locally."
+                "description": "Code repository name. Associates the remote repository to the assistant. Created prior via upsert_code_repository. The remote repo is cloned locally automatically after execution."
             },
             "description": {
                 "type": "string",
-                "description": "Features, roles, and functionalities of the code that the coding assistant will work on or create. When creating a new assistant this should always be provided."
+                "description": "Features, roles, and functionalities of the code that the coding assistant will work on or create. When creating a new assistant this should always be provided. Used during assistants discovery."
             },
             "model": {
                 "type": "string",
@@ -702,7 +702,7 @@ upsert_code_repository_function_spec = {
             },
             "description": {
                 "type": "string",
-                "description": "Features, roles, and functionalities of the code repository. When creating a new assistant this should always be provided."
+                "description": "Features, roles, and functionalities of the code repository. When creating a new assistant this should always be provided. Used during repository discovery."
             },
             "private": {
                 "type": "boolean",

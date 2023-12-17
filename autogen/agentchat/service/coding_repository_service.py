@@ -148,7 +148,10 @@ class CodeRepositoryService:
 
         gh_user = MakeService.auth.gh_user
         gh_pat = MakeService.auth.gh_pat
-
+        if not gh_user:
+            return json.dumps({"error": "Github user not set when calling API."})
+        if not gh_pat:
+            return json.dumps({"error": "Github personal access token not set when calling API."})
         # Check if the repository already exists under the user's account
         if not CodeRepositoryService._check_repo_exists(gh_user, repository_name, gh_pat):
             # If the repository does not exist, create it
