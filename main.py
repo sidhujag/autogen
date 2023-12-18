@@ -33,8 +33,6 @@ def upsert_external_agents(agent_models):
     return agents, None
 
 def upsert_external_groups(group_models):
-    for model in group_models:
-        model.auth = MakeService.auth
     groups, err = GroupService.upsert_groups(group_models)
     if err is not None:
         print(f'Error creating groups {err}')
@@ -57,8 +55,7 @@ def upsert_external_functions(sender):
 
 def upsert_agents(models):
     for model in models:
-        model.auth = MakeService.auth
-        agent = AgentService.get_agent(GetAgentModel(auth=MakeService.auth, name=model.name))
+        agent = AgentService.get_agent(GetAgentModel(name=model.name))
         id = None
         if agent is None:
             # place holder to get assistant id
@@ -85,7 +82,6 @@ def query(input: QueryModel):
     MakeService.openai_client = openai_client           
     user_model = UpsertAgentModel(
         name="user_proxy",
-        auth=input.auth,
         system_message="Proxy between the management group and the user. Your interactions will allow the user to input a message to guide the management group with user feedback. Works with manager and manager_assistant.",
         description="Use to be able to get feedback from the user.",
         human_input_mode="ALWAYS",
@@ -95,7 +91,6 @@ def query(input: QueryModel):
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager_assistant",
-        auth=input.auth,
         system_message="Assist the manager in formulating a well-rounded and informed answer before termination. Provides general feedback to manager prior to actions. Works with user_proxy and manager_assistant. You can use user_proxy to get user feedback. You provide feedback to the manager before manager takes an action.",
         description="Helps the manager analyze a plan, an answer or the final response for the problem before it is terminated.",
         human_input_mode="NEVER",
@@ -105,7 +100,6 @@ def query(input: QueryModel):
     )
     manager_model = UpsertAgentModel(
         name="manager",
-        auth=input.auth,
         system_message="Delegate tasks and plans across hiearchy of agents and solves the problem before terminating the group. If the problem is complex and requires a plan you will include part(s) of the plan the groups you task should work on, when you message them. You will coordinate the hiearchy of agents and groups based on this plan. You work in a chain-of-thought or tree-of-thought pattern. You can use user_proxy to get user feedback. You will get feedback from manager_assistant as needed.",
         description="A general manager that will analyze if the task is solved, delegate tasks and terminate the program.",
         human_input_mode="ALWAYS",
@@ -120,7 +114,6 @@ def query(input: QueryModel):
     ]
     management_group_model = UpsertGroupModel(
         name="management_group",
-        auth=input.auth,
         description="Management group, you will analyze and task user problem to other groups. For complex problems use the planning group, where chain-of-thought or tree-of-thought pattern should be used with the plan to delegate subsets of the plan to other groups, sometimes getting the plan updated as needed due to feedback. The group consists of user_proxy, manager, and manager_assistant.",
         agents_to_add=["user_proxy", "manager_assistant", "manager"],
         locked = True

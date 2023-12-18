@@ -15,13 +15,13 @@ class CodeRepositoryService:
                 if err is None and code_repository:
                     MakeService.CODE_REPOSITORY_REGISTRY[coding_repository_model.name] = code_repository
                 else:
-                    BackendService.delete_backend_code_repositories([DeleteCodeRepositoryModel(auth=coding_repository_model.auth, name=coding_repository_model.name)])
+                    BackendService.delete_backend_code_repositories([DeleteCodeRepositoryModel(name=coding_repository_model.name)])
         return code_repository
     
     @staticmethod
     def get_code_repository_info(name: str) -> str:
         from . import MakeService, CodeRepositoryInfo, GetCodeRepositoryModel
-        backend_code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(auth=MakeService.auth, name=name))
+        backend_code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=name))
         if not backend_code_repository:
             return json.dumps({"error": f"Code repository({name}) not found"})
         is_forked = CodeRepositoryService._is_github_repo_a_fork(backend_code_repository.gh_remote_url, MakeService.auth.gh_pat)
@@ -39,8 +39,8 @@ class CodeRepositoryService:
 
     @staticmethod
     def discover_code_repositories(query: str) -> str:
-        from . import BackendService, DiscoverCodeRepositoryModel, MakeService
-        response, err = BackendService.discover_backend_code_repositories(DiscoverCodeRepositoryModel(auth=MakeService.auth, query=query))
+        from . import BackendService, DiscoverCodeRepositoryModel
+        response, err = BackendService.discover_backend_code_repositories(DiscoverCodeRepositoryModel(query=query))
         if err is not None:
             return err
         return response
@@ -181,15 +181,17 @@ class CodeRepositoryService:
         return json.dumps({"response": f"https://github.com/{gh_user}/{repository_name}.git"})
 
     @staticmethod
-    def clone_repo(coder, cr):
+    def clone_repo(repo, cr):
         from . import MakeService, CodingAssistantService
+        if not repo:
+            return {"error": f"No repository object found for coder in directory: {repo.root}."}
         # Clone the repository if it's not already cloned
-        is_cloned = CodeRepositoryService._is_repo_cloned(coder.repo, cr.gh_remote_url)
+        is_cloned = CodeRepositoryService._is_repo_cloned(repo, cr.gh_remote_url)
         if not is_cloned:
-            clone_response = CodeRepositoryService._clone_repository(coder, cr.gh_remote_url, "coding")
+            clone_response = CodeRepositoryService._clone_repository(repo, cr.gh_remote_url, "coding")
             if isinstance(clone_response, dict) and 'error' in clone_response:
                 return clone_response
-            is_cloned = CodeRepositoryService._is_repo_cloned(coder.repo, cr.gh_remote_url)
+            is_cloned = CodeRepositoryService._is_repo_cloned(repo, cr.gh_remote_url)
             if isinstance(is_cloned, dict) and 'error' in is_cloned:
                 return is_cloned
             if not is_cloned:
@@ -198,7 +200,7 @@ class CodeRepositoryService:
             remote_auth_url = CodeRepositoryService._construct_github_remote_url_with_pat(MakeService.auth.gh_user, MakeService.auth.gh_pat, cr.gh_remote_url)
             if isinstance(remote_auth_url, dict) and 'error' in remote_auth_url:
                 return json.dumps(remote_auth_url)
-            set_remote_response = json.loads(CodingAssistantService._execute_git_command(coder, f"remote set-url origin {remote_auth_url}"))
+            set_remote_response = json.loads(CodingAssistantService._execute_git_command(repo, f"remote set-url origin {remote_auth_url}"))
             if isinstance(set_remote_response, dict) and 'error' in set_remote_response:
                 return json.dumps(set_remote_response)
             return {"response": f"Repository was successfully cloned + authorized using a Personal Access Token to remote: {cr.gh_remote_url}."}
@@ -224,11 +226,11 @@ class CodeRepositoryService:
         new_url = f"https://{gh_user}:{gh_pat}@{url_parts[1]}"
         return new_url
 
-    def _clone_repository(coder, repo_url, local_path):
+    def _clone_repository(repo, repo_url, local_path):
         try:
-            coder.repo.git.Repo.clone_from(repo_url, local_path)
+            repo.git.Repo.clone_from(repo_url, local_path)
             return {"response": f"Repository cloned successfully to {local_path}"}
-        except coder.repo.git.exc.GitCommandError as e:
+        except repo.git.exc.GitCommandError as e:
             return {"error": f"Error cloning repository: {e}"}
             
     @staticmethod
@@ -256,14 +258,12 @@ class CodeRepositoryService:
         private: Optional[bool] = None,
         gh_remote_url: Optional[str] = None,
     ) -> str:
-        from . import UpsertCodeRepositoryModel, MakeService
-        
+        from . import UpsertCodeRepositoryModel
         working_gh_remote_url_response = CodeRepositoryService.create_github_remote_repo(name, description, private, gh_remote_url)
         if isinstance(working_gh_remote_url_response, dict) and 'error' in working_gh_remote_url_response:
             return json.dumps(working_gh_remote_url_response)
         working_gh_remote_url = working_gh_remote_url_response['response']
         code_repositories, err = CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(
-            auth=MakeService.auth,
             name=name,
             description=description,
             private=private,
@@ -289,14 +289,14 @@ class CodeRepositoryService:
 
     @staticmethod
     def upsert_code_repositories(upsert_models):
-        from . import BackendService, GetCodeRepositoryModel, MakeService, DeleteCodeRepositoryModel
+        from . import BackendService, GetCodeRepositoryModel, DeleteCodeRepositoryModel
         # Step 1: Upsert all in batch
         err = BackendService.upsert_backend_code_repositories(upsert_models)
         if err and err != json.dumps({"error": "No repositories were upserted, no changes found!"}):
             return None, err
 
         # Step 2: Retrieve all from backend in batch
-        get_code_repository_models = [GetCodeRepositoryModel(auth=MakeService.auth, name=model.name) for model in upsert_models]
+        get_code_repository_models = [GetCodeRepositoryModel(name=model.name) for model in upsert_models]
         backend_code_repositories, err = BackendService.get_backend_code_repositories(get_code_repository_models)
         if err:
             return None, err
@@ -308,7 +308,7 @@ class CodeRepositoryService:
         for backend_code_repository in backend_code_repositories:
             coder, err = CodeRepositoryService.make_code_repository(backend_code_repository)
             if err is not None:
-                BackendService.delete_backend_code_repositories([DeleteCodeRepositoryModel(auth=backend_code_repository.auth, name=backend_code_repository.name)])
+                BackendService.delete_backend_code_repositories([DeleteCodeRepositoryModel(name=backend_code_repository.name)])
                 return None, err
             successful_code_repositories.append(coder)
         return successful_code_repositories, None

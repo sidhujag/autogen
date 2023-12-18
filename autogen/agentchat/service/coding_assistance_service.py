@@ -22,7 +22,7 @@ class CodingAssistantService:
     @staticmethod
     def get_coding_assistant_info(name: str) -> str:
         from . import MakeService, CodingAssistantInfo, GetCodingAssistantModel, CodeRepositoryService
-        backend_coding_assistant = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, name=name))
+        backend_coding_assistant = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
         if not backend_coding_assistant:
             return json.dumps({"error": f"Coding assistant({name}) not found"})
         repository_info = CodeRepositoryService.get_code_repository_info(backend_coding_assistant.name)
@@ -50,8 +50,8 @@ class CodingAssistantService:
 
     @staticmethod
     def discover_coding_assistants(query: str) -> str:
-        from . import BackendService, DiscoverCodingAssistantModel, MakeService
-        response, err = BackendService.discover_backend_coding_assistants(DiscoverCodingAssistantModel(auth=MakeService.auth, query=query))
+        from . import BackendService, DiscoverCodingAssistantModel
+        response, err = BackendService.discover_backend_coding_assistants(DiscoverCodingAssistantModel(query=query))
         if err is not None:
             return err
         return response
@@ -67,9 +67,8 @@ class CodingAssistantService:
         map_tokens: Optional[int] = None,
         verbose: Optional[bool] = None,
     ) -> str:
-        from . import UpsertCodingAssistantModel, MakeService
+        from . import UpsertCodingAssistantModel
         coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-            auth=MakeService.auth,
             repository_name=repository_name,
             name=name,
             description=description,
@@ -103,14 +102,14 @@ class CodingAssistantService:
 
     @staticmethod
     def upsert_coding_assistants(upsert_models):
-        from . import BackendService, GetCodingAssistantModel, MakeService
+        from . import BackendService, GetCodingAssistantModel
         # Step 1: Upsert all coding_assistants in batch
         err = BackendService.upsert_backend_coding_assistants(upsert_models)
         if err and err != json.dumps({"error": "No coding_assistants were upserted, no changes found!"}):
             return None, err
 
         # Step 2: Retrieve all coding assistants from backend in batch
-        get_coding_assistant_models = [GetCodingAssistantModel(auth=MakeService.auth, name=model.name) for model in upsert_models]
+        get_coding_assistant_models = [GetCodingAssistantModel(name=model.name) for model in upsert_models]
         backend_coding_assistants, err = BackendService.get_backend_coding_assistants(get_coding_assistant_models)
         if err:
             return None, err
@@ -125,13 +124,13 @@ class CodingAssistantService:
                 return None, err
             successful_coding_assistants.append(coder)
         return successful_coding_assistants, None
-    
+
     @staticmethod
-    def _execute_git_command(coder, git_command):
+    def _execute_git_command(repo, git_command):
         try:
-            result = coder.repo.git.execute(git_command.split())
+            result = repo.git.execute(git_command.split())
             return {"response": f"Git command executed successfully: {result}"}
-        except coder.repo.git.exc.GitCommandError as e:
+        except repo.git.exc.GitCommandError as e:
             return {"error": f"Error executing Git command: {e}"}
 
     @staticmethod
@@ -171,7 +170,7 @@ class CodingAssistantService:
         from . import MakeService, CodeRepositoryService, GetCodeRepositoryModel, UpsertCodeRepositoryModel
         coder = None
         try:
-            code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(auth=MakeService.auth, name=backend_coding_assistant.repository_name))
+            code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=backend_coding_assistant.repository_name))
             if not code_repository:
                 return json.dumps({"error": f"Code repository({backend_coding_assistant.name}) not found"})
             io = InputOutput(pretty=False, yes=True, input_history_file=f".aider.input.history-{backend_coding_assistant.name}", chat_history_file=f".aider.chat.history-{backend_coding_assistant.name}.md")
@@ -191,12 +190,11 @@ class CodingAssistantService:
                 map_tokens=backend_coding_assistant.map_tokens,
                 verbose=backend_coding_assistant.verbose,
             )
-            clone_response = CodeRepositoryService.clone_repo(coder, code_repository)
+            clone_response = CodeRepositoryService.clone_repo(coder.repo, code_repository)
             if isinstance(clone_response, dict) and 'error' in clone_response:
                 return json.dumps(clone_response)
             code_repository.associated_code_assistants.add(backend_coding_assistant.name)
             coding_assistants, err = CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(
-                auth=MakeService.auth,
                 name=code_repository.name,
                 associated_code_assistants=code_repository.associated_code_assistants
             )])
@@ -223,7 +221,7 @@ class CodingAssistantService:
         command_git_command: Optional[str] = None
     ) -> str:
         from . import GetCodingAssistantModel, UpsertCodingAssistantModel, MakeService
-        coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(auth=MakeService.auth, name=name))
+        coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
         if coder is None:
             return json.dumps({"error": f"Could not send message to coding_assistant({name}): does not exist."})
         coder.io.console.begin_capture()
@@ -232,7 +230,6 @@ class CodingAssistantService:
             coder.commands.cmd_add(command_add)
             cmd = 'add'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-                auth=MakeService.auth,
                 name=name,
                 files=coder.abs_fnames
             )])
@@ -242,7 +239,6 @@ class CodingAssistantService:
             coder.commands.cmd_drop(command_drop)
             cmd = 'drop'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-                auth=MakeService.auth,
                 name=name,
                 files=coder.abs_fnames
             )])
@@ -272,7 +268,7 @@ class CodingAssistantService:
                                                                      pr_body,
                                                                      coder.repo.active_branch))
         elif command_git_command:
-            return json.dumps(CodingAssistantService._execute_git_command(coder, command_git_command)) 
+            return json.dumps(CodingAssistantService._execute_git_command(coder.repo, command_git_command)) 
         elif command_show_repo_map:
             repo_map = coder.get_repo_map()
             if repo_map:

@@ -39,7 +39,7 @@ class FunctionsService:
 
     @staticmethod
     def test_function(function_name: str, params: Dict[str, Any]) -> str:
-        from . import GetFunctionModel, OpenAIParameter, MakeService
+        from . import GetFunctionModel, OpenAIParameter
         try:
             # Validate parameters
             OpenAIParameter(**params)
@@ -47,7 +47,7 @@ class FunctionsService:
             return json.dumps({"error": f"Validation error for params: {str(e)}"})
 
         # Retrieve the function
-        function = FunctionsService.get_functions([GetFunctionModel(auth=MakeService.auth, name=function_name)])
+        function = FunctionsService.get_functions([GetFunctionModel(name=function_name)])
         if not function:
             return json.dumps({"error": f"Function({function_name}) not found"})
 
@@ -64,10 +64,10 @@ class FunctionsService:
 
     @staticmethod
     def discover_functions(category: str, query: str = None) -> str:
-        from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel, MakeService
+        from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel
 
         # Fetch the functions from the backend service
-        response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(auth=MakeService.auth, query=query, category=category))
+        response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(query=query, category=category))
         if err is not None:
             return err
 
@@ -81,7 +81,7 @@ class FunctionsService:
         function_names = [func['name'] for func in response]
 
         # Prepare GetFunctionModel instances for each function name
-        function_models = [GetFunctionModel(auth=MakeService.auth, name=function_name) for function_name in function_names]
+        function_models = [GetFunctionModel(name=function_name) for function_name in function_names]
 
         # Retrieve function statuses
         functions = FunctionsService.get_functions(function_models)
@@ -99,8 +99,8 @@ class FunctionsService:
     
     @staticmethod
     def get_function_info(name: str) -> str:
-        from . import GetFunctionModel, MakeService
-        function = FunctionsService.get_functions([GetFunctionModel(auth=MakeService.auth, name=name)])
+        from . import GetFunctionModel
+        function = FunctionsService.get_functions([GetFunctionModel(name=name)])
         if not function:
             return json.dumps({"error": f"Function({name}) not found"})
         return json.dumps({"response": function[0].dict()})
@@ -226,7 +226,7 @@ class FunctionsService:
 
     @staticmethod
     def _create_function_model(agent: str, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
-        from . import AddFunctionModel, MakeService
+        from . import AddFunctionModel
         # for now only validate parameters through JSON string field, add to this list if other fields come up
         for field in ['parameters']:
             error_message = FunctionsService._load_json_field(func_spec, field)
@@ -234,7 +234,7 @@ class FunctionsService:
                 return None, error_message
 
         try:
-            function_model = AddFunctionModel(**func_spec, auth=MakeService.auth)
+            function_model = AddFunctionModel(**func_spec)
             if function_model.function_code:
                 function_model.last_updater = agent
             return function_model, None
@@ -252,7 +252,6 @@ class FunctionsService:
             return err
         # update the agent to have the function so it can use it
         agent_upserted, err = AgentService.upsert_agents([UpsertAgentModel(
-            auth=MakeService.auth,
             name=agent,
             functions_to_add=[function_model.name],
         )])

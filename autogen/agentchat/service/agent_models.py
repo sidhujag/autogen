@@ -1,6 +1,5 @@
 from autogen.agentchat.service import UpsertAgentModel, AuthAgent, TERMINATE, OPENAI_FILES, OPENAI_RETRIEVAL, OPENAI_CODE_INTERPRETER, CODING_ASSISTANCE, FUNCTION_CODER     
 web_search_worker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="web_search_worker",
     category="information_retrieval",
     description="Executes search queries and compiles relevant information from diverse sources. Usually works in web_search_group alongside web_search_checker, web_search_planner and web_search_manager.",
@@ -11,7 +10,6 @@ web_search_worker_model = UpsertAgentModel(
 )
 
 web_search_checker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="web_search_checker",
     category="information_retrieval",
     description="Search result critic. Usually works in web_search_group alongside web_search_worker, web_search_planner and web_search_manager.",
@@ -21,7 +19,6 @@ web_search_checker_model = UpsertAgentModel(
 )
 
 web_search_planner_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="web_search_planner",
     category="information_retrieval",
     description="Designs and refines search queries based on specified criteria, ensuring optimal search results. Usually works in web_search_group alongside web_search_worker, web_search_checker and web_search_manager.",
@@ -31,7 +28,6 @@ web_search_planner_model = UpsertAgentModel(
 )
 
 web_search_manager_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="web_search_manager",
     category="information_retrieval",
     description="Coordinates group activities, ensuring efficient collaboration and high-quality, clear, and comprehensive final outputs. Usually works in web_search_group alongside web_search_worker, web_search_checker and web_search_planner.",
@@ -41,7 +37,6 @@ web_search_manager_model = UpsertAgentModel(
 )
 
 plan_worker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="plan_worker",
     category="planning",
     description="Develops detailed, step-by-step plans for addressing complex problems. Usually works in planning_group alongside plan_manager and plan_checker.",
@@ -51,7 +46,6 @@ plan_worker_model = UpsertAgentModel(
 )
 
 plan_checker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="plan_checker",
     category="planning",
     description="Assesses plans for completeness, feasibility, and effectiveness. Usually works in planning_group alongside plan_manager and plan_worker.",
@@ -61,7 +55,6 @@ plan_checker_model = UpsertAgentModel(
 )
 
 plan_manager_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="plan_manager",
     category="planning",
     description="Oversee the planning process, ensuring effective collaboration and timely completion of plans. Usually works in planning_group alongside plan_checker and plan_worker.",
@@ -71,7 +64,6 @@ plan_manager_model = UpsertAgentModel(
 )
 
 openai_code_worker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="openai_code_worker",
     category="programming",
     description="Enabled OpenAI files and interpreter tools to create/run code and provide responses through natural language. Ideal for algorithmics, data science, visualization or mathematical calculations that require code generation to solve.",
@@ -81,7 +73,6 @@ openai_code_worker_model = UpsertAgentModel(
 )
 
 openai_retrieval_rag_worker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="openai_retrieval_rag_worker",
     category="programming",
     description="Enabled RAG with OpenAI files and to answer questions against a knowledge base using natural language.",
@@ -91,7 +82,6 @@ openai_retrieval_rag_worker_model = UpsertAgentModel(
 )
 
 code_assistant_worker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="code_assistant_worker",
     category="programming",
     description="Specializes in developing code according to specified plans, focusing on functionality and adherence to project guidelines. Collaborates within the coding_assistance_group, working closely with the code_assistant_manager and code_assistant_checker for cohesive code development and integration.",
@@ -102,7 +92,6 @@ code_assistant_worker_model = UpsertAgentModel(
 )
 
 code_assistant_checker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="code_assistant_checker",
     category="programming",
     description="Focused on maintaining code quality, this agent performs code reviews, provides feedback, writes tests, and upholds high standards. Functions within the coding_assistance_group, ensuring code developed by the code_assistant_worker meets quality benchmarks, alongside the guidance of the code_assistant_manager.",
@@ -113,7 +102,6 @@ code_assistant_checker_model = UpsertAgentModel(
 )
 
 code_assistant_manager_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="code_assistant_manager",
     category="programming",
     description="Acts as the coordinator for coding activities, ensuring efficient progress and overseeing the development of high-quality code. Collaborates within the coding_assistance_group, managing the workflow between the code_assistant_worker and code_assistant_checker to meet project deadlines and quality standards. Uses existing GH repo or creates new one.",
@@ -123,7 +111,6 @@ code_assistant_manager_model = UpsertAgentModel(
 )
 
 function_code_worker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="function_code_worker",
     category="programming",
     description="Specializes in creating reusable, efficient functions based on given requirements. Usually works in function_creation_group alongside function_checker and function_manager.",
@@ -133,7 +120,6 @@ function_code_worker_model = UpsertAgentModel(
 )
 
 function_checker_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="function_checker",
     category="programming",
     description="Tests functions for reliability and provides feedback for enhancements. Usually works in function_creation_group alongside function_code_worker and function_manager.",
@@ -143,7 +129,6 @@ function_checker_model = UpsertAgentModel(
 )
 
 function_manager_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="function_manager",
     category="programming",
     description="Ensures the development of high-quality, reliable functions, overseeing the entire creation process. Usually works in function_creation_group alongside function_checker and function_code_worker.",
@@ -153,7 +138,6 @@ function_manager_model = UpsertAgentModel(
 )
 
 zapier_api_caller_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="zapier_api_caller",
     category="communication",
     description="Handles the execution of Zapier API calls. Zapier is an API aggregator that can solve almost any API task to external systems. Usually works in zapier_automation_group alongside zapier_api_tester and zapier_api_manager",
@@ -164,7 +148,6 @@ zapier_api_caller_model = UpsertAgentModel(
 )
 
 zapier_api_tester_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="zapier_api_tester",
     category="communication",
     description="Responsible for testing the Zapier API queries and responses and offering feedback to zapier_api_caller. Usually works in zapier_automation_group alongside zapier_api_manager and zapier_api_caller.",
@@ -173,7 +156,6 @@ zapier_api_tester_model = UpsertAgentModel(
     functions_to_add=["zapier_api_check", "zapier_api_get_configuration_link", "zapier_api_list_exposed_actions", "zapier_api_execute_action", "zapier_api_execute_log", "zapier_api_create_action"]
 )
 zapier_api_manager_model = UpsertAgentModel(
-    auth=AuthAgent(api_key='', namespace_id=''),
     name="zapier_api_manager",
     category="communication",
     description="Responsible for managing and summarizing responses of the Zapier API. It is authenticated. Usually works in zapier_automation_group alongside zapier_api_tester and zapier_api_caller.",
