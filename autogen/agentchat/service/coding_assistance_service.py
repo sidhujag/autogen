@@ -191,7 +191,7 @@ class CodingAssistantService:
                 verbose=backend_coding_assistant.verbose,
             )
             clone_response = CodeRepositoryService.clone_repo(coder.repo, code_repository)
-            if isinstance(clone_response, dict) and 'error' in clone_response:
+            if 'error' in clone_response:
                 return json.dumps(clone_response)
             code_repository.associated_code_assistants.add(backend_coding_assistant.name)
             coding_assistants, err = CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(

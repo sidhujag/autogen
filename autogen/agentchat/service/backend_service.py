@@ -159,6 +159,7 @@ class OpenAIParameter(BaseModel):
 
 class BaseFunction(BaseModel):
     name: str = Field(default="")
+    auth: AuthAgent = Field(default=AuthAgent)
     status: str = Field(default="")
     last_updater: str = Field(default="")
     description: str = Field(default="")
@@ -209,9 +210,6 @@ class CodingAssistantInfo(BaseModel):
     map_tokens: int = Field(default=1024)
     verbose: bool = Field(default=False)
     repository_info: CodeRepositoryInfo = Field(default=CodeRepositoryInfo)
-
-class AddFunctionModel(BaseFunction):
-    auth: AuthAgent = Field(default=AuthAgent)
     
 class UpdateComms(BaseModel):
     auth: AuthAgent = AuthAgent()
@@ -374,11 +372,11 @@ class BackendService:
         return [BaseFunction(**agent) for agent in response], None
 
     @staticmethod
-    def upsert_backend_functions(list_data_model: List[AddFunctionModel]):
+    def upsert_backend_functions(list_data_model: List[BaseFunction]):
         from . import MakeService
         for model in list_data_model:
             model.auth = MakeService.auth
-        # Convert each AddFunctionModel object in the list to a dictionary
+        # Convert each BaseFunction object in the list to a dictionary
         list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
         # Make the backend call with the list of dictionaries
         response, err = BackendService.call("upsert_functions", list_of_dicts)
@@ -475,5 +473,4 @@ class BackendService:
             return None, json.dumps({"error": f"Error making call: {str(e)}"})
         if response.status_code == 200:
             return response.json()["response"], None
-        return None, json.dumps({"error": "invalid response"})from . import MakeService
-        data_model.auth = MakeService.auth
+        return None, json.dumps({"error": "invalid response"})

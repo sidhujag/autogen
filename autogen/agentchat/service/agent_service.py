@@ -70,7 +70,7 @@ Group Stats: {group_stats}
             backend_agents, err = BackendService.get_backend_agents([agent_model])
             if err is None and len(backend_agents) > 0:
                 agent, err = AgentService.make_agent(backend_agents[0])
-                if err is not None:
+                if err is not None and agent:
                     MakeService.AGENT_REGISTRY[agent_model.name] = agent
                 else:
                     BackendService.delete_backend_agents([DeleteAgentModel(name=agent_model.name)])
@@ -285,7 +285,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def update_agent(agent, backend_agent):
-        from . import FunctionsService, GetFunctionModel, MakeService, AddFunctionModel
+        from . import FunctionsService, GetFunctionModel, MakeService
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
         agent.capability = backend_agent.capability
@@ -305,7 +305,7 @@ Group Stats: {group_stats}
                     return json.dumps({"error": f"Function({function_name}) not found"})
 
             for function in functions:
-                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict()))
+                FunctionsService.define_function_internal(agent, function)
         agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,
@@ -317,7 +317,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def make_agent(backend_agent):
-        from . import FunctionsService, GetFunctionModel, MakeService, AddFunctionModel
+        from . import FunctionsService, GetFunctionModel, MakeService
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
             return None, json.dumps({"error": "Could not make agent"})
@@ -340,7 +340,7 @@ Group Stats: {group_stats}
                     return json.dumps({"error": f"Function({function_name}) not found"})
 
             for function in functions:
-                FunctionsService.define_function_internal(agent, AddFunctionModel(**function.dict()))
+                FunctionsService.define_function_internal(agent, function)
         agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
             assistant_id=agent.llm_config.get("assistant_id", None),
             instructions=agent.system_message,

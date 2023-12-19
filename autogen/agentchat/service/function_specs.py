@@ -689,7 +689,7 @@ discover_coding_assistants_spec = {
 upsert_code_repository_function_spec = {
     "name": "upsert_code_repository",
     "category": "programming",
-    "class_name": "CodingAssistantService.upsert_code_repository",
+    "class_name": "CodeRepositoryService.upsert_code_repository",
     "description": (
         "This function defines or updates a remote github repository for use within coding assistants. The idea is to always create a remote github repo under the users account and fork other repos (when gh_remote_url provided) to your account so you can clone when you create a coding assistant to work locally against your own repo."
     ),
@@ -721,7 +721,7 @@ upsert_code_repository_function_spec = {
 get_code_repository_info_spec = {
     "name": "get_code_repository_info",
     "category": "programming",
-    "class_name": "CodingAssistantService.get_code_repository_info",
+    "class_name": "CodeRepositoryService.get_code_repository_info",
     "description": "Fetches details about a specific code repository. Don't re-request repository info. Check your context to see if you already have this code repository information before asking again.",
     "parameters": {
         "type": "object",
@@ -738,7 +738,7 @@ get_code_repository_info_spec = {
 discover_code_repositories_spec = {
     "name": "discover_code_repositories",
     "category": "programming",
-    "class_name": "CodingAssistantService.discover_code_repositories",
+    "class_name": "CodeRepositoryService.discover_code_repositories",
     "description": "Finds code repositories based on specific queries.",
     "parameters": {
         "type": "object",

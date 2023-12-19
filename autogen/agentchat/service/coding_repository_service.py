@@ -9,7 +9,7 @@ class CodeRepositoryService:
         from . import BackendService, MakeService, BaseCodeRepository, DeleteCodeRepositoryModel
         code_repository: BaseCodeRepository = MakeService.CODE_REPOSITORY_REGISTRY.get(coding_repository_model.name)
         if code_repository is None:
-            backend_code_repositories, err = BackendService.get_backend_code_repository([coding_repository_model])
+            backend_code_repositories, err = BackendService.get_backend_code_repositories([coding_repository_model])
             if err is None and backend_code_repositories:
                 code_repository, err = CodeRepositoryService.make_code_repository(backend_code_repositories[0])
                 if err is None and code_repository:
@@ -149,36 +149,36 @@ class CodeRepositoryService:
         gh_user = MakeService.auth.gh_user
         gh_pat = MakeService.auth.gh_pat
         if not gh_user:
-            return json.dumps({"error": "Github user not set when calling API."})
+            return {"error": "Github user not set when calling API."}
         if not gh_pat:
-            return json.dumps({"error": "Github personal access token not set when calling API."})
+            return {"error": "Github personal access token not set when calling API."}
         # Check if the repository already exists under the user's account
         if not CodeRepositoryService._check_repo_exists(gh_user, repository_name, gh_pat):
             # If the repository does not exist, create it
             # check if we need to fork the repository
             if gh_remote_url:
                 remote_gh_user = CodeRepositoryService._get_username_from_repo_url(gh_remote_url)
-                if isinstance(remote_gh_user, dict) and 'error' in remote_gh_user:
-                    return json.dumps(remote_gh_user)
+                if 'error' in remote_gh_user:
+                    return remote_gh_user
             # if the user's are different it means we are dealing with another remote so we fork
             if gh_remote_url and remote_gh_user != gh_user:
                 if not CodeRepositoryService._check_repo_exists(remote_gh_user, repository_name, gh_pat):
-                    return json.dumps({"error": f"Repository({repository_name}) does not exist remotely."})
+                    return {"error": f"Repository({repository_name}) does not exist remotely."}
                 # If the repository exists and belongs to a different user, fork it
                 gh_remote_url = CodeRepositoryService._fork_repository(gh_pat, f"{remote_gh_user}/{repository_name}")
-                if isinstance(gh_remote_url, dict) and 'error' in gh_remote_url:
-                    return json.dumps(gh_remote_url)
+                if 'error' in gh_remote_url:
+                    return gh_remote_url
                 if not CodeRepositoryService._check_repo_exists(gh_user, repository_name, gh_pat):
-                    return json.dumps({"error": f"After forking repository({repository_name}) could not locate remote under user {gh_user}."})
+                    return {"error": f"After forking repository({repository_name}) could not locate remote under user {gh_user}."}
             else:
                 create_response = CodeRepositoryService._create_github_repository(gh_pat, repository_name, description or "", private or False)
-                if isinstance(create_response, dict) and 'error' in create_response:
-                    return json.dumps(create_response)
+                if 'error' in create_response:
+                    return create_response
         else:
             CodeRepositoryService._update_github_repository(gh_pat, gh_user, repository_name, description, private)
-            if isinstance(create_response, dict) and 'error' in create_response:
-                return json.dumps(create_response)
-        return json.dumps({"response": f"https://github.com/{gh_user}/{repository_name}.git"})
+            if 'error' in create_response:
+                return create_response
+        return {"response": f"https://github.com/{gh_user}/{repository_name}.git"}
 
     @staticmethod
     def clone_repo(repo, cr):
@@ -189,20 +189,20 @@ class CodeRepositoryService:
         is_cloned = CodeRepositoryService._is_repo_cloned(repo, cr.gh_remote_url)
         if not is_cloned:
             clone_response = CodeRepositoryService._clone_repository(repo, cr.gh_remote_url, "coding")
-            if isinstance(clone_response, dict) and 'error' in clone_response:
+            if 'error' in clone_response:
                 return clone_response
             is_cloned = CodeRepositoryService._is_repo_cloned(repo, cr.gh_remote_url)
-            if isinstance(is_cloned, dict) and 'error' in is_cloned:
+            if 'error' in is_cloned:
                 return is_cloned
             if not is_cloned:
                 return {"error": f"Repository({cr.gh_remote_url}) was not cloned."}
             # Set remote URL with PAT for authentication
             remote_auth_url = CodeRepositoryService._construct_github_remote_url_with_pat(MakeService.auth.gh_user, MakeService.auth.gh_pat, cr.gh_remote_url)
-            if isinstance(remote_auth_url, dict) and 'error' in remote_auth_url:
-                return json.dumps(remote_auth_url)
-            set_remote_response = json.loads(CodingAssistantService._execute_git_command(repo, f"remote set-url origin {remote_auth_url}"))
-            if isinstance(set_remote_response, dict) and 'error' in set_remote_response:
-                return json.dumps(set_remote_response)
+            if 'error' in remote_auth_url:
+                return remote_auth_url
+            set_remote_response = CodingAssistantService._execute_git_command(repo, f"remote set-url origin {remote_auth_url}")
+            if 'error' in set_remote_response:
+                return set_remote_response
             return {"response": f"Repository was successfully cloned + authorized using a Personal Access Token to remote: {cr.gh_remote_url}."}
         else:
             return {"response": "The repository was already cloned."}
@@ -260,7 +260,7 @@ class CodeRepositoryService:
     ) -> str:
         from . import UpsertCodeRepositoryModel
         working_gh_remote_url_response = CodeRepositoryService.create_github_remote_repo(name, description, private, gh_remote_url)
-        if isinstance(working_gh_remote_url_response, dict) and 'error' in working_gh_remote_url_response:
+        if 'error' in working_gh_remote_url_response:
             return json.dumps(working_gh_remote_url_response)
         working_gh_remote_url = working_gh_remote_url_response['response']
         code_repositories, err = CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(

@@ -131,7 +131,7 @@ class FunctionsService:
     @staticmethod
     def define_function_internal(
         agent: GPTAssistantAgent,
-        function_model
+        function_model: BaseFunction
     ) -> str:
         from . import MakeService, OpenAIParameter
         function_model.parameters = function_model.parameters or OpenAIParameter()
@@ -197,7 +197,7 @@ class FunctionsService:
                     function_model.name: lambda **args: FunctionsService.execute_func(function_model.function_code, **args)
                 }
             )
-        MakeService.FUNCTION_REGISTRY[function_model.name] = BaseFunction(**function_model.dict(exclude_none=True))
+        MakeService.FUNCTION_REGISTRY[function_model.name] = function_model
         return json.dumps({"response": "Function added!"})
     
     @staticmethod
@@ -225,8 +225,7 @@ class FunctionsService:
             return json.dumps({"error": f"The '{field}' field must be a dictonary."})
 
     @staticmethod
-    def _create_function_model(agent: str, func_spec: Dict[str, Any]) -> Tuple[Optional[Any], Optional[str]]:
-        from . import AddFunctionModel
+    def _create_function_model(agent: str, func_spec: Dict[str, Any]) -> Tuple[Optional[BaseFunction], Optional[str]]:
         # for now only validate parameters through JSON string field, add to this list if other fields come up
         for field in ['parameters']:
             error_message = FunctionsService._load_json_field(func_spec, field)
@@ -234,7 +233,7 @@ class FunctionsService:
                 return None, error_message
 
         try:
-            function_model = AddFunctionModel(**func_spec)
+            function_model = BaseFunction(**func_spec)
             if function_model.function_code:
                 function_model.last_updater = agent
             return function_model, None
@@ -257,5 +256,5 @@ class FunctionsService:
         )])
         if err is not None:
             return err
-        MakeService.FUNCTION_REGISTRY[function_model.name] = BaseFunction(**function_model.dict(exclude_none=True))
+        MakeService.FUNCTION_REGISTRY[function_model.name] = function_model
         return json.dumps({"response": f"Function({function_model.name}) upserted!"})
