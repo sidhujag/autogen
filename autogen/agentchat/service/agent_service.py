@@ -15,14 +15,15 @@ Ensure to review the group's message history thoroughly before initiating a redu
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements.
+If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Groups are synchronous and do not notify other groups on progress. Let groups finish before terminating.
 
 Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
 
-Locked groups are good at specific jobs. Unlocked groups are good for abstract or further delegation of roles/tasks downstream.
+Locked groups are good at specific jobs. Unlocked groups are good for abstract or further assignment of roles/tasks downstream.
 
 If you are responding it means your group is not paused and all other groups are terminated. If a group has terminated it means all relevant agents within the group have done their job, you don't need to double-check against individual agents in a group after it terminates. 
-Groups do not operate in parallel and thus you CANNOT wait for a group under any context. If you are talking it means your group is the active group.
+
+Do not terminate a group if you are waiting for its response, as groups only communicate synchronously. Upon sending a message the sending group gets automatically paused awaiting the termination to continue again.
 
 Custom Instructions: {custom_instructions}
 """
@@ -38,14 +39,15 @@ Watch for others tagging you in the chat for certain requests like modifying age
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements.
+If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Groups are synchronous and do not notify other groups on progress. Let groups finish before terminating.
 
 Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
 
-Locked groups are good at specific jobs. Unlocked groups are good for abstract or further delegation of roles/tasks downstream.
+Locked groups are good at specific jobs. Unlocked groups are good for abstract or further assignment of roles/tasks downstream.
 
 If you are responding it means your group is not paused and all other groups are terminated. If a group has terminated it means all relevant agents within the group have done their job, you don't need to double-check against individual agents in a group after it terminates. 
-Groups do not operate in parallel and thus you CANNOT wait for a group under any context. If you are talking it means your group is the active group.
+
+Do not terminate a group if you are waiting for its response, as groups only communicate synchronously. Upon sending a message the sending group gets automatically paused awaiting the termination to continue again.
 
 Custom Instructions: {custom_instructions}
 

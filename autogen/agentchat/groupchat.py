@@ -365,10 +365,9 @@ class GroupChatManager(ConversableAgent):
                     if agent != speaker:
                         self.send(message, agent, request_reply=False, silent=True)
                 self.initiate_chat(self.tasking, message=self.tasking_message)
-                message = self.exit_response
-                if not message:
-                    message = self.last_message(speaker)
-                self.send(message, speaker, request_reply=False)
+                if self.exit_response:
+                    self.send(self.exit_response, speaker, request_reply=False)
+                    message = speaker.last_message(self)
                 self.tasking = None
                 self.tasking_message = None
             # set the name to speaker's name if the role is not function

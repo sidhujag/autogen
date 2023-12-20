@@ -19,15 +19,15 @@ class CodeRepositoryService:
         return code_repository
     
     @staticmethod
-    def get_code_repository_info(name: str) -> str:
+    def get_code_repository_info(repository_name: str) -> str:
         from . import MakeService, CodeRepositoryInfo, GetCodeRepositoryModel
-        backend_code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=name))
+        backend_code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=repository_name))
         if not backend_code_repository:
-            return json.dumps({"error": f"Code repository({name}) not found"})
+            return json.dumps({"error": f"Code repository({repository_name}) not found"})
         is_forked = CodeRepositoryService._is_github_repo_a_fork(backend_code_repository.gh_remote_url, MakeService.auth.gh_pat)
         repo_description = MakeService._get_short_description(backend_code_repository.description)
         backend_code_repository_info = CodeRepositoryInfo(
-            name=name,
+            name=repository_name,
             upstream_gh_remote_url=backend_code_repository.upstream_gh_remote_url,
             gh_remote_url=backend_code_repository.gh_remote_url,
             private=backend_code_repository.private,
@@ -175,9 +175,9 @@ class CodeRepositoryService:
                 if 'error' in create_response:
                     return create_response
         else:
-            CodeRepositoryService._update_github_repository(gh_pat, gh_user, repository_name, description, private)
-            if 'error' in create_response:
-                return create_response
+            update_response = CodeRepositoryService._update_github_repository(gh_pat, gh_user, repository_name, description, private)
+            if 'error' in update_response:
+                return update_response
         return {"response": f"https://github.com/{gh_user}/{repository_name}.git"}
 
     @staticmethod
@@ -253,18 +253,18 @@ class CodeRepositoryService:
 
     @staticmethod
     def upsert_code_repository(
-        name: str,
+        repository_name: str,
         description: Optional[str] = None,
         private: Optional[bool] = None,
         gh_remote_url: Optional[str] = None,
     ) -> str:
         from . import UpsertCodeRepositoryModel
-        working_gh_remote_url_response = CodeRepositoryService.create_github_remote_repo(name, description, private, gh_remote_url)
+        working_gh_remote_url_response = CodeRepositoryService.create_github_remote_repo(repository_name, description, private, gh_remote_url)
         if 'error' in working_gh_remote_url_response:
             return json.dumps(working_gh_remote_url_response)
         working_gh_remote_url = working_gh_remote_url_response['response']
         code_repositories, err = CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(
-            name=name,
+            name=repository_name,
             description=description,
             private=private,
             upstream_gh_remote_url=gh_remote_url,
@@ -272,7 +272,7 @@ class CodeRepositoryService:
         )])
         if err is not None:
             return err
-        return json.dumps({"response": f"Coding repository({name}) upserted!"})
+        return json.dumps({"response": f"Coding repository({repository_name}) upserted!"})
 
     @staticmethod
     def make_code_repository(backend_code_repository):

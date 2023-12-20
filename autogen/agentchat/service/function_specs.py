@@ -696,7 +696,7 @@ upsert_code_repository_function_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "name": {
+            "repository_name": {
                 "type": "string",
                 "description": "Code repository name. Used as the unique identifier of the code repository. Will use as the name of the repository in github."
             },
@@ -714,7 +714,7 @@ upsert_code_repository_function_spec = {
                 "description": "If provided will use as the github URL. If the account associated with the remote repository is different, it will fork the repository to your account."
             },
         },
-        "required": ["name"]
+        "required": ["repository_name"]
     },
 }
 
@@ -726,12 +726,12 @@ get_code_repository_info_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "name": {
+            "repository_name": {
                 "type": "string",
                 "description": "Code repository name."
             }
         },
-        "required": ["name"]
+        "required": ["repository_name"]
     }
 }
 
