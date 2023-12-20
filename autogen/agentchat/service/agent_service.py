@@ -70,7 +70,7 @@ Group Stats: {group_stats}
             backend_agents, err = BackendService.get_backend_agents([agent_model])
             if err is None and len(backend_agents) > 0:
                 agent, err = AgentService.make_agent(backend_agents[0])
-                if err is not None and agent:
+                if err is None and agent:
                     MakeService.AGENT_REGISTRY[agent_model.name] = agent
                 else:
                     BackendService.delete_backend_agents([DeleteAgentModel(name=agent_model.name)])
