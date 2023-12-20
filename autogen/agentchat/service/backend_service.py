@@ -113,7 +113,7 @@ class UpsertCodeRepositoryModel(BaseModel):
     private: Optional[bool] = None
     gh_remote_url: Optional[str] = None
     upstream_gh_remote_url: Optional[str] = None
-    associated_code_assistants: Optional[set[str]] = None
+    associated_code_assistants: Optional[List[str]] = None
 
 class BaseAgent(BaseModel):
     name: str = Field(default="")
@@ -186,7 +186,7 @@ class BaseCodeRepository(BaseModel):
     description: str = Field(default="")
     gh_remote_url: str = Field(default="")
     upstream_gh_remote_url: str = Field(default="")
-    associated_code_assistants: set[str] = Field(default=set())
+    associated_code_assistants: List[str] = Field(default=[])
     private: bool = Field(default=False)
 
 class CodeRepositoryInfo(BaseModel):
@@ -194,7 +194,7 @@ class CodeRepositoryInfo(BaseModel):
     description: str = Field(default="")
     gh_remote_url: str = Field(default="")
     upstream_gh_remote_url: str = Field(default="")
-    associated_code_assistants: set[str] = Field(default=set())
+    associated_code_assistants: List[str] = Field(default=[])
     private: bool = Field(default=False)
     is_forked: bool = Field(default=False)
 
@@ -204,7 +204,7 @@ class CodingAssistantInfo(BaseModel):
     description: str = Field(default="")
     model: str = Field(default="")
     git_dir: str = Field(default="")
-    files: set[str] = Field(default=set())
+    files: List[str] = Field(default=[])
     show_diffs: bool = Field(default=False)
     dry_run: bool = Field(default=False)
     map_tokens: int = Field(default=1024)

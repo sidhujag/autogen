@@ -193,7 +193,9 @@ class CodingAssistantService:
             clone_response = CodeRepositoryService.clone_repo(coder.repo, code_repository)
             if 'error' in clone_response:
                 return json.dumps(clone_response)
-            code_repository.associated_code_assistants.add(backend_coding_assistant.name)
+            if backend_coding_assistant.name not in code_repository.associated_code_assistants:
+                code_repository.associated_code_assistants.append(backend_coding_assistant.name)
+
             coding_assistants, err = CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(
                 name=code_repository.name,
                 associated_code_assistants=code_repository.associated_code_assistants
@@ -231,7 +233,7 @@ class CodingAssistantService:
             cmd = 'add'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
                 name=name,
-                files=coder.abs_fnames
+                files=list(coder.abs_fnames)
             )])
             if err is not None:
                 return err
@@ -240,7 +242,7 @@ class CodingAssistantService:
             cmd = 'drop'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
                 name=name,
-                files=coder.abs_fnames
+                files=list(coder.abs_fnames)
             )])
             if err is not None:
                 return err
