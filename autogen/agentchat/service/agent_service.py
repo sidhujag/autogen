@@ -1,7 +1,7 @@
 from .. import GroupChatManager
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
-from autogen.agentchat.service.function_specs import function_coder_specs, management_function_specs, group_terminate_function_specs, group_info_function_specs, files_function_specs
+from autogen.agentchat.service.function_specs import management_function_specs, group_terminate_function_specs, group_info_function_specs, files_function_specs
 import json
 import requests
 
@@ -58,8 +58,6 @@ Group Stats: {group_stats}
     INFO_INSTRUCTIONS = "Access and manage information on functions, agents, and groups. Discover entities and gather relevant data."
     TERMINATE_INSTRUCTIONS = "Ability to terminate a group, concluding its operations."
     OPENAI_CODE_INTERPRETER_INSTRUCTIONS = "Create and executes simple code through natural language using the OpenAI Code Interpreter and provides response in interactions. Ideal for isolated, internet-independent tasks."
-    CODING_ASSISTANCE_INSTRUCTIONS = "Use coding assistant to coordinate amongst agents to create/test/develop code suitable for comprehensive application development."
-    FUNCTION_CODER_INSTRUCTIONS = "Develop and execute reusable functions, crucial for tasks that require modularity and reusability in code."
     OPENAI_RETRIEVAL_INSTRUCTIONS = "Leverage OpenAI's capabilities to enhance knowledge retrieval, utilizing external documents and data."
     OPENAI_FILES_INSTRUCTIONS = "Manage and utilize OpenAI Files for data processing, sharing, and state management across OpenAI Code Interpreter and Retrieval tools."
     MANAGEMENT_INSTRUCTIONS = "Oversee and modify agents/groups, facilitate inter-group communication, and manage overall group activities."
@@ -232,7 +230,7 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _update_capability(agent):
-        from . import FunctionsService, MakeService, INFO, TERMINATE, OPENAI_RETRIEVAL, MANAGEMENT, FUNCTION_CODER, CODING_ASSISTANCE, OPENAI_FILES, OPENAI_CODE_INTERPRETER
+        from . import FunctionsService, MakeService, INFO, TERMINATE, OPENAI_RETRIEVAL, MANAGEMENT, OPENAI_FILES, OPENAI_CODE_INTERPRETER
         agent.llm_config["tools"] = []
         agent._code_execution_config = {}
         if agent.capability & INFO:
@@ -257,12 +255,6 @@ Group Stats: {group_stats}
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model)
-        if agent.capability & FUNCTION_CODER:
-            for func_spec in function_coder_specs:
-                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
-                if error_message:
-                    return error_message
-                FunctionsService.define_function_internal(agent, function_model)  
         if agent.capability & MANAGEMENT:
             for func_spec in management_function_specs:
                 function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
@@ -406,11 +398,9 @@ Group Stats: {group_stats}
             ("INFO", 1, AgentService.INFO_INSTRUCTIONS),
             ("TERMINATE", 2, AgentService.TERMINATE_INSTRUCTIONS),
             ("OPENAI_CODE_INTERPRETER", 4, AgentService.OPENAI_CODE_INTERPRETER_INSTRUCTIONS),
-            ("CODING_ASSISTANCE", 8, AgentService.CODING_ASSISTANCE_INSTRUCTIONS),
-            ("FUNCTION_CODER", 16, AgentService.FUNCTION_CODER_INSTRUCTIONS),
-            ("OPENAI_RETRIEVAL", 32, AgentService.OPENAI_RETRIEVAL_INSTRUCTIONS),
-            ("OPENAI_FILES", 64, AgentService.OPENAI_FILES_INSTRUCTIONS),
-            ("MANAGEMENT", 128, AgentService.MANAGEMENT_INSTRUCTIONS),
+            ("OPENAI_RETRIEVAL", 8, AgentService.OPENAI_RETRIEVAL_INSTRUCTIONS),
+            ("OPENAI_FILES", 16, AgentService.OPENAI_FILES_INSTRUCTIONS),
+            ("MANAGEMENT", 32, AgentService.MANAGEMENT_INSTRUCTIONS),
         ]
 
         # Extract instructions for each enabled capability

@@ -1,4 +1,4 @@
-from autogen.agentchat.service import UpsertAgentModel, AuthAgent, TERMINATE, OPENAI_FILES, OPENAI_RETRIEVAL, OPENAI_CODE_INTERPRETER, CODING_ASSISTANCE, FUNCTION_CODER     
+from autogen.agentchat.service import UpsertAgentModel, AuthAgent, TERMINATE, OPENAI_FILES, OPENAI_RETRIEVAL, OPENAI_CODE_INTERPRETER     
 web_search_worker_model = UpsertAgentModel(
     name="web_search_worker",
     category="information_retrieval",
@@ -86,8 +86,8 @@ code_assistant_worker_model = UpsertAgentModel(
     category="programming",
     description="Specializes in developing code according to specified plans, focusing on functionality and adherence to project guidelines. Collaborates within the coding_assistance_group, working closely with the code_assistant_manager and code_assistant_checker for cohesive code development and integration.",
     system_message="Welcome to the coding_assistance_group. Read, understand and use the functions provided to you. Discover code assistants and code repositories. Code assistants are associated with existing code repositories. When creating the assistant the repo will be cloned locally so you can send messages to the assistant to do code through natural language. Use instructions in get_coding_assistant_info to know if its forked or cloned (to know if you should push or PR at the end). If you started with a fresh repo you should add a new file using command_add on the assistant before you begin coding. Focus on developing code as per the provided plan. Regularly sync with the main branch, manage local changes, and update the repository. Request complete code segments when communicating with the code assistant and avoid placeholder comments.",
-    capability=CODING_ASSISTANCE,
     human_input_mode="NEVER",
+    capability=0,
     functions_to_add=["upsert_code_repository", "get_code_repository_info", "discover_code_repositories", "upsert_coding_assistant", "send_message_to_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
@@ -97,7 +97,7 @@ code_assistant_checker_model = UpsertAgentModel(
     description="Focused on maintaining code quality, this agent performs code reviews, provides feedback, writes tests, and upholds high standards. Functions within the coding_assistance_group, ensuring code developed by the code_assistant_worker meets quality benchmarks, alongside the guidance of the code_assistant_manager.",
     system_message="Welcome to the coding_assistance_group. Read, understand and use the functions provided to you. Discover code assistants and code repositories. Code assistants are associated with existing code repositories. Upon creating the assistant the repo will be cloned locally so you can send messages to the assistant to do code through natural language. Use instructions in get_coding_assistant_info to know if its forked or cloned (to know if you should push or PR at the end). If you started with a fresh repo you should add a new file using command_add on the assistant before you begin coding. Perform code reviews, write tests, and provide feedback to maintain high standards. Once satisfied with the code quality, push and possibly (if forked) issue a pull request back upstream. Ensure all tests and criteria are met before approving the code for merging.",
     human_input_mode="ALWAYS",
-    capability=CODING_ASSISTANCE,
+    capability=0,
     functions_to_add=["upsert_code_repository", "get_code_repository_info", "discover_code_repositories", "upsert_coding_assistant", "send_message_to_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
@@ -116,7 +116,8 @@ function_code_worker_model = UpsertAgentModel(
     description="Specializes in creating reusable, efficient functions based on given requirements. Usually works in function_creation_group alongside function_checker and function_manager.",
     system_message="Read the conversation in the group. Usually you work in the function_creation_group. Develop a reusable function for the provided requirements, focusing on efficiency and adaptability. For complex functions you may need to use coding assistance to provide you with working code to work into a function.",
     human_input_mode="NEVER",
-    capability=FUNCTION_CODER
+    capability=0,
+    functions_to_add=["upsert_function","test_function"]
 )
 
 function_checker_model = UpsertAgentModel(
@@ -125,7 +126,8 @@ function_checker_model = UpsertAgentModel(
     description="Tests functions for reliability and provides feedback for enhancements. Usually works in function_creation_group alongside function_code_worker and function_manager.",
     system_message="Read the converation in the group. Usually you work in the function_creation_group. Test the created function for reliability and provide constructive feedback. Update the development status accordingly. For complex functions you may need to use coding assistance to provide you with working code to work into a function.",
     human_input_mode="NEVER",
-    capability=FUNCTION_CODER
+    capability=0,
+    functions_to_add=["upsert_function","test_function"]
 )
 
 function_manager_model = UpsertAgentModel(
