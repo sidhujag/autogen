@@ -23,9 +23,10 @@ install_requires = [
     "uvicorn",
     "gunicorn",
     "tiktoken",
-    "aider-chat @ git+https://github.com/paul-gauthier/aider.git"
-    "pydantic>=1.10,<3",  # could be both V1 and V2
+    "aider-chat @ git+https://github.com/paul-gauthier/aider.git",
+    "pydantic>=1.10,<3"
 ]
+
 
 setuptools.setup(
     name="pyautogen",
