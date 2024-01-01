@@ -188,7 +188,7 @@ class CodeRepositoryService:
         # Clone the repository if it's not already cloned
         is_cloned = CodeRepositoryService._is_repo_cloned(repo, cr.gh_remote_url)
         if not is_cloned:
-            clone_response = CodeRepositoryService._clone_repository(repo, cr.gh_remote_url, "coding")
+            clone_response = CodeRepositoryService._clone_repository(repo, cr.gh_remote_url, metagpt.DEFAULT_WORKSPACE_ROOT)
             if 'error' in clone_response:
                 return clone_response
             is_cloned = CodeRepositoryService._is_repo_cloned(repo, cr.gh_remote_url)

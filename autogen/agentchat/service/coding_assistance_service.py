@@ -6,6 +6,23 @@ from aider.io import InputOutput
 from openai import OpenAI
 import json
 import requests
+import sys
+import os
+import asyncio
+from pathlib import Path
+
+# Adjust the path to point to the MetaGPT directory
+metagpt_path = os.path.join(os.path.dirname(__file__), "../../../MetaGPT")
+sys.path.append(metagpt_path)
+
+# Now you can import metagpt and its components
+import metagpt
+from metagpt.config import CONFIG
+from metagpt.roles import Architect, Engineer, ProductManager, ProjectManager, QaEngineer
+from metagpt.team import Team
+from metagpt.utils.common import (
+    read_json_file
+)
 class CodingAssistantService:
     @staticmethod
     def get_coding_assistant(coding_assistant_model) -> Coder:
@@ -17,6 +34,14 @@ class CodingAssistantService:
                 coding_assistant, err = CodingAssistantService.make_coding_assistant(backend_coding_assistants[0])
                 if err is None and coding_assistant:
                     MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant_model.name] = coding_assistant
+        if not coding_assistant.company:
+            recover_path = coding_assistant.git_dname / "storage" / "team"
+            stg_path = Path(recover_path)
+            if not stg_path.exists() or not str(stg_path).endswith("team"):
+                raise FileNotFoundError(f"{recover_path} not exists or not endswith `team`")
+
+            company = Team.deserialize(stg_path=stg_path)
+            coding_assistant.company = company
         return coding_assistant
     
     @staticmethod
@@ -27,7 +52,7 @@ class CodingAssistantService:
             return json.dumps({"error": f"Coding assistant({name}) not found"})
         repository_info = CodeRepositoryService.get_code_repository_info(backend_coding_assistant.name)
         if not repository_info:
-            return json.dumps({"error": f"Coding repository({backend_coding_assistant.name}) not found"})
+            return json.dumps({"error": f"Coding repository({repository_info.name}) not found"})
         group_description = MakeService._get_short_description(backend_coding_assistant.description)
         # Return the JSON representation of the coding_assistants info
         git_dir = None
@@ -184,12 +209,23 @@ class CodingAssistantService:
                 client=client,
                 ##
                 fnames=backend_coding_assistant.files,
-                git_dname=f"coding\{backend_coding_assistant.name}",
+                git_dname=f"{metagpt.DEFAULT_WORKSPACE_ROOT}\{code_repository.name}",
                 show_diffs=backend_coding_assistant.show_diffs,
                 dry_run=backend_coding_assistant.dry_run,
                 map_tokens=backend_coding_assistant.map_tokens,
                 verbose=backend_coding_assistant.verbose,
             )
+            company = Team()
+            company.hire(
+                [
+                    ProductManager(),
+                    Architect(),
+                    ProjectManager(),
+                    Engineer(n_borg=5, use_code_review=True),
+                    QaEngineer() 
+                ]
+            )
+            coder.company = company
             clone_response = CodeRepositoryService.clone_repo(coder.repo, code_repository)
             if 'error' in clone_response:
                 return json.dumps(clone_response)
@@ -209,6 +245,7 @@ class CodingAssistantService:
     @staticmethod
     def send_message_to_coding_assistant(
         name: str,
+        type: str,
         command_pull_request: Optional[bool] = None,
         command_apply: Optional[str] = None,
         command_show_repo_map: Optional[bool] = None,
@@ -220,15 +257,38 @@ class CodingAssistantService:
         command_tokens: Optional[bool] = None,
         command_undo: Optional[bool] = None,
         command_diff: Optional[bool] = None,
-        command_git_command: Optional[str] = None
+        command_git_command: Optional[str] = None,
+        command_create_test_for_file: Optional[str] = None
     ) -> str:
+        if not (type == "metagpt" or type == "aider"):
+            return json.dumps({"error": f"type({type}) must be either 'metagpt' or 'aider'."})
         from . import GetCodingAssistantModel, UpsertCodingAssistantModel, MakeService
         coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
         if coder is None:
             return json.dumps({"error": f"Could not send message to coding_assistant({name}): does not exist."})
-        coder.io.console.begin_capture()
+        str_output = ''
         cmd = None
-        if command_add:
+        if command_create_test_for_file:
+            if not type == "metagpt":
+                return json.dumps({"error": "Must use metagpt type for this command."})
+            if not command_message:
+                return json.dumps({"error": "Please provide command_message as natural language description of task for code coverage."})
+            project_name = coder.name
+            inc = True
+            project_path = coder.git_dname
+            reqa_file = command_create_test_for_file
+            max_auto_summarize_code = 0
+            metagpt.SERDESER_PATH = coder.git_dname / "storage"
+            CONFIG.update_via_cli(project_path, project_name, inc, reqa_file, max_auto_summarize_code)
+            coder.company.run_project(command_message)
+            asyncio.run(coder.company.run())
+            history = read_json_file(metagpt.SERDESER_PATH.joinpath("history.json"))
+            str_output = history.get("content")[:1024]
+            return json.dumps({"success": f"Message ({command_message}) was sent and output was: {str_output}"})
+        elif command_add:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_add(command_add)
             cmd = 'add'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
@@ -238,6 +298,9 @@ class CodingAssistantService:
             if err is not None:
                 return err
         elif command_drop:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_drop(command_drop)
             cmd = 'drop'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
@@ -247,18 +310,33 @@ class CodingAssistantService:
             if err is not None:
                 return err
         elif command_clear:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_clear(None)
             cmd = 'clear'
         elif command_ls:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_ls(None)
             cmd = 'ls'
         elif command_tokens:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_tokens(None)
             cmd = 'tokens'
         elif command_undo:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_undo(None)
             cmd = 'undo'
         elif command_diff:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_diff(None)
             cmd = 'diff'
         elif command_pull_request:
@@ -272,11 +350,17 @@ class CodingAssistantService:
         elif command_git_command:
             return json.dumps(CodingAssistantService._execute_git_command(coder.repo, command_git_command)) 
         elif command_show_repo_map:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             repo_map = coder.get_repo_map()
             if repo_map:
                 coder.io.tool_output(repo_map)
             cmd = 'show_repo_map'
         elif command_apply:
+            coder.io.console.begin_capture()
+            if not type == "aider":
+                return json.dumps({"error": "Must use aider type for this command."})
             content = coder.io.read_text(command_apply)
             if content is None:
                 str_output = coder.io.console.end_capture()
@@ -288,9 +372,22 @@ class CodingAssistantService:
             str_output = coder.io.console.end_capture()
             return json.dumps({"success": f"Command ({cmd}) ran and output was: {str_output}"})
         if command_message:
-            coder.io.tool_output()
-            coder.run(with_message=command_message)
+            if type == "metgpt":
+                project_name = coder.name
+                inc = True
+                project_path = coder.git_dname
+                reqa_file = command_create_test_for_file
+                max_auto_summarize_code = 0
+                metagpt.SERDESER_PATH = coder.git_dname / "storage"
+                CONFIG.update_via_cli(project_path, project_name, inc, reqa_file, max_auto_summarize_code)
+                coder.company.run_project(command_message)
+                asyncio.run(coder.company.run())
+                history = read_json_file(metagpt.SERDESER_PATH.joinpath("history.json"))
+                str_output = history.get("content")[:1024]
+            elif type == "aider":
+                coder.io.tool_output()
+                coder.run(with_message=command_message)
+                str_output = coder.io.console.end_capture()
         else:
             return json.dumps({"error": "Could not run code assistant, no commands or message provided"})
-        str_output = coder.io.console.end_capture()
         return json.dumps({"success": f"Message ({command_message}) was sent and output was: {str_output}"})
