@@ -1,6 +1,5 @@
 
 from typing import Optional
-from openai import OpenAI
 import json
 import requests
 class CodeRepositoryService:

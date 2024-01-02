@@ -13,7 +13,7 @@ from metagpt.roles import researcher
 class WebResearcher:
     @staticmethod
     async def run(
-        topic: str, **args
+        topic: str
     ):
         filename = re.sub(r'[\\/:"*?<>|]+', " ", topic)
         filename = filename.replace("\n", "")

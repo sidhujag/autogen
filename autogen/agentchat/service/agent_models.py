@@ -2,8 +2,8 @@ from autogen.agentchat.service import UpsertAgentModel, AuthAgent, TERMINATE, OP
 web_search_worker_model = UpsertAgentModel(
     name="web_search_worker",
     category="information_retrieval",
-    description="Executes search queries or online research and compiles relevant information from diverse sources. Usually works in web_search_group alongside web_search_checker, web_search_planner and web_search_manager.",
-    system_message="Read the conversation in the group. Usually you work in the web_search_group. Execute the request queries and compile a comprehensive list of relevant information. Use files and retrieval for large data sets and knowledge base Q&A. Use web_search function for quick real-time queries or web_researcher for researching topics.",
+    description="Executes search queries, does online research, scrape webpages and compiles relevant information from diverse sources. Usually works in web_search_group alongside web_search_checker, web_search_planner and web_search_manager.",
+    system_message="Read the conversation in the group. Usually you work in the web_search_group. Execute the request queries and compile a comprehensive list of relevant information. Use files and retrieval for large data sets and knowledge base Q&A. Use web_search function for quick real-time queries, web_researcher for researching topics. You can also use upload_file to save a URL to an OpenAI File and use OpenAI retrieval tool to query it based on natural language.",
     human_input_mode="NEVER",
     capability=OPENAI_FILES | OPENAI_RETRIEVAL,
     functions_to_add=["web_search", "web_researcher"]

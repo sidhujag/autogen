@@ -380,7 +380,7 @@ get_file_content_spec = {
     "name": "get_file_content",
     "category": "programming",
     "class_name": "AgentService.get_file_content",
-    "description": "Retrieves contents of an OpenAI file.",
+    "description": "Retrieves entire contents of an OpenAI file to agent context. Usually you want to query it via retrieval tool, only use this if you REALLY need to read the entire content into the agent context.",
     "parameters": {
         "type": "object",
         "properties": {
