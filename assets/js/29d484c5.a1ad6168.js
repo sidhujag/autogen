@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkwebsite=self.webpackChunkwebsite||[]).push([[918],{6879:e=>{e.exports=JSON.parse('{"allTagsPath":"/autogen/blog/tags","slug":"/autogen/blog/tags/auto-gen","name":"AutoGen","count":1,"permalink":"/autogen/blog/tags/auto-gen"}')}}]);
