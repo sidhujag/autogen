@@ -245,7 +245,7 @@ class CodingAssistantService:
     @staticmethod
     def send_message_to_coding_assistant(
         name: str,
-        type: str,
+        type:  Optional[str] = None,
         command_pull_request: Optional[bool] = None,
         command_apply: Optional[str] = None,
         command_show_repo_map: Optional[bool] = None,
@@ -260,8 +260,6 @@ class CodingAssistantService:
         command_git_command: Optional[str] = None,
         command_create_test_for_file: Optional[str] = None
     ) -> str:
-        if not (type == "metagpt" or type == "aider"):
-            return json.dumps({"error": f"type({type}) must be either 'metagpt' or 'aider'."})
         from . import GetCodingAssistantModel, UpsertCodingAssistantModel, MakeService
         coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
         if coder is None:
@@ -269,8 +267,6 @@ class CodingAssistantService:
         str_output = ''
         cmd = None
         if command_create_test_for_file:
-            if not type == "metagpt":
-                return json.dumps({"error": "Must use metagpt type for this command."})
             if not command_message:
                 return json.dumps({"error": "Please provide command_message as natural language description of task for code coverage."})
             project_name = coder.name
@@ -287,8 +283,6 @@ class CodingAssistantService:
             return json.dumps({"success": f"Message ({command_message}) was sent and output was: {str_output}"})
         elif command_add:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_add(command_add)
             cmd = 'add'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
@@ -299,8 +293,6 @@ class CodingAssistantService:
                 return err
         elif command_drop:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_drop(command_drop)
             cmd = 'drop'
             coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
@@ -311,32 +303,22 @@ class CodingAssistantService:
                 return err
         elif command_clear:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_clear(None)
             cmd = 'clear'
         elif command_ls:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_ls(None)
             cmd = 'ls'
         elif command_tokens:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_tokens(None)
             cmd = 'tokens'
         elif command_undo:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_undo(None)
             cmd = 'undo'
         elif command_diff:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             coder.commands.cmd_diff(None)
             cmd = 'diff'
         elif command_pull_request:
@@ -351,16 +333,12 @@ class CodingAssistantService:
             return json.dumps(CodingAssistantService._execute_git_command(coder.repo, command_git_command)) 
         elif command_show_repo_map:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             repo_map = coder.get_repo_map()
             if repo_map:
                 coder.io.tool_output(repo_map)
             cmd = 'show_repo_map'
         elif command_apply:
             coder.io.console.begin_capture()
-            if not type == "aider":
-                return json.dumps({"error": "Must use aider type for this command."})
             content = coder.io.read_text(command_apply)
             if content is None:
                 str_output = coder.io.console.end_capture()
@@ -388,6 +366,8 @@ class CodingAssistantService:
                 coder.io.tool_output()
                 coder.run(with_message=command_message)
                 str_output = coder.io.console.end_capture()
+            else:
+                return json.dumps({"error":f"Type not provided, must be either 'metagpt' or 'aider'"})
         else:
             return json.dumps({"error": "Could not run code assistant, no commands or message provided"})
         return json.dumps({"success": f"Message ({command_message}) was sent and output was: {str_output}"})

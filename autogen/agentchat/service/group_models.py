@@ -20,7 +20,8 @@ coding_assistance_group_model = UpsertGroupModel(
                  "The group's collaboration is geared towards working on a remote GitHub repository. If no remote URL provided to you then you will create a new one when calling upsert_code_repository."
                  "Once the code output is deemed acceptable, push or issue a pull request (if you working with a fork) to save the work online."
                  "For smaller, independent functions or routines that are intended for future reuse, the function_creation_group is recommended."
-                 "The group's workflow mandates that the output, whether code or documentation, is acknowledged through merging (if its forked otherwise pushing) into the remote repository before the group's closure is accepted. This process ensures that the contributions of the Coding Assistant Group are properly integrated and recognized within the broader project context."),
+                 "The group's workflow mandates that the output, whether code or documentation, is acknowledged through merging (if its forked otherwise pushing) into the remote repository before the group's closure is accepted. This process ensures that the contributions of the Coding Assistant Group are properly integrated and recognized within the broader project context."
+                 "Two types of coding assistants are created 'metagpt' for designing, testing, running code/tests, and coding, while 'aider' is usually used for augmentation, bug fixing and smaller initial coding tasks."),
     agents_to_add=["code_assistant_worker", "code_assistant_checker", "code_assistant_manager"],
     locked = True
 )
