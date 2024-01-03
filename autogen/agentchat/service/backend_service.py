@@ -70,7 +70,28 @@ class DiscoverCodingAssistantModel(BaseModel):
 class DiscoverCodeRepositoryModel(BaseModel):
     query: str
     auth: AuthAgent = AuthAgent()
-    
+
+class WebResearchInput(BaseModel):
+    topic: str
+
+class CodeExecInput(BaseModel):
+    workspace: set
+    command_git_command: str
+
+class CodeRequestInput(BaseModel):
+    auth: AuthAgent = AuthAgent()
+    repository_name: str
+    title: str
+    body: str
+    branch: str
+ 
+class CodeAssistantInput(BaseModel):
+    auth: AuthAgent = AuthAgent()
+    workspace: str
+    project_name: str
+    command_message: str
+    reqa_file: Optional[str] = None
+
 class UpsertAgentModel(BaseModel):
     name: str
     auth: AuthAgent = AuthAgent()
@@ -112,7 +133,6 @@ class UpsertCodeRepositoryModel(BaseModel):
     description: Optional[str] = None
     private: Optional[bool] = None
     gh_remote_url: Optional[str] = None
-    upstream_gh_remote_url: Optional[str] = None
     associated_code_assistants: Optional[List[str]] = None
 
 class BaseAgent(BaseModel):
@@ -185,15 +205,15 @@ class BaseCodeRepository(BaseModel):
     auth: AuthAgent = Field(default=AuthAgent)
     description: str = Field(default="")
     gh_remote_url: str = Field(default="")
-    upstream_gh_remote_url: str = Field(default="")
     associated_code_assistants: List[str] = Field(default=[])
     private: bool = Field(default=False)
+    is_forked: bool = Field(default=False)
+    workspace: str = Field(default="")
 
 class CodeRepositoryInfo(BaseModel):
     name: str = Field(default="")
     description: str = Field(default="")
     gh_remote_url: str = Field(default="")
-    upstream_gh_remote_url: str = Field(default="")
     associated_code_assistants: List[str] = Field(default=[])
     private: bool = Field(default=False)
     is_forked: bool = Field(default=False)
@@ -203,7 +223,6 @@ class CodingAssistantInfo(BaseModel):
     gh_user: str = Field(default="")
     description: str = Field(default="")
     model: str = Field(default="")
-    git_dir: str = Field(default="")
     files: List[str] = Field(default=[])
     show_diffs: bool = Field(default=False)
     dry_run: bool = Field(default=False)
@@ -215,7 +234,8 @@ class UpdateComms(BaseModel):
     auth: AuthAgent = AuthAgent()
     sender: str
     receiver: str
-
+   
+    
 class BackendService:
     @staticmethod
     def delete_backend_agents(data_models: List[DeleteAgentModel]):
@@ -457,6 +477,38 @@ class BackendService:
         from . import MakeService
         data_model.auth = MakeService.auth
         response, err = BackendService.call("discover_code_repositories", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+    
+    @staticmethod
+    def create_github_pull_request(data_model: CodeRequestInput):
+        from . import MakeService
+        data_model.auth = MakeService.auth
+        response, err = BackendService.call("code_issue_pull_request", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+    
+    @staticmethod
+    def run_code_assistant(data_model: CodeAssistantInput):
+        from . import MakeService
+        data_model.auth = MakeService.auth
+        response, err = BackendService.call("code_assistant_run", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+    
+    @staticmethod
+    def web_research(data_model: WebResearchInput):
+        response, err = BackendService.call("web_research", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+    
+    @staticmethod
+    def execute_git_command(data_model: CodeExecInput):
+        response, err = BackendService.call("code_execute_git_command", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None

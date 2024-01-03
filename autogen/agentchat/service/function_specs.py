@@ -550,7 +550,7 @@ code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.send_message_to_coding_assistant",
     "description": (
-        "This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. It supports the full development cycle, facilitating branch management, local development, and code preparation for peer review. The `command_message` parameter is key as the primary entry point for natural language coding assistance, enabling agents to command code generation and edits. Additionally, this function manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding workflows. The `command_git_command` is also a key parameter for any git commands executed through GitPython. Only one command should be sent per call to this function. Any errors in responses can help guide you in correcting your commands. Choose the right type based on the requirements for assistance. Both assistant types work on the same local repository."
+        "This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. It supports the full development cycle, facilitating branch management, local development, and code preparation for peer review. The `command_message` parameter is key as the primary entry point for natural language coding assistance, enabling agents to command code generation and edits. Additionally, this function manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding workflows. The `command_git_command` is also a key parameter for any git commands executed through GitPython. Only one command should be sent per call to this function. Any errors in responses can help guide you in correcting your commands. Choose the right assistant_type based on the requirements for assistance. Both assistant types work on the same local repository. metagpt is a multi-agent framework which uses agents, Git, a simple AST and multiple rounds of agent feedback to create software. It uses ProductManager, Architect, ProjectManager, Engineer and QAEngineer agents to solve coding tasks. aider uses a single LLM, Git and a complex AST to work on coding tasks with ability to add, remove, update code more easily due to the better AST for awareness of objects within repository."
     ),
     "parameters": {
         "type": "object",
@@ -559,7 +559,7 @@ code_assistant_function_spec = {
                 "type": "string",
                 "description": "Code assistant name."
             },
-            "type": {
+            "assistant_type": {
                 "type": "string",
                 "description": "Assistant type. Use metagpt to design, initial software setup/creation, create tests, and do QA. Use aider to modify, update, improve code, fix bugs. Usually you start with metagpt to create and after code is created you use aider to augment. Sometimes you can just use aider if design/qa/tests are not needed. Note that even after tests and QA is done you can always use command_create_test_for_file to create further code coverage. This field is required when sending command_message.",
                 "enum": ["metagpt", "aider"],
@@ -579,7 +579,7 @@ code_assistant_function_spec = {
             },
             "command_message": {
                 "type": "string",
-                "description": "Process a single message for code assistant and exit. This is your entrypoint for natural language coding assistance usually. Work is done in your local branch. If type is aider it will use aider code assistant to work on code, otherwise if it is metagpt it will use metagpt to design, code the request based on natural language."
+                "description": "Process a single message for code assistant and exit. This is your entrypoint for natural language coding assistance usually. Work is done in your local branch. If type is aider it will use aider code assistant to work on code, otherwise if it is metagpt it will use metagpt to design, code the request based on natural language. assistant_type is also required for this command."
             },
             "command_add": {
                 "type": "string",
@@ -611,7 +611,7 @@ code_assistant_function_spec = {
             },
             "command_git_command": {
                 "type": "string",
-                "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push origin feature-branch' to push to remote, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
+                "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push' to push to remote, 'push -u origin feature-branch' to push to a new remote branch, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
             },
             "command_create_test_for_file": {
                 "type": "string",
@@ -801,6 +801,8 @@ files_function_specs = [
 ]
 
 external_function_specs = [
+    upsert_function_spec,
+    test_function_spec,
     serper_spec,
     web_research_spec,
     zapier_api_check_spec,

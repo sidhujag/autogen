@@ -10,6 +10,7 @@ from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from autogen.agentchat.service.function_specs import external_function_specs
 from autogen.agentchat.service.agent_models import external_agent_models
 from autogen.agentchat.service.group_models import external_group_models
+from autogen.oai.openai_utils import retrieve_assistants_by_name
 from autogen.agentchat.service import MakeService, FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE
 from typing import List
 app = FastAPI()
@@ -55,10 +56,23 @@ def upsert_external_functions(sender):
 
 def upsert_agents(models):
     for model in models:
-        agent = AgentService.get_agent(GetAgentModel(name=model.name))
         id = None
-        if agent is None:
-            # place holder to get assistant id
+        print(f'upsert_agent: {model.name}')
+        candidate_assistants = retrieve_assistants_by_name(MakeService.openai_client, model.name)
+        if candidate_assistants:
+            if len(candidate_assistants) > 1:
+                for candidate_assistant in candidate_assistants:
+                    MakeService.openai_client.beta.assistants.delete(assistant_id=candidate_assistant.id)
+                openai_assistant = MakeService.openai_client.beta.assistants.create(
+                    name=model.name,
+                    instructions="",
+                    tools=[],
+                    model="gpt-4-1106-preview",
+                )
+                id = openai_assistant.id
+            else:
+                id = candidate_assistants[0].id
+        else:
             openai_assistant = MakeService.openai_client.beta.assistants.create(
                 name=model.name,
                 instructions="",
@@ -66,13 +80,22 @@ def upsert_agents(models):
                 model="gpt-4-1106-preview",
             )
             id = openai_assistant.id
-        else:
-            id = agent._openai_assistant.id
         model.assistant_id = id
     agents, err = AgentService.upsert_agents(models)
     if err is not None:
         return None, err
     return agents, None
+
+@app.post('/delete_all_assistants/')
+def delete_all_assistants(input: QueryModel):
+    oai_wrapper = OpenAIWrapper(api_key=input.auth.api_key)
+    openai_client = oai_wrapper._clients[0]
+    MakeService.auth = input.auth
+    MakeService.openai_client = openai_client
+    assistants = MakeService.openai_client.beta.assistants.list(limit=100)
+    for assistant in assistants:
+        MakeService.openai_client.beta.assistants.delete(assistant_id=assistant.id)
+    return "success"
 
 @app.post('/query/')
 def query(input: QueryModel):
