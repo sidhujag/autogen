@@ -211,7 +211,7 @@ class GPTAssistantAgent(ConversableAgent):
         #self.pretty_print_thread(assistant_thread)
         response = self.execute_run(assistant_thread)
         self._unread_index[sender] = len(self._oai_messages[sender]) + 1
-        if response["content"]:
+        if response and "content" in response and response["content"]:
             return True, response
         else:
             return False, "No response from the assistant."

@@ -597,7 +597,7 @@ def retrieve_assistants_by_name(client: OpenAI, name: str) -> List[Assistant]:
     """
     if ERROR:
         raise ERROR
-    assistants = client.beta.assistants.list()
+    assistants = client.beta.assistants.list(limit=100)
     candidate_assistants = []
     for assistant in assistants.data:
         if assistant.name == name:
