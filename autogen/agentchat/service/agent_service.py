@@ -114,7 +114,7 @@ Group Stats: {group_stats}
         agent_obj = AgentService.get_agent(GetAgentModel(name=agent))
         id = None
         created_assistant = False
-        if agent is None:
+        if agent_obj is None:
             created_assistant = True
             # place holder to get assistant id
             openai_assistant = MakeService.openai_client.beta.assistants.create(

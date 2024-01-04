@@ -95,10 +95,10 @@ class CodingAssistantService:
         coding_assistant.model = backend_coding_assistant.model
         coding_assistant.repository_name = backend_coding_assistant.repository_name
         coding_assistant.name = backend_coding_assistant.name
-        coding_assistant.files = backend_coding_assistant.files,
-        coding_assistant.show_diffs = backend_coding_assistant.show_diffs,
-        coding_assistant.dry_run = backend_coding_assistant.dry_run,
-        coding_assistant.map_tokens = backend_coding_assistant.map_tokens,
+        coding_assistant.files = backend_coding_assistant.files
+        coding_assistant.show_diffs = backend_coding_assistant.show_diffs
+        coding_assistant.dry_run = backend_coding_assistant.dry_run
+        coding_assistant.map_tokens = backend_coding_assistant.map_tokens
         coding_assistant.verbose = backend_coding_assistant.verbose
         MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant.name] = coding_assistant
         return coding_assistant, None
