@@ -11,7 +11,7 @@ from autogen.agentchat.service.function_specs import external_function_specs
 from autogen.agentchat.service.agent_models import external_agent_models
 from autogen.agentchat.service.group_models import external_group_models
 from autogen.oai.openai_utils import retrieve_assistants_by_name
-from autogen.agentchat.service import MakeService, FunctionsService, BackendService, UpsertAgentModel, GetAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE
+from autogen.agentchat.service import MakeService, FunctionsService, BackendService, UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE
 from typing import List
 app = FastAPI()
 
@@ -98,7 +98,7 @@ def delete_all_assistants(input: QueryModel):
     return "success"
 
 @app.post('/query/')
-def query(input: QueryModel):
+async def query(input: QueryModel):
     oai_wrapper = OpenAIWrapper(api_key=input.auth.api_key)
     openai_client = oai_wrapper._clients[0]
     MakeService.auth = input.auth
@@ -164,4 +164,4 @@ def query(input: QueryModel):
     if err is not None:
         print(f'Error creating external groups {err}')
         return
-    agents[0].initiate_chat(groups[0], message=input.query)
+    await agents[0].a_initiate_chat(groups[0], message=input.query)

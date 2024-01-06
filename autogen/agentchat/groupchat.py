@@ -2,6 +2,7 @@ import logging
 import random
 import re
 import sys
+import asyncio
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Tuple
 
@@ -293,7 +294,10 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
 
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
-
+    task_completed_event = asyncio.Event()
+    task_completed_msg = ""
+    nested_chat_completed_event = asyncio.Event()
+    nested_chat_completed_msg = ""
     @property
     def agent_names(self) -> List[str]:
         """Return the names of the agents in the group chat."""
@@ -328,15 +332,8 @@ class GroupChatManager(ConversableAgent):
         self.register_reply(Agent, GroupChatManager.a_run_chat, config=groupchat, reset_config=GroupChat.reset)
         self.groupchat = groupchat
         self.description = ""
-        self.dependent = None
-        self.exiting = False
-        self.tasking = None
-        self.tasking_message = None
-        self.exit_response = None
         self.incoming = {}
         self.outgoing = {}
-        self.locked = False
-        self.running = False
 
     def run_chat(
         self,
@@ -345,39 +342,15 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ) -> Union[str, Dict, None]:
         """Run a group chat."""
-        from autogen.agentchat.service import AgentService
+        from autogen.agentchat.service import AgentService, GroupService
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
         speaker = sender
         groupchat = config
-        self.running = True
-        # Regular expression pattern to find 'x (to y):'
-        pattern = r"^.+ \(to .+\):\n"
+        if not GroupService.current_group:
+            GroupService.current_group = self
         for i in range(groupchat.max_round):
-            # Check if the pattern exists in the message
-            if re.search(pattern, message["content"]):
-                # Pattern exists, replace it
-                replacement = f"{speaker.name} (to {self.name}):\n"
-                message["content"] = re.sub(pattern, replacement, message["content"], count=1)
-            else:
-                # Pattern does not exist, prepend it
-                message["content"] = f'{speaker.name} (to {self.name}):\n{message["content"]}'
-            if self.tasking and self.tasking_message:
-                # set the name to speaker's name if the role is not function
-                if message["role"] != "function":
-                    message["name"] = speaker.name
-                groupchat.append(message)
-                # broadcast the message to all agents except the speaker
-                for agent in groupchat.agents:
-                    if agent != speaker:
-                        self.send(message, agent, request_reply=False, silent=True)
-                self.initiate_chat(self.tasking, message=self.tasking_message)
-                if self.exit_response:
-                    self.send(self.exit_response, speaker, request_reply=False)
-                    message = speaker.last_message(self)
-                self.tasking = None
-                self.tasking_message = None
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
                 message["name"] = speaker.name
@@ -392,8 +365,6 @@ class GroupChatManager(ConversableAgent):
                 AgentService.update_agent_system_message(agent, self)
                 if agent != speaker:
                     self.send(message, agent, request_reply=False, silent=True)
-            if self.exiting:
-                break
             if i == groupchat.max_round - 1:
                 # the last round
                 break
@@ -416,12 +387,6 @@ class GroupChatManager(ConversableAgent):
             # The speaker sends the message without requesting a reply
             speaker.send(reply, self, request_reply=False)
             message = self.last_message(speaker)
-        self.dependent = None
-        self.exiting = False
-        self.exit_response = None
-        self.tasking = None
-        self.tasking_message = None
-        self.running = False
         return True, None
 
     async def a_run_chat(
@@ -431,23 +396,19 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ):
         """Run a group chat asynchronously."""
-        from autogen.agentchat.service import AgentService
+        from autogen.agentchat.service import AgentService, GroupService
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
         speaker = sender
         groupchat = config
-        for i in range(groupchat.max_round):
-            if self.tasking and self.tasking_message:
-                self.initiate_chat(self.tasking, message=self.tasking_message)
-                self.tasking = None
-                self.tasking_message = None
-            if self.exiting:
-                break
+        if not GroupService.current_group:
+            GroupService.current_group = self
+        for i in range(groupchat.max_round):            
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
                 message["name"] = speaker.name
-
+            
             groupchat.append(message)
 
             if self._is_termination_msg(message):
@@ -481,8 +442,15 @@ class GroupChatManager(ConversableAgent):
             # The speaker sends the message without requesting a reply
             await speaker.a_send(reply, self, request_reply=False)
             message = self.last_message(speaker)
-        self.dependent = None
-        self.exiting = False
-        self.tasking = None
-        self.tasking_message = None
+            if self.task_completed_event.is_set():
+                print(f'long running task message {message}')
+                await self.task_completed_event.wait()
+                message["content"] += "\n\nRESPONSE FROM LONG-RUNNING TASK:\n" + self.task_completed_msg
+                print(f'AFTER long running task message {message}')
+            if self.nested_chat_completed_event.is_set():
+                print(f'nested chat message {message}')
+                await self.nested_chat_completed_event.wait()
+                message["content"] += "\n\nRESPONSE FROM NESTED CHAT:\n" + self.nested_chat_completed_msg
+                print(f'AFTER nested chat message {message}')
+            
         return True, None

@@ -5,7 +5,8 @@ from aider.coders import Coder
 from aider.io import InputOutput
 from openai import OpenAI
 import json
-
+import asyncio
+import logging
 
 class CodingAssistantService:
     @staticmethod
@@ -166,6 +167,17 @@ class CodingAssistantService:
         return coder, None
 
     @staticmethod
+    async def run_code_assistant(coder, command_message: str):
+        try:
+            coder.io.console.begin_capture()
+            coder.io.tool_output()
+            coder.run(with_message=command_message)
+            output = coder.io.console.end_capture()
+            return output, None
+        except Exception as e:
+            return None, json.dumps({"error": str(e)})
+
+    @staticmethod
     def send_message_to_coding_assistant(
         name: str,
         assistant_type:  Optional[str] = None,
@@ -183,7 +195,7 @@ class CodingAssistantService:
         command_git_command: Optional[str] = None,
         command_create_test_for_file: Optional[str] = None
     ) -> str:
-        from . import CodeExecInput, CodeRequestInput, CodeRepositoryService, CodeAssistantInput, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
+        from . import GroupService, CodeExecInput, CodeRequestInput, CodeRepositoryService, CodeAssistantInput, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
         coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
         if coder is None:
             return json.dumps({"error": f"Could not send message to coding_assistant({name}): does not exist."})
@@ -277,22 +289,38 @@ class CodingAssistantService:
             str_output = coder.io.console.end_capture()
             return json.dumps({"success": f"Command ({cmd}) ran and output was: {str_output}"})
         if command_message:
+            # Wait for any previous task to complete
+            if not GroupService.current_group:
+                return json.dumps({"error": "No active group chat."})
+            if GroupService.current_group.task_completed_event.is_set():
+                return json.dumps({"error": "A long-running task is still in progress. Please wait until it's completed."})
             if assistant_type == "metagpt":
-                response, err = BackendService.run_code_assistant(CodeAssistantInput(
-                    workspace=code_repository.workspace,
-                    project_name=coder.repository_name,
-                    command_message=command_message,
-                    reqa_file=reqa_file
-                ))
-                if err is not None:
-                    return err
-                str_output = response
+                asyncio.create_task(
+                    GroupService.start_long_running_task(
+                        GroupService.current_group,
+                        BackendService.run_code_assistant,
+                        GroupService.process_task_results,
+                        CodeAssistantInput(
+                            workspace=code_repository.workspace,
+                            project_name=coder.repository_name,
+                            command_message=command_message,
+                            reqa_file=reqa_file
+                        )
+                    )
+                )
             elif assistant_type == "aider":
-                coder.io.tool_output()
-                coder.run(with_message=command_message)
-                str_output = coder.io.console.end_capture()
+                asyncio.create_task(
+                    GroupService.start_long_running_task(
+                        GroupService.current_group,
+                        CodingAssistantService.run_code_assistant,
+                        GroupService.process_task_results,
+                        coder,
+                        command_message
+                    )
+                )
             else:
                 return json.dumps({"error":f"assistant_type not provided, must be either 'metagpt' or 'aider'"})
+            str_output = "Task started, waiting for completion."
         else:
             return json.dumps({"error": "Could not run code assistant, no commands or message provided"})
-        return json.dumps({"success": f"Message ({command_message}) was sent and output was: {str_output}"})
+        return str_output

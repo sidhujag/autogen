@@ -1,50 +1,21 @@
 send_message_spec = {
-    "name": "send_message_to_group",
+    "name": "start_nested_chat",
     "category": "communication",
-    "class_name": "GroupService.send_message_to_group",
-    "description": "Sends a message to another group, terminating the sender's group and awaiting a response to continue. You don't need to terminate sender group for the receiver group to begin. It will continue automatically once the recipient group is terminated.",
+    "class_name": "GroupService.start_nested_chat",
+    "description": "Sends a message to another group, starting a nested chat. Sending chat will continue once nested chat is terminated.",
     "parameters": {
         "type": "object",
         "properties": {
-            "from_group": {
+            "group": {
                 "type": "string",
-                "description": "Name of the sender group."
-            },
-            "to_group": {
-                "type": "string",
-                "description": "Name of the recipient group."
+                "description": "Group name you are sending a message to."
             },
             "message": {
                 "type": "string",
                 "description": "Content of the message with full task context."
             }
         },
-        "required": ["from_group", "to_group", "message"]
-    }
-}
-
-terminate_group_spec = {
-    "name": "terminate_group",
-    "category": "communication",
-    "class_name": "GroupService.terminate_group",
-    "description": "Terminates a group, returning control with a full-context response if tasked by another group. Groups do not share context, they are black-boxes so make the response as such making no assumptions of internal group knowledge.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-             "exit_response": {
-                "type": "string",
-                "description": "Message when terminating group. Includes all important points the caller may care about. Assume caller has no context of what happened within your group."
-            },
-            "group": {
-                "type": "string",
-                "description": "Group to terminate. Most of the time this is the group you are in that you are terminating."
-            },
-            "rating": {
-                "type": "number",
-                "description": "Grading for the group like a teacher would grade. On a scale of 10 how well did the group complete the task it was assigned with by another group. 0 - fail, 5 - improvements needed, 7 - satisfactory, 10 - exceptional."
-            },
-        },
-        "required": ["exit_response", "group", "rating"]
+        "required": ["group", "message"]
     }
 }
 
@@ -785,9 +756,7 @@ group_info_function_specs = [
     discover_groups_spec,
     discover_functions_spec,
 ]
-group_terminate_function_specs = [
-    terminate_group_spec
-]
+
 management_function_specs = [
     send_message_spec,
     upsert_agent,

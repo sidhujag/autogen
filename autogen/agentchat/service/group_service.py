@@ -1,8 +1,12 @@
 
 from .. import GroupChatManager, GroupChat
-from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
 import json
+import logging
+import asyncio
+import copy
+import re
+from autogen.token_count_utils import token_left
 INFO = 1
 TERMINATE = 2
 OPENAI_CODE_INTERPRETER = 4
@@ -11,6 +15,128 @@ OPENAI_FILES = 16
 MANAGEMENT = 32
 
 class GroupService:
+    current_group: GroupChatManager = None
+    @staticmethod
+    async def start_long_running_task(current_group: GroupChatManager, task_func, callback, *args, **kwargs):
+        if not current_group:
+            logging.error("No active group")
+            return
+        current_group.task_completed_msg = ""
+        current_group.task_completed_event.set()
+        try:
+            # Run the long-running task
+            response, err = task_func(*args, **kwargs)
+            
+            # Process the results or error using the callback
+            if callback:
+                await callback(current_group, response, err)
+
+        except Exception as e:
+            # Handle any unexpected errors here
+            logging.error(f"Error in long-running task: {e}")
+        finally:
+            # Clear the event to indicate completion
+            current_group.task_completed_event.clear()
+
+    @staticmethod
+    async def process_task_results(current_group: GroupChatManager, response, err):
+        if err:
+            current_group.task_completed_msg = err
+        else:
+            current_group.task_completed_msg = json.dumps({"response": f"Task completed with response: {response}"})
+    
+    @staticmethod
+    async def start_nested_task(current_group: GroupChatManager, task_func, callback, *args, **kwargs):
+        print(f'start_nested_task from current_group {current_group.name}')
+        if not current_group:
+            logging.error("No active group")
+            return
+        current_group.nested_chat_completed_msg = ""
+        current_group.nested_chat_completed_event.set()
+        try:
+            # Run the nested chat
+            await task_func(*args, **kwargs)
+            
+            # Process the results using the callback
+            if callback:
+                await callback(current_group, *args, **kwargs)
+
+        except Exception as e:
+            # Handle any unexpected errors here
+            logging.error(f"Error in long-running task: {e}")
+        finally:
+            # clear the event to indicate completion
+            current_group.nested_chat_completed_event.clear()
+
+    @staticmethod
+    async def process_nested_chat_results(current_group: GroupChatManager, recipient: GroupChatManager, message: str):    
+        print(f'process_nested_chat_results from current_group {current_group.name} recipient {recipient.name} message {message}')
+        from . import BackendService, UpdateComms
+        messages = [
+            {
+                "role": "user",
+                "content": f"""Earlier an agent in another group said the following:
+
+    {message}
+
+    Your group then worked diligently to address that query. Here is a transcript of that conversation:""",
+            }
+        ]
+        inner_messages = recipient.groupchat.messages
+        # The first message just repeats the question, so remove it
+        if len(inner_messages) > 1:
+            del inner_messages[0]
+
+        # copy them to this context
+        for inner_message in inner_messages:
+            inner_message = copy.deepcopy(inner_message)
+            inner_message["role"] = "user"
+            messages.append(inner_message)
+
+        messages.append(
+            {
+                "role": "user",
+                "content": f"""
+    Read the above conversation and return a final response to the calling agent here. The query is repeated here for convenience:
+
+    {message}
+
+    To output the final response:
+    
+    YOUR FINAL RESPONSE should be a summary but not miss details from the conversation that is pertitent for an answer to questioning agent. YOUR FINAL RESPONSE should include how well it answered the query based on YOUR FINAL RATING.
+    YOUR FINAL RATING should be a number grading for the group like a teacher would grade. On a scale of 10 how well did the group completed the query it was assigned with by another group. 0 - fail, 5 - improvements needed, 7 - satisfactory, 10 - exceptional. Just put the number.
+    
+    Use the following template:
+    
+    RESPONSE: [YOUR FINAL RESPONSE]
+    RATING: [YOUR FINAL RATING]""",
+            }
+        )
+
+        while token_left(messages) < 4096:
+            mid = int(len(messages) / 2)  # Remove from the middle
+            del messages[mid]
+    
+        response = current_group.client.create(context=None, messages=messages)
+        extracted_response = current_group.client.extract_text_or_completion_object(response)[0]
+        # Define a regex pattern to find the RATING
+        rating_pattern = re.compile(r'RATING:\s*(\d+\.?\d*)\s*')
+        if not isinstance(extracted_response, str):
+            current_group.nested_chat_completed_msg = str(extracted_response.model_dump(mode="dict"))  # Not sure what to do here
+        else:
+            # Search for the rating in the response
+            rating_match = rating_pattern.search(extracted_response)
+            if rating_match:
+                # Extract the rating
+                rating = rating_match.group(1)
+                if rating >= 7:
+                    # Increment the communication stats
+                    current_group.outgoing[recipient.name] = current_group.outgoing.get(recipient.name, 0) + 1
+                    recipient.incoming[current_group.name] = recipient.incoming.get(current_group.name, 0) + 1
+                    BackendService.update_communication_stats(UpdateComms(sender=current_group.name, receiver=recipient.name))
+            current_group.nested_chat_completed_msg = extracted_response
+
+
     @staticmethod
     def get_group(group_model) -> GroupChatManager:
         from . import BackendService, MakeService, DeleteGroupModel
@@ -58,7 +184,6 @@ class GroupService:
         # Return the JSON representation of the groups info
         return json.dumps({"response": groups_info})
 
-
     @staticmethod
     def discover_groups(query: str) -> str:
         from . import BackendService, DiscoverGroupsModel
@@ -98,56 +223,30 @@ class GroupService:
             return err
         return json.dumps({"response": f"Group({group}) upserted!"})
 
-
-    @staticmethod
-    def terminate_group(exit_response: str, group: str, rating: int) -> str:
-        from . import GetGroupModel, BackendService, UpdateComms
-        group_obj = GroupService.get_group(GetGroupModel(name=group))
-        if group_obj is None:
-            return json.dumps({"error": f"Could not send message: group({group}) not found"})
-        if not group_obj.running:
-            return json.dumps({"error": f"Could not terminate group({group}): group is currently not running, perhaps already terminated."})
-
-        if group_obj.dependent:
-            group_obj.dependent.exit_response = exit_response
-            if rating >= 7:
-                # Increment the communication stats
-                group_obj.dependent.outgoing[group_obj.name] = group_obj.dependent.outgoing.get(group_obj.name, 0) + 1
-                group_obj.incoming[group_obj.dependent.name] = group_obj.incoming.get(group_obj.dependent.name, 0) + 1
-                err = BackendService.update_communication_stats(UpdateComms(
-                                                                            sender=group_obj.dependent.name, 
-                                                                            receiver=group_obj.name))
-                if err:
-                    return err
-            group_obj.dependent.running = True
-        group_obj.exiting = True
-        group_obj.running = False
-        return json.dumps({"response": f"Group({group}) terminating!"})
-
-    def send_message_to_group(from_group: str, to_group: str, message: str) -> str:
+    def start_nested_chat(group: str, message: str) -> str:
         from . import GetGroupModel
-        if from_group == to_group:
-            return json.dumps({"error": "Could not send message: cannot send message to the same group you are sending from"})
-        from_group_obj = GroupService.get_group(GetGroupModel(name=from_group))
-        if from_group_obj is None:
-            return json.dumps({"error": f"Could not send message: from_group({from_group}) not found"})
-        if not from_group_obj.running:
-            return json.dumps({"error": f"Could not send message: from_group({from_group}) is not running"})
-        to_group_obj = GroupService.get_group(GetGroupModel(name=to_group))
+        to_group_obj = GroupService.get_group(GetGroupModel(name=group))
         if to_group_obj is None:
-            return json.dumps({"error": f"Could not send message: to_group({to_group}) not found"})
-        if to_group_obj.running:
-            return json.dumps({"error": f"Could not send message: to_group({to_group}) is already running"})
-        if to_group_obj.dependent:
-            return json.dumps({"error": f"Could not send message: to_group({to_group}) already depends on a task from {to_group_obj.dependent.name}."})
-        if from_group_obj.dependent and to_group == from_group_obj.dependent.name:
-            return json.dumps({"error": "Could not send message: cannot send message to the group that assigned a task to you."})
-        to_group_obj.dependent = from_group_obj
-        from_group_obj.tasking = to_group_obj
-        from_group_obj.running = False
-        to_group_obj.running = True
-        from_group_obj.tasking_message = f'{from_group} (to {to_group}):\n{message}'
-        return json.dumps({"response": f"Message sent from group ({from_group}) to group ({to_group})!"})
+            return json.dumps({"error": f"Could not send message: to_group({group}) not found"})
+        if GroupService.current_group.nested_chat_completed_event.is_set():
+            return json.dumps({"error": "A nested chat from this group is still in progress. Please wait until it's completed."})
+        if to_group_obj.nested_chat_completed_event.is_set():
+            return json.dumps({"error": "A nested chat in the to_group({to_group}) is still in progress. Please wait until it's completed."})
+        if not GroupService.current_group:
+           return json.dumps({"error": "No active group chat found."})
+        to_group_obj.reset()
+        asyncio.create_task(
+            GroupService.start_nested_task(
+                GroupService.current_group,
+                GroupService.current_group.a_initiate_chat,
+                GroupService.process_nested_chat_results,
+                recipient=to_group_obj,
+                message=message
+            )
+        )
+        response = f"Message sent from group ({GroupService.current_group}) to group ({group})! Nested chat started, waiting for completion."
+        GroupService.current_group = to_group_obj
+        return json.dumps({"response": response})
     
     @staticmethod
     def _create_group(backend_group):

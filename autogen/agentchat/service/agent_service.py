@@ -1,37 +1,31 @@
 from .. import GroupChatManager
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List
-from autogen.agentchat.service.function_specs import management_function_specs, group_terminate_function_specs, group_info_function_specs, files_function_specs
+from autogen.agentchat.service.function_specs import management_function_specs, group_info_function_specs, files_function_specs
 import json
 import requests
 
 class AgentService:
     BASIC_AGENT_SYSTEM_MESSAGE: str = """
-Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, {capability_instruction}
+Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}, {capability_instruction}
 
-As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. Functions are used within agents which are used withing groups. You can tag the manager in your group through text-interaction to have agents/groups modified. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Be cautious with non-accepted functions; if you do choose them then repair them rather than creating new versions. Prefer to use accepted functions over non-accepted. Always consider the group's message history in your responses.
+As a Basic Agent, your role is to collaborate effectively with your peers, utilizing your unique skills to achieve common goals. When faced with complex tasks, plan meticulously, assigning roles to suitable agents or groups. Functions are used within agents which are used withing groups. You can tag the manager in your group through text-interaction to have agents/groups modified or to start nested chats with other groups. Strive for comprehensive and creative solutions, focusing on the task at hand. Prioritize reusing existing functions, agents, and groups. If a specific function is requested, first check its availability. If it's not available, communicate this clearly and suggest alternatives. Be cautious with non-accepted functions; if you do choose them then repair them rather than creating new versions. Prefer to use accepted functions over non-accepted. Always consider the group's message history in your responses.
 
 Ensure to review the group's message history thoroughly before initiating a redundant action. Additionally, if the context indicates that a request has been previously addressed, you will acknowledge and proceed from the most recent state of information.
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Groups are synchronous and do not notify other groups on progress. Let groups finish before terminating.
-
-Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
+If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements.
 
 Locked groups are good at specific jobs. Unlocked groups are good for abstract or further assignment of roles/tasks downstream.
-
-If you are responding it means your group is not paused and all other groups are terminated. If a group has terminated it means all relevant agents within the group have done their job, you don't need to double-check against individual agents in a group after it terminates. 
-
-Do not terminate a group if you are waiting for its response, as groups only communicate synchronously. Upon sending a message the sending group gets automatically paused awaiting the termination to continue again.
 
 Custom Instructions: {custom_instructions}
 """
 
     MANAGER_AGENT_SYSTEM_MESSAGE: str = """
-Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}{dependent}, {capability_instruction}
+Agent Details: Name: {agent_name}, Description: {agent_description}, Group: {group_name}, {capability_instruction}
 
-As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. Functions are used within agents which are used withing groups. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them if you do choose them. Prefer to use accepted functions over non-accepted. Ensure your responses reflect the group's message history.
+As a Manager Agent, you are tasked with leading and coordinating group activities. Develop comprehensive strategies, assign tasks effectively, and utilize your management tools for optimal problem-solving. Encourage focus and creativity within your team. Functions are used within agents which are used withing groups. When a specific function is requested, first attempt to access or add it. If this is not possible, provide a clear explanation and suggest viable alternatives. Avoid creating new entities if existing ones are adequate. Be wary of non-accepted functions and aim to improve them if you do choose them. Prefer to use accepted functions over non-accepted. Ensure your responses reflect the group's message history. Managers can send other groups messages which run as nested chats returning responses as summaries.
 
 Ensure to review the group's message history thoroughly before initiating a redundant action. Additionally, if the context indicates that a request has been previously addressed, you will acknowledge and proceed from the most recent state of information.
 
@@ -39,15 +33,9 @@ Watch for others tagging you in the chat for certain requests like modifying age
 
 Your environment HAS access to real-time information and the internet through your discovery process. Read each function you have been give carefully to discover and enhance your abilities.
 
-If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements. Groups are synchronous and do not notify other groups on progress. Let groups finish before terminating.
-
-Include speaker/group in the assistant message just like the user messages in 'speaker (to group)' format.
+If you have termination access, don't terminate if a path doesn't work out right away, exhaust all of your possibilities to try different things to try to solve the problem. Terminate groups judiciously based on the conversation's progress and relevance, avoiding circular discussions or repeated statements.
 
 Locked groups are good at specific jobs. Unlocked groups are good for abstract or further assignment of roles/tasks downstream.
-
-If you are responding it means your group is not paused and all other groups are terminated. If a group has terminated it means all relevant agents within the group have done their job, you don't need to double-check against individual agents in a group after it terminates. 
-
-Do not terminate a group if you are waiting for its response, as groups only communicate synchronously. Upon sending a message the sending group gets automatically paused awaiting the termination to continue again.
 
 Custom Instructions: {custom_instructions}
 
@@ -56,7 +44,7 @@ Group Stats: {group_stats}
 
     # Define capability instruction variables
     INFO_INSTRUCTIONS = "Access and manage information on functions, agents, and groups. Discover entities and gather relevant data."
-    TERMINATE_INSTRUCTIONS = "Ability to terminate a group, concluding its operations."
+    TERMINATE_INSTRUCTIONS = "Ability to terminate a group, concluding its operations by replying with just 'TERMINATE'."
     OPENAI_CODE_INTERPRETER_INSTRUCTIONS = "Create and executes simple code through natural language using the OpenAI Code Interpreter and provides response in interactions. Ideal for isolated, internet-independent tasks."
     OPENAI_RETRIEVAL_INSTRUCTIONS = "Leverage OpenAI's capabilities to enhance knowledge retrieval, utilizing external documents and data."
     OPENAI_FILES_INSTRUCTIONS = "Manage and utilize OpenAI Files for data processing, sharing, and state management across OpenAI Code Interpreter and Retrieval tools."
@@ -240,11 +228,7 @@ Group Stats: {group_stats}
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model) 
         if agent.capability & TERMINATE:
-            for func_spec in group_terminate_function_specs:
-                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
-                if error_message:
-                    return error_message
-                FunctionsService.define_function_internal(agent, function_model)
+           agent._is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE") or x.get("content", "").rstrip().endswith("TERMINATE.")
         if agent.capability & OPENAI_CODE_INTERPRETER:
             agent.llm_config["tools"].append({"type": "code_interpreter"})
         if agent.capability & OPENAI_RETRIEVAL:
@@ -271,7 +255,7 @@ Group Stats: {group_stats}
                 name=backend_agent.name,
                 default_auto_reply=backend_agent.default_auto_reply,
                 instructions=backend_agent.system_message,
-                is_termination_msg=lambda x: "TERMINATE" in x.get("content", ""),
+                is_termination_msg=lambda x: False,
                 llm_config=llm_config,
                 human_input_mode=backend_agent.human_input_mode,
             )
@@ -387,8 +371,6 @@ Group Stats: {group_stats}
             for agent_name, count in group_manager.outgoing.items()
         )
         communications = f"Incoming communications:\n{incoming_communications}\nOutgoing communications:\n{outgoing_communications}"
-        if group_manager.dependent:
-            communications = f"{communications}\nCurrent Dependent Group:\n{group_manager.dependent.name}"
         return communications.strip()
 
     @staticmethod
@@ -417,7 +399,6 @@ Group Stats: {group_stats}
     def update_agent_system_message(agent: GPTAssistantAgent, group_manager: GroupChatManager) -> None:
         from . import MakeService, MANAGEMENT
         formatted_message = ""
-        dependent = f', dependent group: {group_manager.dependent.name}' if group_manager.dependent else ''
         # Get capability instructions
         capability_instructions_instr = AgentService.get_capability_instructions(agent.capability)
 
@@ -429,7 +410,6 @@ Group Stats: {group_stats}
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_instructions,
-                dependent=dependent,
                 capability_instruction=capability_instructions_instr,
                 group_stats=AgentService._generate_group_stats_text(group_manager),
             )
@@ -440,7 +420,6 @@ Group Stats: {group_stats}
                 agent_description=MakeService._get_short_description(agent.description),
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_instructions,
-                dependent=dependent,
                 capability_instruction=capability_instructions_instr,
             )
         agent.update_system_message(formatted_message)
