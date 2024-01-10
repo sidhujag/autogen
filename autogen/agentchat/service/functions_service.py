@@ -1,7 +1,6 @@
         
 import json
 import sys
-import asyncio
 
 from ..contrib.gpt_assistant_agent import GPTAssistantAgent
 from typing import List, Any, Optional, Dict, Tuple
@@ -13,7 +12,7 @@ from autogen.code_utils import (
 from ..service.backend_service import BaseFunction
 class FunctionsService:
     @staticmethod
-    def get_functions(function_models: List[Any]) -> List[BaseFunction]:
+    async def get_functions(function_models: List[Any]) -> List[BaseFunction]:
         from . import BackendService, MakeService
 
         functions = []
@@ -29,7 +28,7 @@ class FunctionsService:
 
         # If there are missing models, query BackendService
         if missing_models:
-            backend_functions, err = BackendService.get_backend_functions(missing_models)
+            backend_functions, err = await BackendService.get_backend_functions(missing_models)
             if err is None and backend_functions:
                 for function in backend_functions:
                     MakeService.FUNCTION_REGISTRY[function.name] = function
@@ -38,7 +37,7 @@ class FunctionsService:
         return functions
 
     @staticmethod
-    def test_function(function_name: str, params: Dict[str, Any]) -> str:
+    async def test_function(function_name: str, params: Dict[str, Any]) -> str:
         from . import GetFunctionModel, OpenAIParameter
         try:
             # Validate parameters
@@ -47,27 +46,27 @@ class FunctionsService:
             return json.dumps({"error": f"Validation error for params: {str(e)}"})
 
         # Retrieve the function
-        function = FunctionsService.get_functions([GetFunctionModel(name=function_name)])
+        function = await FunctionsService.get_functions([GetFunctionModel(name=function_name)])
         if not function:
             return json.dumps({"error": f"Function({function_name}) not found"})
 
         # Check for function code
-        if not function.function_code:
+        if not function[0].function_code:
             return json.dumps({"error": f"Function({function_name}) has no function_code"})
 
         # Execute the function and handle potential errors
         try:
-            result = FunctionsService.execute_func(function.function_code, **params)
+            result = FunctionsService.execute_func(function[0].function_code, **params)
             return json.dumps({"result": result})
         except Exception as e:
             return json.dumps({"error": f"Error executing function: {str(e)}"})
 
     @staticmethod
-    def discover_functions(category: str, query: str = None) -> str:
+    async def discover_functions(category: str, query: str = None) -> str:
         from . import BackendService, DiscoverFunctionsModel, FunctionsService, GetFunctionModel
 
         # Fetch the functions from the backend service
-        response, err = BackendService.discover_backend_functions(DiscoverFunctionsModel(query=query, category=category))
+        response, err = await BackendService.discover_backend_functions(DiscoverFunctionsModel(query=query, category=category))
         if err is not None:
             return err
 
@@ -84,7 +83,7 @@ class FunctionsService:
         function_models = [GetFunctionModel(name=function_name) for function_name in function_names]
 
         # Retrieve function statuses
-        functions = FunctionsService.get_functions(function_models)
+        functions = await FunctionsService.get_functions(function_models)
 
         # Create a dictionary to map function names to their status
         function_status_map = {func.name: func.status for func in functions if func}
@@ -95,15 +94,14 @@ class FunctionsService:
 
         return json.dumps(response)
 
-
-    
     @staticmethod
-    def get_function_info(name: str) -> str:
+    async def get_function_info(name: str) -> str:
         from . import GetFunctionModel
-        function = FunctionsService.get_functions([GetFunctionModel(name=name)])
+        function = await FunctionsService.get_functions([GetFunctionModel(name=name)])
         if not function:
             return json.dumps({"error": f"Function({name}) not found"})
-        return json.dumps({"response": function[0].dict()})
+        function[0].auth = None
+        return function[0].dict(exclude_none=True)
 
     @staticmethod
     def execute_func(function_code: str, **args):
@@ -154,7 +152,9 @@ class FunctionsService:
             None
         )
 
-        
+        async def async_wrapper(**args):
+            return await method(**args)
+
         # If it does, update that entry; if not, append a new entry
         if existing_tool_index is not None:
             agent.llm_config["tools"][existing_tool_index] = function_tool_config
@@ -168,22 +168,12 @@ class FunctionsService:
             if ServiceClass is not None:
                 method = getattr(ServiceClass, module_name)
                 if method is not None:
-                    if asyncio.coroutines.iscoroutinefunction(method):
-                        # If method is async, define a wrapper to run it synchronously
-                        def sync_wrapper(**args):
-                            return asyncio.run(method(**args))
-                        agent.register_function(
-                            function_map={
-                                function_model.name: sync_wrapper
-                            }
-                        )
-                    else:
-                        # If method is not async, register it directly
-                        agent.register_function(
-                            function_map={
-                                function_model.name: lambda **args: method(**args)
-                            }
-                        )
+                    # If method is not async, register it directly
+                    agent.register_function(
+                        function_map={
+                            function_model.name: async_wrapper
+                        }
+                    )
                 else:
                     return json.dumps({"error": f"Method {module_name} not found in class {class_name}"})
             else:
@@ -225,7 +215,7 @@ class FunctionsService:
             return json.dumps({"error": f"The '{field}' field must be a dictonary."})
 
     @staticmethod
-    def _create_function_model(agent: str, func_spec: Dict[str, Any]) -> Tuple[Optional[BaseFunction], Optional[str]]:
+    def _create_function_model(func_spec: Dict[str, Any]) -> Tuple[Optional[BaseFunction], Optional[str]]:
         # for now only validate parameters through JSON string field, add to this list if other fields come up
         for field in ['parameters']:
             error_message = FunctionsService._load_json_field(func_spec, field)
@@ -234,26 +224,17 @@ class FunctionsService:
 
         try:
             function_model = BaseFunction(**func_spec)
-            if function_model.function_code:
-                function_model.last_updater = agent
             return function_model, None
         except ValidationError as e:
             return None, json.dumps({"error": f"Validation error when defining function {func_spec.get('name', '')}: {str(e)}"})
 
     @staticmethod
-    def upsert_function(agent: str, **kwargs: Any) -> str:
-        from . import BackendService, AgentService, UpsertAgentModel, MakeService
-        function_model, error_message = FunctionsService._create_function_model(agent, kwargs)
+    async def upsert_function(**kwargs: Any) -> str:
+        from . import BackendService, MakeService
+        function_model, error_message = FunctionsService._create_function_model(kwargs)
         if error_message:
             return error_message
-        err = BackendService.upsert_backend_functions([function_model])
-        if err is not None:
-            return err
-        # update the agent to have the function so it can use it
-        agent_upserted, err = AgentService.upsert_agents([UpsertAgentModel(
-            name=agent,
-            functions_to_add=[function_model.name],
-        )])
+        err = await BackendService.upsert_backend_functions([function_model])
         if err is not None:
             return err
         MakeService.FUNCTION_REGISTRY[function_model.name] = function_model

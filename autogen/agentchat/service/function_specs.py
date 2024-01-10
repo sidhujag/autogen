@@ -146,8 +146,8 @@ upsert_agent = {
             },
             "capability": {
                 "type": "number",
-                "description": ("The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 = INFO, 2 = TERMINATE, 4 = OPENAI_CODE_INTERPRETER, 8 = OPENAI_RETRIEVAL, 16 = OPENAI_FILES, 32 = MANAGEMENT. Combine capabilities by adding the values of their masks together."
-                                "INFO = Info and discovery for functions/agents/groups."
+                "description": ("The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 = DISCOVERY, 2 = TERMINATE, 4 = OPENAI_CODE_INTERPRETER, 8 = OPENAI_RETRIEVAL, 16 = OPENAI_FILES, 32 = MANAGEMENT. Combine capabilities by adding the values of their masks together."
+                                "DISCOVERY = Discovery for functions/agents/groups."
                                 "TERMINATE = Conclude a groups operation"
                                 "OPENAI_CODE_INTERPRETER = Enable abilty for OpenAI to create/run simple code and provide responses to you through text-interactions in natural language."
                                 "OPENAI_RETRIEVAL = RAG knowledge based through OpenAI retrieval tool using natural language and using OpenAI files."
@@ -286,7 +286,7 @@ test_function_spec = {
                 "type": "string",
                 "description": "Function name, the function to test."
             },
-            "parameters": {
+            "params": {
                 "type": "object",
                 "description": (
                     "A dictionary of parameters to pass to the function. Each key-value pair represents a parameter name and its value."
@@ -294,7 +294,7 @@ test_function_spec = {
                 "additionalProperties": True
             }
         },
-        "required": ["function_name", "parameters"]
+        "required": ["function_name", "params"]
     }
 }
 
@@ -517,82 +517,67 @@ zapier_api_create_action_spec = {
 } 
 
 code_assistant_function_spec = {
-    "name": "send_message_to_coding_assistant",
+    "name": "send_command_to_coding_assistant",
     "category": "programming",
-    "class_name": "CodingAssistantService.send_message_to_coding_assistant",
+    "class_name": "CodingAssistantService.send_command_to_coding_assistant",
     "description": (
-        "This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. It supports the full development cycle, facilitating branch management, local development, and code preparation for peer review. The `command_message` parameter is key as the primary entry point for natural language coding assistance, enabling agents to command code generation and edits. Additionally, this function manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding workflows. The `command_git_command` is also a key parameter for any git commands executed through GitPython. Only one command should be sent per call to this function. Any errors in responses can help guide you in correcting your commands. Choose the right assistant_type based on the requirements for assistance. Both assistant types work on the same local repository. metagpt is a multi-agent framework which uses agents, Git, a simple AST and multiple rounds of agent feedback to create software. It uses ProductManager, Architect, ProjectManager, Engineer and QAEngineer agents to solve coding tasks. aider uses a single LLM, Git and a complex AST to work on coding tasks with ability to add, remove, update code more easily due to the better AST for awareness of objects within repository."
+        "This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. It supports the full development cycle, facilitating branch management, local development, and code/document preparation for peer review. The `command_message` parameter is key as the primary entry point for natural language coding assistance, enabling agents to command code/documentation generation and edits. Additionally, this function manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding/designing workflows. The `command_git_command` is also a key parameter for any git commands executed through GitPython. Only one command should be sent per call to this function. Any errors in responses can help guide you in correcting your commands. The assistant can only see and edit files which have been 'added to the chat session'. The user can discover files using command_ls and adds files either via the command_add command."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "name": {
                 "type": "string",
-                "description": "Code assistant name."
-            },
-            "assistant_type": {
-                "type": "string",
-                "description": "Assistant type. Use metagpt to design, initial software setup/creation, create tests, and do QA. Use aider to modify, update, improve code, fix bugs. Usually you start with metagpt to create and after code is created you use aider to augment. Sometimes you can just use aider if design/qa/tests are not needed. Note that even after tests and QA is done you can always use command_create_test_for_file to create further code coverage. This field is required when sending command_message.",
-                "enum": ["metagpt", "aider"],
-            },
-            "command_pull_request": {
-                "type": "boolean",
-                "description": "Create a pull request for the current local branch to merge your fork upstream."
-            },
-            "command_apply": {
-                "type": "string",
-                "description": "Apply changes from a specified file instead of running the chat (debug). Uses aider."
+                "description": "Code assistant name. Leave empty if you want to use the same code assistant as you did previously within this group."
             },
             "command_show_repo_map": {
                 "type": "boolean",
-                "default": False,
-                "description": "Print the local repository map and exit. Repository map is how the coding assistant efficiently maps the logical connection between files/objects/classes in the repository."
+                "description": "Print the local repository map. Repository map is how the coding assistant efficiently maps the logical connection between files/objects/classes in the repository."
             },
             "command_message": {
                 "type": "string",
-                "description": "Process a single message for code assistant and exit. This is your entrypoint for natural language coding assistance usually. Work is done in your local branch. If type is aider it will use aider code assistant to work on code, otherwise if it is metagpt it will use metagpt to design, code the request based on natural language. assistant_type is also required for this command."
+                "description": "Process a single message for code assistant. This is your entrypoint for natural language coding assistance usually. Work is done in your local branch. You should refer to relevant files (added to context via cmd_add) for any contextual awareness required for tasks."
             },
             "command_add": {
                 "type": "string",
-                "description": "Add matching files to the chat session using glob patterns to your local branch. You can specify a file name without pattern as well. Will touch a new file if the file doesn't exist on disk (not using pattern). If you are considering a `git add` operation use this instead. Used with aider type. Uses aider."
+                "description": "Add matching files to the chat session using glob patterns to your local branch. You can specify a file name without pattern as well. Will touch a new file if the file doesn't exist on disk (not using pattern). If you are considering a `git add` operation use this instead."
             },
             "command_drop": {
                 "type": "string",
-                "description": "Remove matching files from the chat session using glob patterns from your local branch. You can specify file name without pattern as well. Uses aider."
+                "description": "Remove matching files from the chat session using glob patterns from your local branch. You can specify file name without pattern as well."
             },
             "command_clear": {
                 "type": "boolean",
-                "description": "Clear the coding assistant chat history of your local branch. Uses aider."
+                "description": "Clear the coding assistant chat history of your local branch."
             },
             "command_ls": {
                 "type": "boolean",
-                "description": "List all known files from in your local branch and those included in the chat session. Uses aider."
+                "description": "List all known files and indicate which are included in the code assistant session."
+            },
+            "command_show_file": {
+                "type": "string",
+                "description": "Show contents of a file in the repository. Give the file name with any relative path if necessary."
             },
             "command_tokens": {
                 "type": "boolean",
-                "description": "Report on the number of tokens used by the current chat context dealing with your local branch. Uses aider."
+                "description": "Report on the number of tokens used by the current chat context dealing with your local branch."
             },
             "command_undo": {
                 "type": "boolean",
-                "description": "Undo the last git commit your local branch if it was done by code assistant. Uses aider."
+                "description": "Undo the last git commit your local branch if it was done by code assistant."
             },
             "command_diff": {
                 "type": "boolean",
-                "description": "Display the diff of the last code assistant commit in your local branch. Uses aider."
+                "description": "Display the diff of the last code assistant commit in your local branch."
             },
             "command_git_command": {
                 "type": "string",
                 "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push' to push to remote, 'push -u origin feature-branch' to push to a new remote branch, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
             },
-            "command_create_test_for_file": {
-                "type": "string",
-                "description": "Specify the source file name for writing/rewriting the quality assurance code. Uses metagpt."
-            },
         },
-        "required": ["name"]
+        "required": []
     },
 }
-
 
 
 upsert_code_assistant_function_spec = {
@@ -600,7 +585,7 @@ upsert_code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.upsert_coding_assistant",
     "description": (
-        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. When initializing a new assistant or working with an existing assistant, this function clones the remote repository (repository_name) locally, readying it for development work. The repository should be setup prior to the assistant. Two types of coding assistants are created 'metagpt' for designing, testing, running code/tests, and coding, and 'aider' which is usually used for augmentation, bug fixing and smaller initial coding tasks. The type specifies which assistant should be invoked when command_message to the assistant. Both assistant types work on the same local repository, but have their own unique history and commands. They are seperate projects that assist in code creation for different purposes."
+        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. When initializing a new assistant or working with an existing assistant, this function clones the remote repository (repository_name) locally, readying it for development work. The repository should be setup prior to the assistant."
     ),
     "parameters": {
         "type": "object",
@@ -626,22 +611,22 @@ upsert_code_assistant_function_spec = {
             "show_diffs": {
                 "type": "boolean",
                 "default": False,
-                "description": "Toggle to show diffs when committing changes. Used with aider."
+                "description": "Toggle to show diffs when committing changes."
             },
             "dry_run": {
                 "type": "boolean",
                 "default": False,
-                "description": "Perform operations without modifying files. Used with aider."
+                "description": "Perform operations without modifying files."
             },
             "map_tokens": {
                 "type": "integer",
                 "default": 1024,
-                "description": "Maximum number of tokens for repo map. Set to 0 to disable. Used with aider."
+                "description": "Maximum number of tokens for repo map. Set to 0 to disable."
             },
             "verbose": {
                 "type": "boolean",
                 "default": False,
-                "description": "Enable verbose output for detailed logging. Used with aider."
+                "description": "Enable verbose output for detailed logging."
             },
         },
         "required": ["name", "repository_name"]

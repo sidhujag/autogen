@@ -11,7 +11,7 @@ from autogen.agentchat.service.function_specs import external_function_specs
 from autogen.agentchat.service.agent_models import external_agent_models
 from autogen.agentchat.service.group_models import external_group_models
 from autogen.oai.openai_utils import retrieve_assistants_by_name
-from autogen.agentchat.service import MakeService, FunctionsService, BackendService, UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, INFO, TERMINATE
+from autogen.agentchat.service import MakeService, FunctionsService, BackendService, UpsertAgentModel, UpsertGroupModel, AuthAgent, GroupService, AgentService, MANAGEMENT, DISCOVERY, TERMINATE
 from typing import List
 app = FastAPI()
 
@@ -26,35 +26,34 @@ class QueryModel(BaseModel):
     auth: AuthAgent
     query: str
 
-def upsert_external_agents(agent_models):
-    agents, err = upsert_agents(agent_models)
+async def upsert_external_agents(agent_models):
+    agents, err = await upsert_agents(agent_models)
     if err is not None:
         print(f'Could not upsert external agents err: {err}')
         return None, None
     return agents, None
 
-def upsert_external_groups(group_models):
-    groups, err = GroupService.upsert_groups(group_models)
+async def upsert_external_groups(group_models):
+    groups, err = await GroupService.upsert_groups(group_models)
     if err is not None:
         print(f'Error creating groups {err}')
         return None, None
     return groups, None
 
-def upsert_external_functions(sender):
+async def upsert_external_functions(sender):
     function_models = []
     for func in external_function_specs:
-        func["last_updater"] = sender.name
         func["status"] = "accepted"
-        function_model, error_message = FunctionsService._create_function_model(sender, func)
+        function_model, error_message = FunctionsService._create_function_model(func)
         if error_message:
             return error_message
         function_models.append(function_model)
-    err = BackendService.upsert_backend_functions(function_models)
+    err = await BackendService.upsert_backend_functions(function_models)
     if err is not None:
         return err
     return None
 
-def upsert_agents(models):
+async def upsert_agents(models):
     for model in models:
         id = None
         print(f'upsert_agent: {model.name}')
@@ -81,7 +80,7 @@ def upsert_agents(models):
             )
             id = openai_assistant.id
         model.assistant_id = id
-    agents, err = AgentService.upsert_agents(models)
+    agents, err = await AgentService.upsert_agents(models)
     if err is not None:
         return None, err
     return agents, None
@@ -110,7 +109,7 @@ async def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is user_proxy speaking.",
         category="planning",
-        capability=0
+        capability=DISCOVERY
     )
     manager_assistant_model = UpsertAgentModel(
         name="manager_assistant",
@@ -119,7 +118,7 @@ async def query(input: QueryModel):
         human_input_mode="NEVER",
         default_auto_reply="This is the manager_assistant speaking.",
         category="planning",
-        capability=0
+        capability=DISCOVERY
     )
     manager_model = UpsertAgentModel(
         name="manager",
@@ -128,7 +127,7 @@ async def query(input: QueryModel):
         human_input_mode="ALWAYS",
         default_auto_reply="This is the manager speaking.",
         category="planning",
-        capability=MANAGEMENT | INFO | TERMINATE
+        capability=MANAGEMENT | DISCOVERY | TERMINATE
     )
     agent_models = [
         user_model,
@@ -145,23 +144,29 @@ async def query(input: QueryModel):
         management_group_model,
     ]
     agents: List[GPTAssistantAgent] = None
-    agents, err = upsert_agents(agent_models)
+    agents, err = await upsert_agents(agent_models)
     if err is not None:
         print(f'Error creating agents {err}')
         return
-    groups, err = GroupService.upsert_groups(group_models)
+    groups, err = await GroupService.upsert_groups(group_models)
     if err is not None:
         print(f'Error creating groups {err}')
         return
-    err = upsert_external_functions(agents[0])
+    err = await upsert_external_functions(agents[0])
     if err is not None:
         print(f'Could not upsert external functions err: {err}')
-    external_agents, err = upsert_external_agents(external_agent_models)
+    external_agents, err = await upsert_external_agents(external_agent_models)
     if err is not None:
         print(f'Error creating external agents {err}')
         return
-    external_groups, err = upsert_external_groups(external_group_models)
+    external_groups, err = await upsert_external_groups(external_group_models)
     if err is not None:
         print(f'Error creating external groups {err}')
         return
     await agents[0].a_initiate_chat(groups[0], message=input.query)
+    
+    
+@app.post('/get_function_info/')
+async def delete_all_assistants(input: QueryModel):
+    MakeService.auth = input.auth
+    return await FunctionsService.get_function_info("test_function")

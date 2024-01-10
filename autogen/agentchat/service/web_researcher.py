@@ -8,7 +8,7 @@ class WebResearcher:
         topic: str
     ):
         from . import BackendService, WebResearchInput
-        response, err = BackendService.web_research(WebResearchInput(
+        response, err = await BackendService.web_research(WebResearchInput(
             topic=topic
         ))
         if err is not None:

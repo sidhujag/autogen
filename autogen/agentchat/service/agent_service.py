@@ -20,6 +20,8 @@ If you have termination access, don't terminate if a path doesn't work out right
 Locked groups are good at specific jobs. Unlocked groups are good for abstract or further assignment of roles/tasks downstream.
 
 Custom Instructions: {custom_instructions}
+
+Group Stats: {group_stats}
 """
 
     MANAGER_AGENT_SYSTEM_MESSAGE: str = """
@@ -43,7 +45,7 @@ Group Stats: {group_stats}
 """
 
     # Define capability instruction variables
-    INFO_INSTRUCTIONS = "Access and manage information on functions, agents, and groups. Discover entities and gather relevant data."
+    DISCOVERY_INSTRUCTIONS = "Access and manage information on functions, agents, and groups. Discover entities and gather relevant data."
     TERMINATE_INSTRUCTIONS = "Ability to terminate a group, concluding its operations by replying with just 'TERMINATE'."
     OPENAI_CODE_INTERPRETER_INSTRUCTIONS = "Create and executes simple code through natural language using the OpenAI Code Interpreter and provides response in interactions. Ideal for isolated, internet-independent tasks."
     OPENAI_RETRIEVAL_INSTRUCTIONS = "Leverage OpenAI's capabilities to enhance knowledge retrieval, utilizing external documents and data."
@@ -51,36 +53,36 @@ Group Stats: {group_stats}
     MANAGEMENT_INSTRUCTIONS = "Oversee and modify agents/groups, facilitate inter-group communication, and manage overall group activities."
 
     @staticmethod
-    def get_agent(agent_model) -> GPTAssistantAgent:
+    async def get_agent(agent_model) -> GPTAssistantAgent:
         from . import BackendService, MakeService, DeleteAgentModel
         agent: GPTAssistantAgent = MakeService.AGENT_REGISTRY.get(agent_model.name)
         if agent is None:
-            backend_agents, err = BackendService.get_backend_agents([agent_model])
+            backend_agents, err = await BackendService.get_backend_agents([agent_model])
             if err is None and len(backend_agents) > 0:
-                agent, err = AgentService.make_agent(backend_agents[0])
+                agent, err = await AgentService.make_agent(backend_agents[0])
                 if err is None and agent:
                     MakeService.AGENT_REGISTRY[agent_model.name] = agent
                 else:
-                    BackendService.delete_backend_agents([DeleteAgentModel(name=agent_model.name)])
+                    await BackendService.delete_backend_agents([DeleteAgentModel(name=agent_model.name)])
         return agent
 
     @staticmethod
-    def discover_agents(query: str, category: str = None) -> str:
+    async def discover_agents(query: str, category: str = None) -> str:
         from . import BackendService, DiscoverAgentsModel
-        response, err = BackendService.discover_backend_agents(DiscoverAgentsModel(query=query,category=category))
+        response, err = await BackendService.discover_backend_agents(DiscoverAgentsModel(query=query,category=category))
         if err is not None:
             return err
         return response
 
     @staticmethod
-    def get_agent_info(name: str) -> str:
+    async def get_agent_info(name: str) -> str:
         from . import GetAgentModel, AgentService, MakeService, FunctionsService, GetFunctionModel, AgentInfo, FunctionInfo
-        agent = AgentService.get_agent(GetAgentModel(name=name))
+        agent = await AgentService.get_agent(GetAgentModel(name=name))
         if agent is None:
             return json.dumps({"error": f"Agent({name}) not found"})
 
         function_models = [GetFunctionModel(name=function_name) for function_name in agent.function_names]
-        functions = FunctionsService.get_functions(function_models)
+        functions = await FunctionsService.get_functions(function_models)
 
         # Convert BaseFunction objects to FunctionInfo objects
         function_info_list = [FunctionInfo(name=func.name, status=func.status) for func in functions]
@@ -97,9 +99,9 @@ Group Stats: {group_stats}
 
     
     @staticmethod
-    def upsert_agent(agent: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
-        from . import UpsertAgentModel, INFO, GetAgentModel, FunctionsService, GetFunctionModel, MakeService
-        agent_obj = AgentService.get_agent(GetAgentModel(name=agent))
+    async def upsert_agent(agent: str, description: str = None, custom_instructions: str = None, functions_to_add: List[str] = None,  functions_to_remove: List[str] = None, category: str = None, capability: int = 1) -> str: 
+        from . import UpsertAgentModel, GetAgentModel, FunctionsService, GetFunctionModel, MakeService
+        agent_obj = await AgentService.get_agent(GetAgentModel(name=agent))
         id = None
         created_assistant = False
         if agent_obj is None:
@@ -115,7 +117,7 @@ Group Stats: {group_stats}
         else:
             id = agent_obj._openai_assistant.id
         function_models = [GetFunctionModel(name=function_name) for function_name in functions_to_add]
-        functions = FunctionsService.get_functions(function_models)
+        functions = await FunctionsService.get_functions(function_models)
         if not functions and functions_to_add:
             return json.dumps({"error": "Functions you are trying to add are not found"})
         # Create a set of function names for easy lookup
@@ -126,7 +128,7 @@ Group Stats: {group_stats}
                 if created_assistant:
                     MakeService.openai_client.beta.assistants.delete(assistant_id=id)
                 return json.dumps({"error": f"Function({function_to_add}) not found"})
-        agent_obj, err = AgentService.upsert_agents([UpsertAgentModel(
+        agent_obj, err = await AgentService.upsert_agents([UpsertAgentModel(
             name=agent,
             description=description,
             system_message=custom_instructions,
@@ -143,7 +145,7 @@ Group Stats: {group_stats}
         return json.dumps({"response": f"Agent({agent}) upserted!"})
 
     @staticmethod
-    def upload_file(agent: str, description: str, data_or_url: str) -> str:
+    async def upload_file(agent: str, description: str, data_or_url: str) -> str:
         from . import UpsertAgentModel, MakeService
 
         # Step 1: Download the file if `data_or_url` is a URL
@@ -163,7 +165,7 @@ Group Stats: {group_stats}
         file_id = response['id']
 
         # Step 3: Update the agent's record to include the new file_id
-        agent_obj, err = AgentService.upsert_agents([UpsertAgentModel(
+        agent_obj, err = await AgentService.upsert_agents([UpsertAgentModel(
             name=agent,
             files_to_add={file_id: description}
         )])
@@ -172,7 +174,7 @@ Group Stats: {group_stats}
         return json.dumps({"response": "File uploaded and agent updated successfully!"})
 
     @staticmethod
-    def delete_files(agent: str, file_ids: List[str]) -> str:
+    async def delete_files(agent: str, file_ids: List[str]) -> str:
         from . import UpsertAgentModel, MakeService
         # Step 1: Delete each file using OpenAI File API
         errors = []
@@ -189,7 +191,7 @@ Group Stats: {group_stats}
 
         # Step 2: Update the agent's record to remove the file_ids
         try:
-            agent, err = AgentService.upsert_agents([UpsertAgentModel(
+            agent, err = await AgentService.upsert_agents([UpsertAgentModel(
                 name=agent,
                 files_to_remove=file_ids
             )])
@@ -218,12 +220,12 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _update_capability(agent):
-        from . import FunctionsService, MakeService, INFO, TERMINATE, OPENAI_RETRIEVAL, MANAGEMENT, OPENAI_FILES, OPENAI_CODE_INTERPRETER
+        from . import FunctionsService, MakeService, DISCOVERY, TERMINATE, OPENAI_RETRIEVAL, MANAGEMENT, OPENAI_FILES, OPENAI_CODE_INTERPRETER
         agent.llm_config["tools"] = []
         agent._code_execution_config = {}
-        if agent.capability & INFO:
+        if agent.capability & DISCOVERY:
             for func_spec in group_info_function_specs:
-                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                function_model, error_message = FunctionsService._create_function_model(func_spec)
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model) 
@@ -235,13 +237,13 @@ Group Stats: {group_stats}
             agent.llm_config["tools"].append({"type": "retrieval"})
         if agent.capability & OPENAI_FILES:
             for func_spec in files_function_specs:
-                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                function_model, error_message = FunctionsService._create_function_model(func_spec)
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model)
         if agent.capability & MANAGEMENT:
             for func_spec in management_function_specs:
-                function_model, error_message = FunctionsService._create_function_model(agent, func_spec)
+                function_model, error_message = FunctionsService._create_function_model(func_spec)
                 if error_message:
                     return error_message
                 FunctionsService.define_function_internal(agent, function_model)
@@ -262,7 +264,7 @@ Group Stats: {group_stats}
         return agent
 
     @staticmethod
-    def update_agent(agent, backend_agent):
+    async def update_agent(agent, backend_agent):
         from . import FunctionsService, GetFunctionModel, MakeService
         agent.update_system_message(backend_agent.system_message)
         agent.description = backend_agent.description
@@ -272,11 +274,10 @@ Group Stats: {group_stats}
         AgentService._update_capability(agent)
         if backend_agent.function_names:
             function_models = [GetFunctionModel(name=function_name) for function_name in backend_agent.function_names]
-            functions = FunctionsService.get_functions(function_models)
+            functions = await FunctionsService.get_functions(function_models)
 
             # Create a set of function names for easy lookup
             retrieved_function_names = {func.name for func in functions if func}
-
             # Check if all functions are retrieved
             for function_name in backend_agent.function_names:
                 if function_name not in retrieved_function_names:
@@ -285,7 +286,7 @@ Group Stats: {group_stats}
             for function in functions:
                 FunctionsService.define_function_internal(agent, function)
         agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
-            assistant_id=agent.llm_config.get("assistant_id", None),
+            assistant_id=backend_agent.assistant_id,
             instructions=agent.system_message,
             description=agent.description,
             tools=agent.llm_config.get("tools", []),
@@ -294,7 +295,7 @@ Group Stats: {group_stats}
         return None
 
     @staticmethod
-    def make_agent(backend_agent):
+    async def make_agent(backend_agent):
         from . import FunctionsService, GetFunctionModel, MakeService
         agent = AgentService._create_agent(backend_agent)
         if agent is None:
@@ -307,20 +308,18 @@ Group Stats: {group_stats}
         AgentService._update_capability(agent)
         if backend_agent.function_names:
             function_models = [GetFunctionModel(name=function_name) for function_name in backend_agent.function_names]
-            functions = FunctionsService.get_functions(function_models)
-
+            functions = await FunctionsService.get_functions(function_models)
             # Create a set of function names for easy lookup
             retrieved_function_names = {func.name for func in functions if func}
-
             # Check if all functions are retrieved
             for function_name in backend_agent.function_names:
                 if function_name not in retrieved_function_names:
-                    return json.dumps({"error": f"Function({function_name}) not found"})
+                    return None, json.dumps({"error": f"Function({function_name}) not found"})
 
             for function in functions:
                 FunctionsService.define_function_internal(agent, function)
         agent._openai_assistant = MakeService.openai_client.beta.assistants.update(
-            assistant_id=agent.llm_config.get("assistant_id", None),
+            assistant_id=backend_agent.assistant_id,
             instructions=agent.system_message,
             description=agent.description,
             tools=agent.llm_config.get("tools", []),
@@ -329,16 +328,16 @@ Group Stats: {group_stats}
         return agent, None
 
     @staticmethod
-    def upsert_agents(upsert_models):
+    async def upsert_agents(upsert_models):
         from . import BackendService, GetAgentModel, MakeService, DeleteAgentModel
         # Step 1: Upsert all agents in batch
-        err = BackendService.upsert_backend_agents(upsert_models)
+        err = await BackendService.upsert_backend_agents(upsert_models)
         if err and err != json.dumps({"error": "No agents were upserted, no changes found!"}):
             return None, err
 
         # Step 2: Retrieve all agents from backend in batch
         get_agent_models = [GetAgentModel(name=model.name) for model in upsert_models]
-        backend_agents, err = BackendService.get_backend_agents(get_agent_models)
+        backend_agents, err = await BackendService.get_backend_agents(get_agent_models)
         if err:
             return None, err
         if len(backend_agents) == 0:
@@ -349,12 +348,12 @@ Group Stats: {group_stats}
         for backend_agent in backend_agents:
             agent = MakeService.AGENT_REGISTRY.get(backend_agent.name)
             if agent is None:
-                agent, err = AgentService.make_agent(backend_agent)
+                agent, err = await AgentService.make_agent(backend_agent)
                 if err is not None:
-                    BackendService.delete_backend_agents([DeleteAgentModel(name=backend_agent.name)])
+                    await BackendService.delete_backend_agents([DeleteAgentModel(name=backend_agent.name)])
                     return None, err
             else:
-                err = AgentService.update_agent(agent, backend_agent)
+                err = await AgentService.update_agent(agent, backend_agent)
                 if err is not None:
                     return None, err
             successful_agents.append(agent)
@@ -362,6 +361,14 @@ Group Stats: {group_stats}
 
     @staticmethod
     def _generate_group_stats_text(group_manager: GroupChatManager) -> str:
+        # Recursive function to get parent group information
+        def get_parent_group_info(manager, indent_level=0):
+            if manager.parent_group is None:
+                return ""
+            indent = "    " * indent_level
+            parent_info = f"{indent}- Parent Group: {manager.parent_group.name}\n"
+            return parent_info + get_parent_group_info(manager.parent_group, indent_level + 1)
+
         incoming_communications = "\n".join(
             f"- Group: {agent_name}: {count} message(s)"
             for agent_name, count in group_manager.incoming.items()
@@ -370,14 +377,24 @@ Group Stats: {group_stats}
             f"- Group: {agent_name}: {count} message(s)"
             for agent_name, count in group_manager.outgoing.items()
         )
-        communications = f"Incoming communications:\n{incoming_communications}\nOutgoing communications:\n{outgoing_communications}"
+
+        parent_group_info = get_parent_group_info(group_manager)
+        communications = f"\n\nIncoming communications:\n{incoming_communications}\nOutgoing communications:\n{outgoing_communications}"
+
+        if group_manager.current_code_assistant_name:
+            communications += f"\n\nCurrent code assistant:\n{group_manager.current_code_assistant_name}"
+
+        if parent_group_info:
+            communications = f"\n\nParent Group Information:\n{parent_group_info}\n" + communications
+
         return communications.strip()
+
 
     @staticmethod
     def get_capability_instructions(capability_number) -> str:
         # Define a list of capabilities, each with name, bit, and instructions
         capabilities = [
-            ("INFO", 1, AgentService.INFO_INSTRUCTIONS),
+            ("DISCOVERY", 1, AgentService.DISCOVERY_INSTRUCTIONS),
             ("TERMINATE", 2, AgentService.TERMINATE_INSTRUCTIONS),
             ("OPENAI_CODE_INTERPRETER", 4, AgentService.OPENAI_CODE_INTERPRETER_INSTRUCTIONS),
             ("OPENAI_RETRIEVAL", 8, AgentService.OPENAI_RETRIEVAL_INSTRUCTIONS),
@@ -421,5 +438,6 @@ Group Stats: {group_stats}
                 group_name=group_manager.name,
                 custom_instructions=agent.custom_instructions,
                 capability_instruction=capability_instructions_instr,
+                group_stats=AgentService._generate_group_stats_text(group_manager),
             )
         agent.update_system_message(formatted_message)

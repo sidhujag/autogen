@@ -7,27 +7,31 @@ from openai import OpenAI
 import json
 import asyncio
 import logging
+from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
+from pathlib import Path
 
 class CodingAssistantService:
     @staticmethod
-    def get_coding_assistant(coding_assistant_model) -> Coder:
-        from . import BackendService, MakeService
+    async def get_coding_assistant(coding_assistant_model) -> Coder:
+        from . import BackendService, MakeService, DeleteCodeAssistantsModel
         coding_assistant: Coder = MakeService.CODE_ASSISTANT_REGISTRY.get(coding_assistant_model.name)
         if coding_assistant is None:
-            backend_coding_assistants, err = BackendService.get_backend_coding_assistants([coding_assistant_model])
+            backend_coding_assistants, err = await BackendService.get_backend_coding_assistants([coding_assistant_model])
             if err is None and backend_coding_assistants:
-                coding_assistant, err = CodingAssistantService.make_coding_assistant(backend_coding_assistants[0])
+                coding_assistant, err = await CodingAssistantService.make_coding_assistant(backend_coding_assistants[0])
                 if err is None and coding_assistant:
                     MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant_model.name] = coding_assistant
+                else:
+                    await BackendService.delete_backend_coding_assistants([DeleteCodeAssistantsModel(name=coding_assistant_model.name)])
         return coding_assistant
     
     @staticmethod
-    def get_coding_assistant_info(name: str) -> str:
+    async def get_coding_assistant_info(name: str) -> str:
         from . import MakeService, CodingAssistantInfo, CodeRepositoryInfo, GetCodingAssistantModel, CodeRepositoryService
-        backend_coding_assistant = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
+        backend_coding_assistant = await CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
         if not backend_coding_assistant:
             return json.dumps({"error": f"Coding assistant({name}) not found"})
-        repository_info_result = CodeRepositoryService.get_code_repository_info(backend_coding_assistant.repository_name)
+        repository_info_result = await CodeRepositoryService.get_code_repository_info(backend_coding_assistant.repository_name)
         repository_info_json = json.loads(repository_info_result)
         if 'error' in repository_info_json:
             return repository_info_json
@@ -53,15 +57,15 @@ class CodingAssistantService:
         return json.dumps({"response": backend_coding_assistant_info.dict()})
 
     @staticmethod
-    def discover_coding_assistants(query: str) -> str:
+    async def discover_coding_assistants(query: str) -> str:
         from . import BackendService, DiscoverCodingAssistantModel
-        response, err = BackendService.discover_backend_coding_assistants(DiscoverCodingAssistantModel(query=query))
+        response, err = await BackendService.discover_backend_coding_assistants(DiscoverCodingAssistantModel(query=query))
         if err is not None:
             return err
         return response
 
     @staticmethod
-    def upsert_coding_assistant(
+    async def upsert_coding_assistant(
         name: str,
         repository_name: str,
         description: Optional[str] = None,
@@ -72,7 +76,7 @@ class CodingAssistantService:
         verbose: Optional[bool] = None,
     ) -> str:
         from . import UpsertCodingAssistantModel
-        coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
+        coding_assistants, err = await CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
             repository_name=repository_name,
             name=name,
             description=description,
@@ -87,9 +91,9 @@ class CodingAssistantService:
         return json.dumps({"response": f"Coding assistant({name}) upserted!"})
 
     @staticmethod
-    def make_coding_assistant(backend_coding_assistant):
+    async def make_coding_assistant(backend_coding_assistant):
         from . import MakeService
-        coding_assistant, err = CodingAssistantService._create_coding_assistant(backend_coding_assistant)
+        coding_assistant, err = await CodingAssistantService._create_coding_assistant(backend_coding_assistant)
         if err is not None:
             return None, err
         coding_assistant.description = backend_coding_assistant.description
@@ -105,15 +109,15 @@ class CodingAssistantService:
         return coding_assistant, None
 
     @staticmethod
-    def upsert_coding_assistants(upsert_models):
+    async def upsert_coding_assistants(upsert_models):
         from . import BackendService, GetCodingAssistantModel
         # Step 1: Upsert all coding_assistants in batch
-        err = BackendService.upsert_backend_coding_assistants(upsert_models)
+        err = await BackendService.upsert_backend_coding_assistants(upsert_models)
         if err and err != json.dumps({"error": "No coding assistants were upserted, no changes found!"}):
             return None, err
         # Step 2: Retrieve all coding assistants from backend in batch
         get_coding_assistant_models = [GetCodingAssistantModel(name=model.name) for model in upsert_models]
-        backend_coding_assistants, err = BackendService.get_backend_coding_assistants(get_coding_assistant_models)
+        backend_coding_assistants, err = await BackendService.get_backend_coding_assistants(get_coding_assistant_models)
         if err:
             return None, err
         if len(backend_coding_assistants) == 0:
@@ -122,18 +126,18 @@ class CodingAssistantService:
         # Step 3: Update local coding_assistant registry
         successful_coding_assistants = []
         for backend_coding_assistant in backend_coding_assistants:
-            coder, err = CodingAssistantService.make_coding_assistant(backend_coding_assistant)
+            coder, err = await CodingAssistantService.make_coding_assistant(backend_coding_assistant)
             if err is not None:
                 return None, err
             successful_coding_assistants.append(coder)
         return successful_coding_assistants, None
 
     @staticmethod
-    def _create_coding_assistant(backend_coding_assistant):
+    async def _create_coding_assistant(backend_coding_assistant):
         from . import MakeService, CodeRepositoryService, GetCodeRepositoryModel, UpsertCodeRepositoryModel
         coder = None
         try:
-            code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=backend_coding_assistant.repository_name))
+            code_repository = await CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=backend_coding_assistant.repository_name))
             if not code_repository:
                 return None, json.dumps({"error": f"Code repository({backend_coding_assistant.repository_name}) not found"})
             io = InputOutput(pretty=False, yes=True, input_history_file=f".aider.input.history-{backend_coding_assistant.name}", chat_history_file=f".aider.chat.history-{backend_coding_assistant.name}.md")
@@ -153,10 +157,11 @@ class CodingAssistantService:
                 map_tokens=backend_coding_assistant.map_tokens,
                 verbose=backend_coding_assistant.verbose,
             )
+            coder.commands.cmd_add("docs/**/*")
             if backend_coding_assistant.name not in code_repository.associated_code_assistants:
                 code_repository.associated_code_assistants.append(backend_coding_assistant.name)
 
-            coding_assistants, err = CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(
+            coding_assistants, err = await CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(
                 name=code_repository.name,
                 associated_code_assistants=code_repository.associated_code_assistants
             )])
@@ -167,22 +172,44 @@ class CodingAssistantService:
         return coder, None
 
     @staticmethod
-    async def run_code_assistant(coder, command_message: str):
+    async def run_code_assistant(coder, code_repository, command_message: str):
         try:
-            coder.io.console.begin_capture()
             coder.io.tool_output()
+            coder.io.console.begin_capture()
             coder.run(with_message=command_message)
             output = coder.io.console.end_capture()
-            return output, None
+            return {"success": output}
+        except Exception as e:
+            print(f'run_code_assistant exec {str(e)}')
+            return {"error": str(e)}
+
+    @staticmethod
+    def read_text(file_path: str) -> tuple[str, Optional[str]]:
+        try:
+            with open(file_path, 'r') as file:
+                text = file.read()
+            return text, None
         except Exception as e:
             return None, json.dumps({"error": str(e)})
 
     @staticmethod
-    def send_message_to_coding_assistant(
-        name: str,
-        assistant_type:  Optional[str] = None,
-        command_pull_request: Optional[bool] = None,
-        command_apply: Optional[str] = None,
+    def show_file(command_show_file: str, workspace: Path):
+        # Construct the full path of the file within the workspace
+        full_file_path = workspace / command_show_file
+
+        # Check if the file path is within the workspace directory
+        if not full_file_path.is_absolute() or not full_file_path.resolve().is_relative_to(workspace):
+            return None, json.dumps({"error": "File path is outside the workspace directory."})
+
+        # Read and return the file content if it is within the workspace
+        text, err = CodingAssistantService.read_text(str(full_file_path))
+        if err is not None:
+            return None, err
+        return text, None
+        
+    @staticmethod
+    async def send_command_to_coding_assistant(
+        name: Optional[str] = None,
         command_show_repo_map: Optional[bool] = None,
         command_message: Optional[str] = None,
         command_add: Optional[str] = None,
@@ -193,134 +220,124 @@ class CodingAssistantService:
         command_undo: Optional[bool] = None,
         command_diff: Optional[bool] = None,
         command_git_command: Optional[str] = None,
-        command_create_test_for_file: Optional[str] = None
+        command_show_file: Optional[str] = None
     ) -> str:
-        from . import GroupService, CodeExecInput, CodeRequestInput, CodeRepositoryService, CodeAssistantInput, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
-        coder = CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
+        from . import GroupService, GetGroupModel, CodeExecInput, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
+        # Wait for any previous task to complete
+        current_group = await GroupService.get_group(GetGroupModel(name=GroupService.current_group_name))
+        if current_group is None:
+            return json.dumps({"error": f"Could not send message: current_group({GroupService.current_group_name}) not found"})
+        if current_group.code_assistance_event_task:
+            return json.dumps({"error": "Code assistant is currently running, please wait for it to finish before sending another command."})
+        assistant_name = name or current_group.current_code_assistant_name
+        coder = await CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=assistant_name))
         if coder is None:
-            return json.dumps({"error": f"Could not send message to coding_assistant({name}): does not exist."})
-        code_repository = CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=coder.repository_name))
+            return json.dumps({"error": f"Critical: Could not send message to coding_assistant({assistant_name}): does not exist."})
+        code_repository = await CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=coder.repository_name))
         if not code_repository:
-            return json.dumps({"error": f"Associated code repository({coder.repository_name}) not found"})
+            return json.dumps({"error": f"Critical: Associated code repository({coder.repository_name}) not found."})
+        current_group.current_code_assistant_name = assistant_name
         str_output = ''
-        reqa_file = None
         cmd = None
-        if command_create_test_for_file:
-            if not command_message:
-                return json.dumps({"error": "Please provide command_message as natural language description of task for code coverage."})
-            reqa_file=command_create_test_for_file
-            assistant_type="metagpt"
-        elif command_add:
+        if command_add:
+            logging.info(f"send_command_to_coding_assistant command_add: {command_add}")
             coder.io.console.begin_capture()
             coder.commands.cmd_add(command_add)
-            cmd = 'add'
-            coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
+            cmd = 'command_add'
+            coding_assistants, err = await CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
                 name=name,
                 files=list(coder.abs_fnames)
             )])
             if err is not None:
+                logging.error(f"command_add failed: {err}")
                 return err
         elif command_drop:
+            logging.info(f"send_command_to_coding_assistant command_drop: {command_drop}")
             coder.io.console.begin_capture()
             coder.commands.cmd_drop(command_drop)
-            cmd = 'drop'
-            coding_assistants, err = CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
+            cmd = 'command_drop'
+            coding_assistants, err = await CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
                 name=name,
                 files=list(coder.abs_fnames)
             )])
             if err is not None:
+                logging.error(f"command_drop failed: {err}")
                 return err
         elif command_clear:
+            logging.info("send_command_to_coding_assistant cmd_clear")
             coder.io.console.begin_capture()
             coder.commands.cmd_clear(None)
-            cmd = 'clear'
+            cmd = 'command_clear'
         elif command_ls:
+            logging.info("send_command_to_coding_assistant command_ls")
             coder.io.console.begin_capture()
             coder.commands.cmd_ls(None)
-            cmd = 'ls'
+            cmd = 'command_ls'
         elif command_tokens:
+            logging.info("send_command_to_coding_assistant command_tokens")
             coder.io.console.begin_capture()
             coder.commands.cmd_tokens(None)
-            cmd = 'tokens'
+            cmd = 'command_tokens'
         elif command_undo:
+            logging.info("send_command_to_coding_assistant command_undo")
             coder.io.console.begin_capture()
             coder.commands.cmd_undo(None)
-            cmd = 'undo'
+            cmd = 'command_undo'
         elif command_diff:
+            logging.info("send_command_to_coding_assistant command_diff")
             coder.io.console.begin_capture()
             coder.commands.cmd_diff(None)
-            cmd = 'diff'
-        elif command_pull_request:
-            pr_title = "Feature: Adding new features by agent"
-            pr_body = coder.description
-            response, err = BackendService.create_github_pull_request(CodeRequestInput(
-                repository_name=coder.repository_name,
-                title=pr_title,
-                body=pr_body,
-                branch=coder.repo.active_branch
-            ))
-            if err is not None:
-                return err
-            return response
+            cmd = 'command_diff'
         elif command_git_command:
-            response, err = BackendService.execute_git_command(CodeExecInput(
+            logging.info(f"send_command_to_coding_assistant command_git_command {command_git_command}")
+            response, err = await BackendService.execute_git_command(CodeExecInput(
                 workspace=code_repository.workspace,
                 command_git_command=command_git_command,
             ))
             if err is not None:
+                logging.error(f"command_git_command failed: {err}")
                 return err
             return response
         elif command_show_repo_map:
+            logging.info("send_command_to_coding_assistant command_show_repo_map")
             coder.io.console.begin_capture()
             repo_map = coder.get_repo_map()
             if repo_map:
                 coder.io.tool_output(repo_map)
-            cmd = 'show_repo_map'
-        elif command_apply:
-            coder.io.console.begin_capture()
-            content = coder.io.read_text(command_apply)
-            if content is None:
-                str_output = coder.io.console.end_capture()
-                return json.dumps({"error":f"Command ({cmd}) could not be sent, output was: {str_output}"})
-            coder.partial_response_content = content
-            coder.apply_updates()
-            cmd = 'apply'
-        if cmd is not None:
-            str_output = coder.io.console.end_capture()
-            return json.dumps({"success": f"Command ({cmd}) ran and output was: {str_output}"})
+            cmd = 'command_show_repo_map'
+        elif command_show_file:
+            logging.info(f"send_command_to_coding_assistant command_show_file {command_show_file}")
+            text, err = CodingAssistantService.show_file(command_show_file, Path(code_repository.workspace))
+            if err is not None:
+                logging.error(f"command_show_file failed: {err}")
+                return err
+            return text
         if command_message:
-            # Wait for any previous task to complete
-            if not GroupService.current_group:
-                return json.dumps({"error": "No active group chat."})
-            if GroupService.current_group.task_completed_event.is_set():
-                return json.dumps({"error": "A long-running task is still in progress. Please wait until it's completed."})
-            if assistant_type == "metagpt":
-                asyncio.create_task(
-                    GroupService.start_long_running_task(
-                        GroupService.current_group,
-                        BackendService.run_code_assistant,
-                        GroupService.process_task_results,
-                        CodeAssistantInput(
-                            workspace=code_repository.workspace,
-                            project_name=coder.repository_name,
-                            command_message=command_message,
-                            reqa_file=reqa_file
-                        )
-                    )
-                )
-            elif assistant_type == "aider":
-                asyncio.create_task(
-                    GroupService.start_long_running_task(
-                        GroupService.current_group,
+            logging.info(f"send_command_to_coding_assistant command_message {command_message}")
+            # cancel any assistant run so we can get group chat to run the code assistant
+            GPTAssistantAgent.cancel_run()
+
+            # Wrapper function for starting the code assistance task
+            def setup_code_assistance_event_task():
+                async def start_task():
+                    return await GroupService.start_code_assistance_task(
                         CodingAssistantService.run_code_assistant,
-                        GroupService.process_task_results,
+                        GroupService.process_code_assistance_results,
                         coder,
+                        code_repository,
                         command_message
                     )
-                )
-            else:
-                return json.dumps({"error":f"assistant_type not provided, must be either 'metagpt' or 'aider'"})
-            str_output = "Task started, waiting for completion."
+                return start_task
+
+            current_group.code_assistance_event_task = setup_code_assistance_event_task()
+            current_group.code_assistance_event_task_msg = f"Code assistant command: {command_message}"
+            str_output = "Ran coding assistant. Please wait for results."
+        elif cmd is not None:
+            str_output = coder.io.console.end_capture()
+            return json.dumps({"success": f"{cmd}: {str_output}"})
         else:
             return json.dumps({"error": "Could not run code assistant, no commands or message provided"})
+
         return str_output
+    
+    

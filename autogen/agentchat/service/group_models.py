@@ -8,21 +8,30 @@ web_search_group_model = UpsertGroupModel(
 
 planning_group_model = UpsertGroupModel(
     name="planning_group",
-    description="The Planning Group tackles problems by creating detailed, provided step-by-step, tree-of-thought / chain-of-thought plans for the task resolution. plan_worker will create the plan, plan_checker will check the plan and plan_manager will coordinate the group and ensure worker and checker work effectively to create an optimal detailed plan. Only plan_manager can terminate the group. The group consuming answers from planning likely will work in a chain-of-thought or tree-of-thought pattern to assign tasks from the plan to other groups. Sometimes based on feedback from other groups during task assignment the plan will need to be updated, in which case the planner can be invoked to update a plan. You can use coding assistance to coordinate and manage files and documentation across the agent ecosystem.",
+    description="The Planning Group tackles problems by creating detailed, provided step-by-step, tree-of-thought / chain-of-thought plans for the task resolution. plan_worker will create the plan, plan_checker will check the plan and plan_manager will coordinate the group and ensure worker and checker work effectively to create an optimal detailed plan. Only plan_manager can terminate the group. The group consuming answers from planning likely will work in a chain-of-thought or tree-of-thought pattern to assign tasks from the plan to other groups. Sometimes based on feedback from other groups during task assignment the plan will need to be updated, in which case the planner can be invoked to update a plan. For software designing and planning there is a software_design_documentation_group.",
     agents_to_add=["plan_worker", "plan_checker", "plan_manager"],
     locked = True
 )
 
-coding_assistance_group_model = UpsertGroupModel(
-    name="coding_assistance_group",
-    description=("The Coding Assistant Group specializes in developing software solutions through code repositories guided by detailed, step-by-step plans, utilizing tree-of-thought or chain-of-thought methodologies. This group thrives in a Git-based development setting, focusing on software assistance within a local repository while also accommodating the development of non-code related documentation such as project plans, design documents such as PRD, API documentation, and other project-related materials."
-                 "Works with existing Github repo's or will create new ones if not provided and then associate them to coding assistants."
-                 "The group's collaboration is geared towards working on a remote GitHub repository. If no remote URL provided to you then you will create a new one when calling upsert_code_repository."
-                 "Once the code output is deemed acceptable, push or issue a pull request (if you working with a fork) to save the work online."
-                 "For smaller, independent functions or routines that are intended for future reuse, the function_creation_group is recommended."
-                 "The group's workflow mandates that the output, whether code or documentation, is acknowledged through merging (if its forked otherwise pushing) into the remote repository before the group's closure is accepted. This process ensures that the contributions of the Coding Assistant Group are properly integrated and recognized within the broader project context."
-                 "Two types of coding assistants are created 'metagpt' for designing, testing, running code/tests, and coding, while 'aider' is usually used for augmentation, bug fixing and smaller initial coding tasks."),
-    agents_to_add=["code_assistant_worker", "code_assistant_checker", "code_assistant_manager"],
+software_design_documentation_group_model = UpsertGroupModel(
+    name="software_design_documentation_group",
+    description=("The Software Design Documentation Group specializes in developing software design by creating documentation such as project plans, design documents such as PRD, API documentation, and other project-related materials. Create product goals, user stories, competitive analysis (can leverage web research), requirements analysis, UI/UX design considerations. \n"
+                 "Naturally feeds into the coding step by the software_coding_group. \n"
+                 "Make sure to create the relevant designs in the software_design_documentation_worker system message (all 18 steps). Note the design files are pre-created when repository is setup. Reference the associated file when making the change so the code assistant can know which file to work on. Use command_message with send_command_to_coding_assistant for each design step unless its done already. \n"
+                 "Uses natural language to create or update documentation files."),
+    agents_to_add=["software_design_documentation_worker", "software_design_documentation_reviewer", "software_design_documentation_manager"],
+    locked = True
+)
+
+software_coding_group_model = UpsertGroupModel(
+    name="software_coding_group",
+    description=("The Software Coding Group specializes in developing software solutions through using code assistants guided by detailed, step-by-step plans, utilizing tree-of-thought or chain-of-thought methodologies. \n"
+                 "You should any individual src files you need to work with to code assistant context. \n"
+                 "Note an agent cannot serve the purpose of a code assistant. \n"
+                 "For software design and documentation you may leverage software_design_documentation_group prior to coding. \n"
+                 "For independent code that may be reusable, the code output may be used to create functions for use within agents using the function_creation_group. \n"
+                 "Uses code assistant via natural language to create code output."),
+    agents_to_add=["software_coding_worker", "software_coding_reviewer", "software_coding_qa_worker", "software_coding_manager"],
     locked = True
 )
 
@@ -43,7 +52,8 @@ zapier_group_model = UpsertGroupModel(
 external_group_models = [
     web_search_group_model,
     planning_group_model,
-    coding_assistance_group_model,
+    software_coding_group_model,
+    software_design_documentation_group_model,
     functions_coding_group_model,
     zapier_group_model
 ]

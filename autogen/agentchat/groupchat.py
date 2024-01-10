@@ -195,7 +195,11 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
             return selected_agent
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
-        context = self.messages + [{"role": "system", "content": self.select_speaker_prompt(agents)}]
+        start_index = max(len(self.messages) - 20, 0)
+
+        # Slice the last 20 messages or all messages if less than 20
+        last_messages = self.messages[start_index:]
+        context = last_messages + [{"role": "system", "content": self.select_speaker_prompt(agents)}]
         final, name = selector.generate_oai_reply(context)
 
         if not final:
@@ -224,8 +228,12 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
             return selected_agent
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
+        start_index = max(len(self.messages) - 20, 0)
+
+        # Slice the last 20 messages or all messages if less than 20
+        last_messages = self.messages[start_index:]
         final, name = await selector.a_generate_oai_reply(
-            self.messages[-20]
+            last_messages
             + [
                 {
                     "role": "system",
@@ -294,10 +302,6 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
 
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
-    task_completed_event = asyncio.Event()
-    task_completed_msg = ""
-    nested_chat_completed_event = asyncio.Event()
-    nested_chat_completed_msg = ""
     @property
     def agent_names(self) -> List[str]:
         """Return the names of the agents in the group chat."""
@@ -334,6 +338,13 @@ class GroupChatManager(ConversableAgent):
         self.description = ""
         self.incoming = {}
         self.outgoing = {}
+        self.code_assistance_event_task_msg = None
+        self.code_assistance_event_task = None
+        self.nested_chat_completed_event = asyncio.Event()
+        self.nested_chat_completed_event.set()
+        self.nested_chat_completed_msg = ""
+        self.parent_group = None
+        self.current_code_assistant_name = None
 
     def run_chat(
         self,
@@ -348,8 +359,8 @@ class GroupChatManager(ConversableAgent):
         message = messages[-1]
         speaker = sender
         groupchat = config
-        if not GroupService.current_group:
-            GroupService.current_group = self
+        if not GroupService.current_group_name:
+            GroupService.current_group_name = self.name
         for i in range(groupchat.max_round):
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
@@ -402,8 +413,8 @@ class GroupChatManager(ConversableAgent):
         message = messages[-1]
         speaker = sender
         groupchat = config
-        if not GroupService.current_group:
-            GroupService.current_group = self
+        if not GroupService.current_group_name:
+            GroupService.current_group_name = self.name
         for i in range(groupchat.max_round):            
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
@@ -417,7 +428,7 @@ class GroupChatManager(ConversableAgent):
 
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
-                AgentService.update_agent_system_message(speaker, self)
+                AgentService.update_agent_system_message(agent, self)
                 if agent != speaker:
                     await self.a_send(message, agent, request_reply=False, silent=True)
             if i == groupchat.max_round - 1:
@@ -439,18 +450,27 @@ class GroupChatManager(ConversableAgent):
                     raise
             if reply is None:
                 break
-            # The speaker sends the message without requesting a reply
-            await speaker.a_send(reply, self, request_reply=False)
-            message = self.last_message(speaker)
-            if self.task_completed_event.is_set():
-                print(f'long running task message {message}')
-                await self.task_completed_event.wait()
-                message["content"] += "\n\nRESPONSE FROM LONG-RUNNING TASK:\n" + self.task_completed_msg
-                print(f'AFTER long running task message {message}')
-            if self.nested_chat_completed_event.is_set():
-                print(f'nested chat message {message}')
-                await self.nested_chat_completed_event.wait()
-                message["content"] += "\n\nRESPONSE FROM NESTED CHAT:\n" + self.nested_chat_completed_msg
-                print(f'AFTER nested chat message {message}')
-            
+            if self.code_assistance_event_task:
+                try:
+                    response = await self.code_assistance_event_task()
+                    self.code_assistance_event_task = None
+                    self.code_assistance_event_task_msg = None
+                except KeyboardInterrupt:
+                    break
+                message = self.last_message(speaker)
+                message["content"] = f"RAN CODE ASSISTANT: {self.code_assistance_event_task_msg}\n\nRESPONSE:\n" + response
+            else:
+                # The speaker sends the message without requesting a reply
+                await speaker.a_send(reply, self, request_reply=False)
+                message = self.last_message(speaker)
+                if not self.nested_chat_completed_event.is_set():
+                    try:
+                        await self.nested_chat_completed_event.wait()
+                    except KeyboardInterrupt:
+                        break
+                    self.parent_group = None
+                    if not self._is_termination_msg(message):
+                        message["content"] += "\n\nRESPONSE FROM NESTED CHAT:\n" + self.nested_chat_completed_msg
+                    else:
+                        message["content"] = "RESPONSE FROM NESTED CHAT:\n" + self.nested_chat_completed_msg
         return True, None

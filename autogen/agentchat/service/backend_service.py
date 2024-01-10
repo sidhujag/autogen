@@ -1,10 +1,13 @@
 
-import requests
 import json
+import requests
+import asyncio
 from pydantic import BaseModel, Field
 from typing import Any, List, Optional, Tuple, Dict
 
 AUTOGEN_BACKEND = "127.0.0.1:8001"
+# Assuming 10MB max size
+MAX_SIZE = 10 * 1024 * 1024  # in bytes
 
 class AuthAgent(BaseModel):
     api_key: str = ''
@@ -75,7 +78,7 @@ class WebResearchInput(BaseModel):
     topic: str
 
 class CodeExecInput(BaseModel):
-    workspace: set
+    workspace: str
     command_git_command: str
 
 class CodeRequestInput(BaseModel):
@@ -90,7 +93,6 @@ class CodeAssistantInput(BaseModel):
     workspace: str
     project_name: str
     command_message: str
-    reqa_file: Optional[str] = None
 
 class UpsertAgentModel(BaseModel):
     name: str
@@ -117,8 +119,8 @@ class UpsertGroupModel(BaseModel):
 
 class UpsertCodingAssistantModel(BaseModel):
     name: str
-    repository_name: str
     auth: AuthAgent = AuthAgent()
+    repository_name: Optional[str] = None
     description: Optional[str] = None
     model: Optional[str] = None
     files: Optional[List[str]] = None
@@ -159,6 +161,7 @@ class BaseGroup(BaseModel):
 
 class GroupInfo(BaseGroup):
     agents: Dict[str, Dict] = Field(default_factory=dict)
+    current_code_assistant_name: str = Field(default=None)
 
 class FunctionInfo(BaseModel):
     name: str
@@ -174,14 +177,13 @@ class AgentInfo(BaseModel):
 
 class OpenAIParameter(BaseModel):
     type: str = "object"
-    properties: dict[str, Any] = {}
-    required: Optional[List[str]] = []
+    properties: Dict[str, Any] = Field(default_factory=dict)
+    required: Optional[List[str]] = Field(default_factory=list)
 
 class BaseFunction(BaseModel):
     name: str = Field(default="")
     auth: AuthAgent = Field(default=AuthAgent)
     status: str = Field(default="")
-    last_updater: str = Field(default="")
     description: str = Field(default="")
     parameters: OpenAIParameter = Field(default_factory=OpenAIParameter)
     category: str = Field(default="")
@@ -238,12 +240,12 @@ class UpdateComms(BaseModel):
     
 class BackendService:
     @staticmethod
-    def delete_backend_agents(data_models: List[DeleteAgentModel]):
+    async def delete_backend_agents(data_models: List[DeleteAgentModel]):
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("delete_agents", list_of_dicts)
+        response, err = await BackendService.call("delete_agents", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -251,12 +253,12 @@ class BackendService:
         return None
 
     @staticmethod
-    def delete_backend_coding_assistants(data_models: List[DeleteCodeAssistantsModel]):
+    async def delete_backend_coding_assistants(data_models: List[DeleteCodeAssistantsModel]):
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("delete_code_assistants", list_of_dicts)
+        response, err = await BackendService.call("delete_code_assistants", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -264,12 +266,12 @@ class BackendService:
         return None
     
     @staticmethod
-    def delete_backend_code_repositories(data_models: List[DeleteCodeRepositoryModel]):
+    async def delete_backend_code_repositories(data_models: List[DeleteCodeRepositoryModel]):
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("delete_code_repositories", list_of_dicts)
+        response, err = await BackendService.call("delete_code_repositories", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -277,12 +279,12 @@ class BackendService:
         return None
     
     @staticmethod
-    def delete_groups(data_models: List[DeleteGroupModel]):
+    async def delete_groups(data_models: List[DeleteGroupModel]):
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("delete_groups", list_of_dicts)
+        response, err = await BackendService.call("delete_groups", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -290,12 +292,12 @@ class BackendService:
         return None
 
     @staticmethod
-    def upsert_backend_agents(data_models: List[UpsertAgentModel]):
+    async def upsert_backend_agents(data_models: List[UpsertAgentModel]):
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("upsert_agents", list_of_dicts)
+        response, err = await BackendService.call("upsert_agents", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -303,12 +305,12 @@ class BackendService:
         return None
     
     @staticmethod
-    def upsert_backend_groups(data_models: List[UpsertGroupModel]):
+    async def upsert_backend_groups(data_models: List[UpsertGroupModel]):
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("upsert_groups", list_of_dicts)
+        response, err = await BackendService.call("upsert_groups", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -316,10 +318,10 @@ class BackendService:
         return None
     
     @staticmethod
-    def update_communication_stats(comms: UpdateComms):
+    async def update_communication_stats(comms: UpdateComms):
         from . import MakeService
         comms.auth = MakeService.auth
-        response, err = BackendService.call("update_communication_stats", comms.dict())
+        response, err = await BackendService.call("update_communication_stats", comms.dict())
         if response != "success":
             return response
         if err is not None:
@@ -327,12 +329,12 @@ class BackendService:
         return None
 
     @staticmethod
-    def get_backend_agents(data_models: List[GetAgentModel]) -> Tuple[Optional[List[BaseAgent]], Optional[str]]:
+    async def get_backend_agents(data_models: List[GetAgentModel]) -> Tuple[Optional[List[BaseAgent]], Optional[str]]:
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("get_agents", list_of_dicts)
+        response, err = await BackendService.call("get_agents", list_of_dicts)
         if err is not None:
             return None, err
         if not isinstance(response, list):
@@ -340,12 +342,12 @@ class BackendService:
         return [BaseAgent(**agent) for agent in response], None
 
     @staticmethod
-    def get_backend_groups(data_models: List[GetGroupModel]) -> Tuple[Optional[List[BaseGroup]], Optional[str]]:
+    async def get_backend_groups(data_models: List[GetGroupModel]) -> Tuple[Optional[List[BaseGroup]], Optional[str]]:
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("get_groups", list_of_dicts)
+        response, err = await BackendService.call("get_groups", list_of_dicts)
         if err is not None:
             return None, err
         if not isinstance(response, list):
@@ -353,12 +355,12 @@ class BackendService:
         return [BaseGroup(**agent) for agent in response], None
 
     @staticmethod
-    def get_backend_coding_assistants(data_models: List[GetCodingAssistantModel]) -> Tuple[Optional[List[BaseCodingAssistant]], Optional[str]]:
+    async def get_backend_coding_assistants(data_models: List[GetCodingAssistantModel]) -> Tuple[Optional[List[BaseCodingAssistant]], Optional[str]]:
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("get_coding_assistants", list_of_dicts)
+        response, err = await BackendService.call("get_coding_assistants", list_of_dicts)
         if err is not None:
             return None, err
         if not isinstance(response, list):
@@ -366,12 +368,12 @@ class BackendService:
         return [BaseCodingAssistant(**assistant) for assistant in response], None
 
     @staticmethod
-    def get_backend_code_repositories(data_models: List[GetCodeRepositoryModel]) -> Tuple[Optional[List[BaseCodeRepository]], Optional[str]]:
+    async def get_backend_code_repositories(data_models: List[GetCodeRepositoryModel]) -> Tuple[Optional[List[BaseCodeRepository]], Optional[str]]:
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("get_code_repositories", list_of_dicts)
+        response, err = await BackendService.call("get_code_repositories", list_of_dicts)
         if err is not None:
             return None, err
         if not isinstance(response, list):
@@ -379,12 +381,12 @@ class BackendService:
         return [BaseCodeRepository(**assistant) for assistant in response], None
 
     @staticmethod
-    def get_backend_functions(data_models: List[GetFunctionModel]) -> Tuple[Optional[List[BaseFunction]], Optional[str]]:
+    async def get_backend_functions(data_models: List[GetFunctionModel]) -> Tuple[Optional[List[BaseFunction]], Optional[str]]:
         from . import MakeService
         for model in data_models:
             model.auth = MakeService.auth
         list_of_dicts = [model.dict(exclude_none=True) for model in data_models]
-        response, err = BackendService.call("get_functions", list_of_dicts)
+        response, err = await BackendService.call("get_functions", list_of_dicts)
         if err is not None:
             return None, err
         if not isinstance(response, list):
@@ -392,14 +394,14 @@ class BackendService:
         return [BaseFunction(**agent) for agent in response], None
 
     @staticmethod
-    def upsert_backend_functions(list_data_model: List[BaseFunction]):
+    async def upsert_backend_functions(list_data_model: List[BaseFunction]):
         from . import MakeService
         for model in list_data_model:
             model.auth = MakeService.auth
         # Convert each BaseFunction object in the list to a dictionary
         list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
         # Make the backend call with the list of dictionaries
-        response, err = BackendService.call("upsert_functions", list_of_dicts)
+        response, err = await BackendService.call("upsert_functions", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -407,14 +409,14 @@ class BackendService:
         return None
 
     @staticmethod
-    def upsert_backend_coding_assistants(list_data_model: List[UpsertCodingAssistantModel]):
+    async def upsert_backend_coding_assistants(list_data_model: List[UpsertCodingAssistantModel]):
         from . import MakeService
         for model in list_data_model:
             model.auth = MakeService.auth
         # Convert each object in the list to a dictionary
         list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
         # Make the backend call with the list of dictionaries
-        response, err = BackendService.call("upsert_coding_assistants", list_of_dicts)
+        response, err = await BackendService.call("upsert_coding_assistants", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -422,14 +424,14 @@ class BackendService:
         return None
 
     @staticmethod
-    def upsert_backend_code_repositories(list_data_model: List[UpsertCodeRepositoryModel]):
+    async def upsert_backend_code_repositories(list_data_model: List[UpsertCodeRepositoryModel]):
         from . import MakeService
         for model in list_data_model:
             model.auth = MakeService.auth
         # Convert each object in the list to a dictionary
         list_of_dicts = [model.dict(exclude_none=True) for model in list_data_model]
         # Make the backend call with the list of dictionaries
-        response, err = BackendService.call("upsert_code_repositories", list_of_dicts)
+        response, err = await BackendService.call("upsert_code_repositories", list_of_dicts)
         if response != "success":
             return response
         if err is not None:
@@ -437,92 +439,83 @@ class BackendService:
         return None
     
     @staticmethod
-    def discover_backend_functions(data_model: DiscoverFunctionsModel):
+    async def discover_backend_functions(data_model: DiscoverFunctionsModel):
         from . import MakeService
         data_model.auth = MakeService.auth
-        response, err = BackendService.call("discover_functions", data_model.dict(exclude_none=True))
+        response, err = await BackendService.call("discover_functions", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
     @staticmethod
-    def discover_backend_agents(data_model: DiscoverAgentsModel):
+    async def discover_backend_agents(data_model: DiscoverAgentsModel):
         from . import MakeService
         data_model.auth = MakeService.auth
-        response, err = BackendService.call("discover_agents", data_model.dict(exclude_none=True))
+        response, err = await BackendService.call("discover_agents", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
     @staticmethod
-    def discover_backend_groups(data_model: DiscoverGroupsModel):
+    async def discover_backend_groups(data_model: DiscoverGroupsModel):
         from . import MakeService
         data_model.auth = MakeService.auth
-        response, err = BackendService.call("discover_groups", data_model.dict(exclude_none=True))
+        response, err = await BackendService.call("discover_groups", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
     @staticmethod
-    def discover_backend_coding_assistants(data_model: DiscoverCodingAssistantModel):
+    async def discover_backend_coding_assistants(data_model: DiscoverCodingAssistantModel):
         from . import MakeService
         data_model.auth = MakeService.auth
-        response, err = BackendService.call("discover_coding_assistants", data_model.dict(exclude_none=True))
+        response, err = await BackendService.call("discover_coding_assistants", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
 
     @staticmethod
-    def discover_backend_code_repositories(data_model: DiscoverCodeRepositoryModel):
+    async def discover_backend_code_repositories(data_model: DiscoverCodeRepositoryModel):
         from . import MakeService
         data_model.auth = MakeService.auth
-        response, err = BackendService.call("discover_code_repositories", data_model.dict(exclude_none=True))
+        response, err = await BackendService.call("discover_code_repositories", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
     
     @staticmethod
-    def create_github_pull_request(data_model: CodeRequestInput):
+    async def create_github_pull_request(data_model: CodeRequestInput):
         from . import MakeService
         data_model.auth = MakeService.auth
-        response, err = BackendService.call("code_issue_pull_request", data_model.dict(exclude_none=True))
+        response, err = await BackendService.call("code_issue_pull_request", data_model.dict(exclude_none=True))
+        if err != None:
+            return None, err
+        return response, None
+
+    @staticmethod
+    async def web_research(data_model: WebResearchInput):
+        response, err = await BackendService.call("web_research", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
     
     @staticmethod
-    def run_code_assistant(data_model: CodeAssistantInput):
-        from . import MakeService
-        data_model.auth = MakeService.auth
-        response, err = BackendService.call("code_assistant_run", data_model.dict(exclude_none=True))
+    async def execute_git_command(data_model: CodeExecInput):
+        response, err = await BackendService.call("code_execute_git_command", data_model.dict(exclude_none=True))
         if err != None:
             return None, err
         return response, None
-    
+
+
     @staticmethod
-    def web_research(data_model: WebResearchInput):
-        response, err = BackendService.call("web_research", data_model.dict(exclude_none=True))
-        if err != None:
-            return None, err
-        return response, None
-    
-    @staticmethod
-    def execute_git_command(data_model: CodeExecInput):
-        response, err = BackendService.call("code_execute_git_command", data_model.dict(exclude_none=True))
-        if err != None:
-            return None, err
-        return response, None
-    
-    @staticmethod
-    def call(endpoint, json_input):   
+    async def call(endpoint, json_input):
         try:
-            response = requests.post(
-                url=f'http://{AUTOGEN_BACKEND}/{endpoint}/',
-                json=json_input
-            )
-            response.raise_for_status()  # This will raise an HTTPError for bad responses (4xx and 5xx)
+            response = await asyncio.to_thread(requests.post, url=f'http://{AUTOGEN_BACKEND}/{endpoint}/', json=json_input)
+            response.raise_for_status()
+            if response.status_code == 200:
+                return response.json()["response"], None
         except requests.HTTPError as e:
             return None, json.dumps({"error": f"Error making call: {str(e)}"})
-        if response.status_code == 200:
-            return response.json()["response"], None
+        except Exception as e:
+            return None, json.dumps({"error": f"Error making call: {str(e)}"})
         return None, json.dumps({"error": "invalid response"})

@@ -17,7 +17,7 @@ class GPTAssistantAgent(ConversableAgent):
     An experimental AutoGen agent class that leverages the OpenAI Assistant API for conversational capabilities.
     This agent is unique in its reliance on the OpenAI Assistant for state management, differing from other agents like ConversableAgent.
     """
-
+    cancellation_requested: bool = False
     def __init__(
         self,
         name="GPT Assistant",
@@ -53,7 +53,7 @@ class GPTAssistantAgent(ConversableAgent):
         if len(oai_wrapper._clients) > 1:
             logger.warning("GPT Assistant only supports one OpenAI client. Using the first client in the list.")
         self._openai_client = oai_wrapper._clients[0]
-        openai_assistant_id = llm_config.get("assistant_id", None)
+        openai_assistant_id = llm_config.pop("assistant_id", None)
         if openai_assistant_id is None:
             # try to find assistant by name first
             candidate_assistants = retrieve_assistants_by_name(self._openai_client, name)
@@ -110,7 +110,6 @@ class GPTAssistantAgent(ConversableAgent):
         super().__init__(
             name=name, system_message=instructions, llm_config=llm_config, **kwargs
         )
-        self.cancellation_requested = False
         # lazly create thread
 
         # lazily create threads
@@ -118,17 +117,21 @@ class GPTAssistantAgent(ConversableAgent):
         self._unread_index = defaultdict(int)
         self.register_reply([Agent, None], GPTAssistantAgent._invoke_assistant, position=1)
 
-    def check_for_cancellation(self):
+    @staticmethod
+    def check_for_cancellation():
         """
         Checks for cancellation used during _get_run_response
         """
-        return self.cancellation_requested
+        return GPTAssistantAgent.cancellation_requested
 
-    def execute_run(self, assistant_thread, max_retries=5):
+    @staticmethod
+    def cancel_run():
+        GPTAssistantAgent.cancellation_requested = True
+
+    async def execute_run(self, assistant_thread, max_retries=5):
         retries = 0
         run = None
         response = None
-
         while retries < max_retries:
             try:
                 # Attempt to create a new run to get responses from the assistant
@@ -138,7 +141,7 @@ class GPTAssistantAgent(ConversableAgent):
                     instructions=self.system_message,
                 )
                 # If the run was created successfully, get the response
-                response, run = self._get_run_response(assistant_thread, run)
+                response, run = await self._get_run_response(assistant_thread, run)
                 # Check if the run failed due to a server error
                 if run and run.status == "failed" and run.last_error:
                     if (run.last_error.code == 'server_error' and 
@@ -156,15 +159,19 @@ class GPTAssistantAgent(ConversableAgent):
                         print(f"Run failed with a different error: {run.last_error.message}")
                         break
                 break  # Exit loop if successful
+            except KeyboardInterrupt:
+                self._cancel_run(run.id, assistant_thread.id)
+                GPTAssistantAgent.cancellation_requested = False
+                raise
             except Exception as e:
                 # If run is None or there's no last_error, it's an unexpected situation
                 print(f"An unexpected error occurred: {e}")
                 break
 
-        self.cancellation_requested = False
+        GPTAssistantAgent.cancellation_requested = False
         return response
     
-    def _invoke_assistant(
+    async def _invoke_assistant(
         self,
         messages: Optional[List[Dict]] = None,
         sender: Optional[Agent] = None,
@@ -191,7 +198,7 @@ class GPTAssistantAgent(ConversableAgent):
         if self._openai_threads.get(sender, None) is None:
             msgs = []
             if isinstance(sender, GroupChatManager):
-                group_response = json.loads(GroupService.get_group_info(sender.name, True))
+                group_response = json.loads(await GroupService.get_group_info(sender.name, True))
                 group_intro = f'To start this thread of conversation amongst multiple agents, I will give you group information and agents inside it, please note new agents may come, some may leave and you are to track them as you conversate within a group of agents. Note the instructions for each assistant in the thread and instructions every time you are asked to respond which will be for the assistant thats responding to the conversation. Assistant messages come from API responses from the agent in the previous message. For those that have termination access, terminate if you see the discussion and going in circles, to save costs. Do not terminate if a path does not work out right away, exhaust all of your possibilities to try different things to try to solve the problem. If the conversation shows there is a satisfactory answer already, terminate. If you have nothing to add either terminate or say you have nothing to add. Ensure the responses reflect the groups message history. Group Info: {group_response["response"]}'
                 msgs.append({
                     "role": "user",
@@ -209,7 +216,8 @@ class GPTAssistantAgent(ConversableAgent):
                 role="user",
             )
         #self.pretty_print_thread(assistant_thread)
-        response = self.execute_run(assistant_thread)
+        
+        response = await self.execute_run(assistant_thread)
         self._unread_index[sender] = len(self._oai_messages[sender]) + 1
         if response and "content" in response and response["content"]:
             return True, response
@@ -247,7 +255,7 @@ class GPTAssistantAgent(ConversableAgent):
             logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: cancelled...')
             response = {
                 "role": "assistant",
-                "content": 'Cancelled',
+                "content": 'Run Finished',
             }
             return response, run
         elif run.status == "completed":
@@ -280,7 +288,7 @@ class GPTAssistantAgent(ConversableAgent):
                 response["content"] += message["content"]
             return response, run
 
-    def _get_run_response(self, assistant_thread, run):
+    async def _get_run_response(self, assistant_thread, run):
         """
         Waits for and processes the response of a run from the OpenAI assistant.
         Args:
@@ -304,11 +312,11 @@ class GPTAssistantAgent(ConversableAgent):
                     function_dict = function.dict()
                     # if function not found in function map then try to find it from registry and add it before executing
                     if not self.can_execute_function(function_dict["name"]):
-                        function = FunctionsService.get_functions([GetFunctionModel(name=function_dict["name"])])
+                        function = await FunctionsService.get_functions([GetFunctionModel(name=function_dict["name"])])
                         if function:
                             response = FunctionsService.define_function_internal(self, function[0])
                             logger.info(f"Tool definition on demand ({function_dict['name']}), response: {response}")
-                    is_exec_success, tool_response = self.execute_function(function_dict, self._verbose)
+                    is_exec_success, tool_response = await self.a_execute_function(function_dict)
                     tool_response["metadata"] = {
                         "tool_call_id": tool_call.id,
                         "run_id": run.id,
@@ -331,10 +339,10 @@ class GPTAssistantAgent(ConversableAgent):
                     "run_id": run.id,
                     "thread_id": assistant_thread.id,
                 }
-
-                run = self._openai_client.beta.threads.runs.submit_tool_outputs(**submit_tool_outputs)
-                if self.check_for_cancellation():
-                    self._cancel_run()
+                if GPTAssistantAgent.check_for_cancellation():
+                    self._cancel_run(run.id, assistant_thread.id)
+                else:
+                    run = self._openai_client.beta.threads.runs.submit_tool_outputs(**submit_tool_outputs)
             else:
                 run_info = json.dumps(run.dict(), indent=2)
                 raise ValueError(f"Unexpected run status: {run.status}. Full run info:\n\n{run_info})")
