@@ -345,6 +345,7 @@ class GroupChatManager(ConversableAgent):
         self.nested_chat_completed_msg = ""
         self.parent_group = None
         self.current_code_assistant_name = None
+        self.locked = False
 
     def run_chat(
         self,

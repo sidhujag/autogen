@@ -113,7 +113,7 @@ upsert_agent = {
     "name": "upsert_agent",
     "category": "communication",
     "class_name": "AgentService.upsert_agent",
-    "description": "Creates or updates an agent for reusable use cases. You can add/remove capabilities by setting a capability bit mask based on needs of agent.",
+    "description": "Creates or updates an agent for reusable use cases. You can add/remove capabilities by setting a capability bit mask based on needs of agent. Create new agent only if you cannot discover one that works for you.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -146,12 +146,12 @@ upsert_agent = {
             },
             "capability": {
                 "type": "number",
-                "description": ("The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 = DISCOVERY, 2 = TERMINATE, 4 = OPENAI_CODE_INTERPRETER, 8 = OPENAI_RETRIEVAL, 16 = OPENAI_FILES, 32 = MANAGEMENT. Combine capabilities by adding the values of their masks together."
-                                "DISCOVERY = Discovery for functions/agents/groups."
-                                "TERMINATE = Conclude a groups operation"
-                                "OPENAI_CODE_INTERPRETER = Enable abilty for OpenAI to create/run simple code and provide responses to you through text-interactions in natural language."
-                                "OPENAI_RETRIEVAL = RAG knowledge based through OpenAI retrieval tool using natural language and using OpenAI files."
-                                "OPENAI_FILES = Store and use files within context of OpenAI interpreter and Retrieval tools."
+                "description": ("The capability of the agent, represented as an integer. This is calculated as a bitwise OR of capability masks. Each bit represents a different capability: 1 = DISCOVERY, 2 = TERMINATE, 4 = OPENAI_CODE_INTERPRETER, 8 = OPENAI_RETRIEVAL, 16 = OPENAI_FILES, 32 = MANAGEMENT. Combine capabilities by adding the values of their masks together. \n"
+                                "DISCOVERY = Discovery for functions/agents/groups. \n"
+                                "TERMINATE = Conclude a groups operation. \n"
+                                "OPENAI_CODE_INTERPRETER = Enable abilty for OpenAI to create/run simple code and provide responses to you through text-interactions in natural language. \n"
+                                "OPENAI_RETRIEVAL = RAG knowledge based through OpenAI retrieval tool using natural language and using OpenAI files. \n"
+                                "OPENAI_FILES = Store and use files within context of OpenAI interpreter and Retrieval tools. \n"
                                 "MANAGEMENT = modify agents/groups, send messages to groups. Broad managements responsibilties.")
             }
         },
@@ -163,7 +163,7 @@ upsert_group_spec = {
     "name": "upsert_group",
     "category": "communication",
     "class_name": "GroupService.upsert_group",
-    "description": "Creates or updates a group. Each group must have atleast 3 agents. Each group must have atleast 1 agent with TERMINATE capabilities.",
+    "description": "Creates or updates a group. Each group must have atleast 3 agents. Each group must have atleast 1 agent with TERMINATE capabilities. Create new group only if you cannot discover one that works for you.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -221,10 +221,11 @@ upsert_function_spec = {
     "category": "programming",
     "class_name": "FunctionsService.upsert_function",
     "description": (
-        "Endpoint for defining or updating modular custom functions for diverse applications. "
-        "Functions should be adaptable, handle dynamic inputs, and produce predictable outputs. "
-        "Include a 'debug_mode' for verbose logging in development/testing. "
-        "Mark functions as 'accepted' only after thorough testing and validation."
+        "Endpoint for defining or updating modular custom functions for diverse applications. \n"
+        "Functions should be adaptable, handle dynamic inputs, and produce predictable outputs. \n"
+        "Include a 'debug_mode' for verbose logging in development/testing. \n"
+        "Mark functions as 'accepted' only after thorough testing and validation. \n"
+        "Create new function only if you cannot discover one that works for you."
     ),
     "parameters": {
         "type": "object",
@@ -240,8 +241,8 @@ upsert_function_spec = {
             "parameters": {
                 "type": "object",
                 "description": (
-                    "Dynamic inputs for the function following OpenAPI 3 specification. "
-                    "Include 'debug_mode' for debugging. Ensure flexibility by reading parameters dynamically. "
+                    "Dynamic inputs for the function following OpenAPI 3 specification. \n"
+                    "Include 'debug_mode' for debugging. Ensure flexibility by reading parameters dynamically. \n"
                     "Parameters are injected as global variables. Pydantic model: class OpenAIParameter(BaseModel)\ntype: str = 'object'\nproperties: dict[str, Any] = {}\nrequired: Optional[List[str]] = []"
                 ),
                 "properties": {},
@@ -250,7 +251,7 @@ upsert_function_spec = {
             "function_code": {
                 "type": "string",
                 "description": (
-                    "Python code executing the function's logic. Should be self-contained and general-purpose. "
+                    "Python code executing the function's logic. Should be self-contained and general-purpose. \n"
                     "Use 'print' for output and debugging, controlled by 'debug_mode'. Manage external dependencies via subprocess."
                 )
             },
@@ -258,7 +259,7 @@ upsert_function_spec = {
                 "type": "string",
                 "enum": ["development", "testing", "accepted"],
                 "description": (
-                    "Function's lifecycle stage. 'Development' and 'testing' indicate change, 'accepted' means stable for public use. "
+                    "Function's lifecycle stage. 'Development' and 'testing' indicate change, 'accepted' means stable for public use. \n"
                     "Requires peer review for 'accepted' status."
                 )
             },
@@ -528,7 +529,7 @@ code_assistant_function_spec = {
         "properties": {
             "name": {
                 "type": "string",
-                "description": "Code assistant name. Leave empty if you want to use the same code assistant as you did previously within this group."
+                "description": "Code assistant name, must exist and have been created already via upsert_coding_assistant. Leave empty if you want to use the same code assistant as you did previously within this group."
             },
             "command_show_repo_map": {
                 "type": "boolean",
@@ -585,18 +586,18 @@ upsert_code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.upsert_coding_assistant",
     "description": (
-        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. When initializing a new assistant or working with an existing assistant, this function clones the remote repository (repository_name) locally, readying it for development work. The repository should be setup prior to the assistant."
+        "This function is essential for defining or updating a coding assistant, particularly in the context of git repository operations. When initializing a new assistant or working with an existing assistant, this function clones the remote repository (repository_name) locally, readying it for development work. The repository should be setup prior to the assistant. Create new code assistant only if you cannot discover one that works for you."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "name": {
                 "type": "string",
-                "description": "Code assistant name. Used as the unique identifier of the coding assistant."
+                "description": "Code assistant name. Used when sending message to assistant. Used as the unique identifier of the coding assistant."
             },
             "repository_name": {
                 "type": "string",
-                "description": "Code repository name. Associates the remote repository to the assistant. Created prior via upsert_code_repository. The remote repo is cloned locally automatically after execution."
+                "description": "Code repository name. Must exist already or create via upsert_code_repository. Associates the remote repository to the assistant. Created prior via upsert_code_repository. The remote repo is cloned locally automatically after execution."
             },
             "description": {
                 "type": "string",
@@ -672,7 +673,7 @@ upsert_code_repository_function_spec = {
     "category": "programming",
     "class_name": "CodeRepositoryService.upsert_code_repository",
     "description": (
-        "This function defines or updates a remote github repository for use within coding assistants. The idea is to always create a remote github repo under the users account and fork other repos (when gh_remote_url provided) to your account so you can clone when you create a coding assistant to work locally against your own repo."
+        "This function defines or updates a remote github repository for use within coding assistants. The idea is to always create a remote github repo under the users account and fork other repos (when gh_remote_url provided) to your account so you can clone when you create a coding assistant to work locally against your own repo. Create new repository only if you cannot discover one that works for you."
     ),
     "parameters": {
         "type": "object",

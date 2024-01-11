@@ -291,6 +291,7 @@ class GroupService:
         group.incoming = backend_group.incoming
         group.outgoing = backend_group.outgoing
         group.locked = backend_group.locked
+        group.current_code_assistant_name = backend_group.current_code_assistant_name
         agent_names = group.agent_names
         for agent_name in backend_group.agent_names:
             if agent_name not in agent_names:
@@ -311,6 +312,7 @@ class GroupService:
         group.incoming = backend_group.incoming
         group.outgoing = backend_group.outgoing
         group.locked = backend_group.locked
+        group.current_code_assistant_name = backend_group.current_code_assistant_name
         MakeService.GROUP_REGISTRY[group.name] = group
         return group, None
 

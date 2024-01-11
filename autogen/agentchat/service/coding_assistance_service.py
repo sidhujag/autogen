@@ -174,11 +174,11 @@ class CodingAssistantService:
     @staticmethod
     async def run_code_assistant(coder, code_repository, command_message: str):
         try:
+            coder.io.add_to_input_history(command_message)
             coder.io.tool_output()
-            coder.io.console.begin_capture()
             coder.run(with_message=command_message)
-            output = coder.io.console.end_capture()
-            return {"success": output}
+            msgs = coder.done_messages + coder.cur_messages
+            return {"success": msgs}
         except Exception as e:
             print(f'run_code_assistant exec {str(e)}')
             return {"error": str(e)}
@@ -222,21 +222,27 @@ class CodingAssistantService:
         command_git_command: Optional[str] = None,
         command_show_file: Optional[str] = None
     ) -> str:
-        from . import GroupService, GetGroupModel, CodeExecInput, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
+        from . import GroupService, GetGroupModel, UpsertGroupModel, CodeExecInput, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
         # Wait for any previous task to complete
         current_group = await GroupService.get_group(GetGroupModel(name=GroupService.current_group_name))
         if current_group is None:
             return json.dumps({"error": f"Could not send message: current_group({GroupService.current_group_name}) not found"})
         if current_group.code_assistance_event_task:
             return json.dumps({"error": "Code assistant is currently running, please wait for it to finish before sending another command."})
-        assistant_name = name or current_group.current_code_assistant_name
-        coder = await CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=assistant_name))
+        name = name or current_group.current_code_assistant_name
+        coder = await CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
         if coder is None:
-            return json.dumps({"error": f"Critical: Could not send message to coding_assistant({assistant_name}): does not exist."})
+            return json.dumps({"error": f"Critical: Could not send message to coding_assistant({name}): does not exist. Check the name or make sure you have created one first."})
         code_repository = await CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=coder.repository_name))
         if not code_repository:
             return json.dumps({"error": f"Critical: Associated code repository({coder.repository_name}) not found."})
-        current_group.current_code_assistant_name = assistant_name
+        if current_group.current_code_assistant_name != name:
+            group_managers, err = await GroupService.upsert_groups([UpsertGroupModel(
+                name=current_group.name,
+                current_code_assistant_name=name,
+            )])
+            if err is not None:
+                return err
         str_output = ''
         cmd = None
         if command_add:

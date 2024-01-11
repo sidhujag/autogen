@@ -116,6 +116,7 @@ class UpsertGroupModel(BaseModel):
     agents_to_add: Optional[List[str]] = None
     agents_to_remove: Optional[List[str]] = None
     locked: Optional[bool] = None
+    current_code_assistant_name: Optional[str] = None
 
 class UpsertCodingAssistantModel(BaseModel):
     name: str
@@ -158,10 +159,10 @@ class BaseGroup(BaseModel):
     outgoing: Dict[str, int] = Field(default_factory=dict)
     incoming: Dict[str, int] = Field(default_factory=dict)
     locked: Optional[bool] = Field(default=False)
+    current_code_assistant_name: Optional[str] = Field(default="")
 
 class GroupInfo(BaseGroup):
     agents: Dict[str, Dict] = Field(default_factory=dict)
-    current_code_assistant_name: str = Field(default=None)
 
 class FunctionInfo(BaseModel):
     name: str
