@@ -5,7 +5,6 @@ from aider.coders import Coder
 from aider.io import InputOutput
 from openai import OpenAI
 import json
-import asyncio
 import logging
 from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from pathlib import Path
@@ -177,8 +176,7 @@ class CodingAssistantService:
             coder.io.add_to_input_history(command_message)
             coder.io.tool_output()
             coder.run(with_message=command_message)
-            msgs = coder.done_messages + coder.cur_messages
-            return {"success": msgs}
+            return {"success": coder.partial_response_content}
         except Exception as e:
             print(f'run_code_assistant exec {str(e)}')
             return {"error": str(e)}

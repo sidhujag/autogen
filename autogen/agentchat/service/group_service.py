@@ -7,6 +7,7 @@ import asyncio
 import copy
 import re
 from autogen.token_count_utils import token_left
+from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 DISCOVERY = 1
 TERMINATE = 2
 OPENAI_CODE_INTERPRETER = 4
@@ -47,8 +48,6 @@ class GroupService:
             if err is not None:
                 logging.error(f"command_pull_request failed: {err}")
                 return json.dumps(err)
-            else:
-                response["success"] += f"\n\nSuccess! Pull request to upstream, Git response: {git_response}"
         else:
             git_response, err = await BackendService.execute_git_command(CodeExecInput(
                 workspace=code_repository.workspace,
@@ -56,34 +55,28 @@ class GroupService:
             ))
             if err is not None:
                 logging.error(f"command_git_command failed: {err}")
-            else:
-                response["success"] += f"\n\nSuccess! Pushed to remote, Git response: {git_response}"
         return json.dumps(response)
 
     @staticmethod
     async def start_nested_task(current_group_name: str, callback, *args, **kwargs):
         from . import GroupService, GetGroupModel
-        loop = asyncio.get_event_loop()
+        response_callback = None
         current_group = await GroupService.get_group(GetGroupModel(name=current_group_name))
         if not current_group:
             logging.error("No active group")
-            return
+            return None
         try:
-            current_group.nested_chat_completed_msg = ""
-            loop.call_soon_threadsafe(current_group.nested_chat_completed_event.clear)
             # Run the nested chat
             await current_group.a_initiate_chat(*args, **kwargs)
             
             # Process the results using the callback
             if callback:
-                await callback(current_group, *args, **kwargs)
+                response_callback = await callback(current_group, *args, **kwargs)
 
         except Exception as e:
             # Handle any unexpected errors here
             logging.error(f"Error in nested chat: {e}")
-        finally:
-            # Set the event to indicate completion
-            loop.call_soon_threadsafe(current_group.nested_chat_completed_event.set)
+        return response_callback
 
     @staticmethod
     async def process_nested_chat_results(current_group: GroupChatManager, recipient: GroupChatManager, message: str):    
@@ -136,7 +129,7 @@ class GroupService:
         # Define a regex pattern to find the RATING
         rating_pattern = re.compile(r'RATING:\s*(\d+\.?\d*)\s*')
         if not isinstance(extracted_response, str):
-            current_group.nested_chat_completed_msg = str(extracted_response.model_dump(mode="dict"))  # Not sure what to do here
+            return str(extracted_response.model_dump(mode="dict"))  # Not sure what to do here
         else:
             # Search for the rating in the response
             rating_match = rating_pattern.search(extracted_response)
@@ -148,7 +141,7 @@ class GroupService:
                     current_group.outgoing[recipient.name] = current_group.outgoing.get(recipient.name, 0) + 1
                     recipient.incoming[current_group.name] = recipient.incoming.get(current_group.name, 0) + 1
                     await BackendService.update_communication_stats(UpdateComms(sender=current_group.name, receiver=recipient.name))
-            current_group.nested_chat_completed_msg = extracted_response
+            return extracted_response
 
     @staticmethod
     async def get_group(group_model) -> GroupChatManager:
@@ -245,23 +238,28 @@ class GroupService:
         current_group = await GroupService.get_group(GetGroupModel(name=GroupService.current_group_name))
         if current_group is None:
             return json.dumps({"error": f"Could not send message: current_group({GroupService.current_group_name}) not found"})
-        if not current_group.nested_chat_completed_event.is_set():
+        if current_group.nested_chat_event_task:
             return json.dumps({"error": "A nested chat from this group is still in progress. Please wait until it's completed."})
-        if not to_group_obj.nested_chat_completed_event.is_set():
+        if to_group_obj.nested_chat_event_task:
             return json.dumps({"error": "A nested chat in the to_group({to_group}) is still in progress. Please wait until it's completed."})
         to_group_obj.reset()
-        asyncio.create_task(
-            GroupService.start_nested_task(
-                current_group.name,
-                GroupService.process_nested_chat_results,
-                recipient=to_group_obj,
-                message=message
-            )
-        )
-        response = f"Message sent from group ({GroupService.current_group_name}) to group ({group})! Nested chat started. Please stop what you are doing now and wait until its done."
+
+        GPTAssistantAgent.cancel_run()
+        def setup_nested_chat_event_task():
+            async def start_task():
+                return await GroupService.start_nested_task(
+                    current_group.name,
+                    GroupService.process_nested_chat_results,
+                    recipient=to_group_obj,
+                    message=message
+                )
+            return start_task
+
+        current_group.nested_chat_event_task = setup_nested_chat_event_task()
+        current_group.nested_chat_event_task_msg = f"Message sent from group ({GroupService.current_group_name}) to group ({group})!"
         GroupService.current_group_name = to_group_obj.name
         to_group_obj.parent_group = current_group
-        return json.dumps({"response": response})
+        return json.dumps({"response": "Ran nested chat. Please wait for response."})
     
     @staticmethod
     async def _create_group(backend_group):

@@ -340,9 +340,8 @@ class GroupChatManager(ConversableAgent):
         self.outgoing = {}
         self.code_assistance_event_task_msg = None
         self.code_assistance_event_task = None
-        self.nested_chat_completed_event = asyncio.Event()
-        self.nested_chat_completed_event.set()
-        self.nested_chat_completed_msg = ""
+        self.nested_chat_event_task_msg = None
+        self.nested_chat_event_task = None
         self.parent_group = None
         self.current_code_assistant_name = None
         self.locked = False
@@ -454,24 +453,26 @@ class GroupChatManager(ConversableAgent):
             if self.code_assistance_event_task:
                 try:
                     response = await self.code_assistance_event_task()
-                    self.code_assistance_event_task = None
-                    self.code_assistance_event_task_msg = None
                 except KeyboardInterrupt:
                     break
-                message = self.last_message(speaker)
-                message["content"] = f"RAN CODE ASSISTANT: {self.code_assistance_event_task_msg}\n\nRESPONSE:\n" + response
-            else:
-                # The speaker sends the message without requesting a reply
-                await speaker.a_send(reply, self, request_reply=False)
-                message = self.last_message(speaker)
-                if not self.nested_chat_completed_event.is_set():
-                    try:
-                        await self.nested_chat_completed_event.wait()
-                    except KeyboardInterrupt:
-                        break
-                    self.parent_group = None
-                    if not self._is_termination_msg(message):
-                        message["content"] += "\n\nRESPONSE FROM NESTED CHAT:\n" + self.nested_chat_completed_msg
-                    else:
-                        message["content"] = "RESPONSE FROM NESTED CHAT:\n" + self.nested_chat_completed_msg
+                if response:
+                    reply["content"] = f"\nRAN CODE ASSISTANT: {self.code_assistance_event_task_msg}\n\nRESPONSE:\n" + response
+                self.code_assistance_event_task = None
+                self.code_assistance_event_task_msg = None
+            elif self.nested_chat_event_task:
+                try:
+                    response = await self.nested_chat_event_task()
+                except KeyboardInterrupt:
+                    break
+                is_term = self._is_termination_msg(reply)
+                if response:
+                    reply["content"] += f"\n\nRAN NESTED CHAT: {self.nested_chat_event_task_msg}\n\nRESPONSE:\n" + response
+                if is_term:
+                    reply["content"] += "\nTERMINATE"
+                    
+                self.nested_chat_event_task = None
+                self.nested_chat_event_task_msg = None
+                self.parent_group = None
+            await speaker.a_send(reply, self, request_reply=False)
+            message = self.last_message(speaker)
         return True, None
