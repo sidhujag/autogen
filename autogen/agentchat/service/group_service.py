@@ -242,6 +242,8 @@ class GroupService:
             return json.dumps({"error": "A nested chat from this group is still in progress. Please wait until it's completed."})
         if to_group_obj.nested_chat_event_task:
             return json.dumps({"error": "A nested chat in the to_group({to_group}) is still in progress. Please wait until it's completed."})
+        if current_group.name == to_group_obj.name:
+            return json.dumps({"error": "Cannot initiate a chat to yourself. Are you trying to parallelize? All chats are synchronous."})
         to_group_obj.reset()
 
         GPTAssistantAgent.cancel_run()
