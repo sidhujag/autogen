@@ -2,18 +2,18 @@ from autogen.agentchat.service import UpsertAgentModel, MANAGEMENT, DISCOVERY, T
 web_search_worker_model = UpsertAgentModel(
     name="web_search_worker",
     category="information_retrieval",
-    description="Executes search queries, does online research, scrape webpages and compiles relevant information from diverse sources. Usually works in web_search_group alongside web_search_checker, web_search_planner and web_search_manager.",
-    system_message="Read the conversation in the group. Usually you work in the web_search_group. Execute the request queries and compile a comprehensive list of relevant information. Use files and retrieval for large data sets and knowledge base Q&A. Use web_search function for quick real-time queries, web_researcher for researching topics. You can also use upload_file to save a URL to an OpenAI File and use OpenAI retrieval tool to query it based on natural language.",
+    description="Executes search queries, does online research, reads webpages and compiles relevant information from diverse sources. Usually works in web_search_group alongside web_search_checker, web_search_planner and web_search_manager.",
+    system_message="Read the conversation in the group. Usually you work in the web_search_group. Execute the request queries and compile a comprehensive list of relevant information. Use files and retrieval for large data sets and knowledge base Q&A. Use web_surf function for quick real-time queries, or researching topics. You can also use upload_file to save a URL to an OpenAI File and use OpenAI retrieval tool to query it based on natural language.",
     human_input_mode="NEVER",
     capability=OPENAI_FILES | OPENAI_RETRIEVAL,
-    functions_to_add=["web_search", "web_researcher"]
+    functions_to_add=["web_surf"]
 )
 
 web_search_checker_model = UpsertAgentModel(
     name="web_search_checker",
     category="information_retrieval",
     description="Search result critic. Usually works in web_search_group alongside web_search_worker, web_search_planner and web_search_manager.",
-    system_message="Read the conversation in the group. Usually you work in the web_search_group. Review the latest search results for accuracy and relevance. Ensure to default to use the latest information by date. Critically evaluate the accuracy and relevance of search results, ensuring high-quality information. Approve or suggest modifications based on the search mood.",
+    system_message="Read the conversation in the group. Usually you work in the web_search_group. Review the latest search results for accuracy and relevance. Ensure to default to use the latest information by date. Critically evaluate the accuracy and relevance of search results, ensuring high-quality information.",
     human_input_mode="NEVER",
     capability=TERMINATE
 )
@@ -22,7 +22,7 @@ web_search_planner_model = UpsertAgentModel(
     name="web_search_planner",
     category="information_retrieval",
     description="Designs and refines search queries based on specified criteria, ensuring optimal search results. Usually works in web_search_group alongside web_search_worker, web_search_checker and web_search_manager.",
-    system_message="Read the conversation in the group. Usually you work in the web_search_group. Extract the key search criteria and select the search mood: Strict, Relaxed, or Abstract. Create a few optimal search queries to enhance the search if necessary.",
+    system_message="Read the conversation in the group. Usually you work in the web_search_group. Create a few optimal search queries to enhance the search if necessary.",
     human_input_mode="NEVER",
     capability=0
 )
@@ -106,7 +106,7 @@ software_design_documentation_worker_model = UpsertAgentModel(
                     "18. PROJECT MANAGEMENT: Anything UNCLEAR: Mention any unclear aspects in the project management context and try to clarify them. Example: Clarification needed on how to start and initialize third-party libraries. File: docs/project_management/anything_unclear.txt."),
     human_input_mode="ALWAYS",
     capability=0,
-    functions_to_add=["send_command_to_coding_assistant", "upsert_code_repository", "get_code_repository_info", "discover_code_repositories", "upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants", "web_researcher"]
+    functions_to_add=["send_command_to_coding_assistant", "upsert_code_repository", "get_code_repository_info", "discover_code_repositories", "upsert_coding_assistant", "get_coding_assistant_info", "discover_coding_assistants", "web_surf"]
 )
 
 software_design_documentation_reviewer_model = UpsertAgentModel(
@@ -116,7 +116,7 @@ software_design_documentation_reviewer_model = UpsertAgentModel(
     system_message="Welcome to the software_design_documentation_group. Read, understand and use the functions provided to you. Review and offer feedback to software_design_documentation_worker on the software designs. Use the unclear files to offer feedback and iterate until the unclear is resolved, removing the unclear points as they are resolved. Make sure designs are all clear and understandeable. Make sure all of the 18 steps are done.",
     human_input_mode="ALWAYS",
     capability=DISCOVERY,
-    functions_to_add=["send_command_to_coding_assistant",  "web_search", "get_code_repository_info", "discover_code_repositories", "get_coding_assistant_info", "discover_coding_assistants"]
+    functions_to_add=["send_command_to_coding_assistant",  "web_surf", "get_code_repository_info", "discover_code_repositories", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
 software_design_documentation_manager_model = UpsertAgentModel(
@@ -145,7 +145,7 @@ software_coding_reviewer_model = UpsertAgentModel(
     system_message="Welcome to the software_coding_group. Read, understand and use the functions provided to you. Perform code reviews, disclose bugs, and provide feedback to maintain high standards.",
     human_input_mode="ALWAYS",
     capability=DISCOVERY,
-    functions_to_add=["send_command_to_coding_assistant",  "web_search", "get_code_repository_info", "discover_code_repositories", "get_coding_assistant_info", "discover_coding_assistants"]
+    functions_to_add=["send_command_to_coding_assistant",  "web_surf", "get_code_repository_info", "discover_code_repositories", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
 software_coding_qa_worker_model = UpsertAgentModel(
@@ -155,7 +155,7 @@ software_coding_qa_worker_model = UpsertAgentModel(
     system_message="Welcome to the software_coding_group. Read, understand and use the functions provided to you. Perform code coverage and writes tests and other quality assurance activities with the highest standards. Ensure all tests and criteria are met before approving the code for merging.",
     human_input_mode="ALWAYS",
     capability=0,
-    functions_to_add=["send_command_to_coding_assistant",  "web_search", "get_code_repository_info", "discover_code_repositories", "get_coding_assistant_info", "discover_coding_assistants"]
+    functions_to_add=["send_command_to_coding_assistant",  "web_surf", "get_code_repository_info", "discover_code_repositories", "get_coding_assistant_info", "discover_coding_assistants"]
 )
 
 software_coding_manager_model = UpsertAgentModel(

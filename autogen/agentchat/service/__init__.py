@@ -1,6 +1,6 @@
 from .agent_service import AgentService
-from .search_engine_serper import WebSearchSerperWrapper
 from .zapier_service import ZapierService
+from .web_researcher import WebSurf
 from .functions_service import FunctionsService
 from .make_service import MakeService
 from .coding_assistance_service import CodingAssistantService
@@ -11,7 +11,7 @@ from .backend_service import (
     AuthAgent, 
     DeleteAgentModel,
     DeleteCodeAssistantsModel,
-    GetAgentModel, 
+    GetAgentModel,
     AgentInfo,
     FunctionInfo,
     DiscoverAgentsModel, 
@@ -55,7 +55,6 @@ class SearchEngineType(Enum):
 __all__ = [
     "UpdateComms",
     "AgentService",
-    "WebSearchSerperWrapper",
     "FunctionsService",
     "AgentInfo",
     "FunctionInfo",
@@ -100,5 +99,6 @@ __all__ = [
     "OPENAI_RETRIEVAL",
     "OPENAI_FILES",
     "MANAGEMENT",
-    "ZapierService"
+    "ZapierService",
+    "WebSurf"
 ]

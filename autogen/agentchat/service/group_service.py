@@ -281,7 +281,7 @@ class GroupService:
         return GroupChatManager(
                 groupchat=groupchat,
                 name=backend_group.name,
-                llm_config={"api_key": MakeService.auth.api_key}
+                llm_config={"model": "gpt-3.5-turbo-1106", "api_key": MakeService.auth.api_key}
             ), None
 
     @staticmethod

@@ -366,56 +366,29 @@ get_file_content_spec = {
 }
 
 
-serper_spec = {
-    "name": "web_search",
+web_surf_spec = {
+    "name": "web_surf",
     "category": "information_retrieval",
-    "class_name": "WebSearchSerperWrapper.run",
-    "description": "Responsible for real-time information for queries that need it.",
+    "class_name": "WebSurf.run",
+    "description": "A helpful function with access to a web browser. Ask it to perform web searches, open pages, navigate to Wikipedia, answer questions from pages, and or generate summaries. You can execute web related actions; simple text-based browser similar to [Lynx](https://en.wikipedia.org/wiki/Lynx_(web_browser)) to search the web, visit pages, summarizing pages, finding answers within pages, navigate within pages (by scroll up/down page-length), download files, etc. The function is stateful, meaning that browsing history, viewport state, and other details are maintained throughout the conversation (use 'clear_history' to clear state as needed). Examples of actions: 'search for latest news about AI', 'Please visit the page https://en.wikipedia.org/wiki/Microsoft', 'Please scroll down.', 'Please scroll up.', 'When was it founded?', 'What is this page about?'.",
     "status": "accepted",
     "parameters": {
         "type": "object",
         "properties": {
-            "queries": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Search queries."
-            },
-            "max_results": {
-                "type": "number",
-                "description": "Max number of search results. Defaults to 8."
-            },
-            "type": {
+            "query": {
                 "type": "string",
-                "enum": ["search", "images", "videos", "news", "places", "shopping"],
-                "description": "Search type. Use 'search' for basic search and the others for specific types of searches."
+                "description": "Search query."
             },
-            "tbs": {
-                "type": "string",
-                "description": "for news type: past hour - qdr:h, past 24 hours - qdr:d, past week - qdr:w, past month - qdr:m, past year - qdr:y."
+            "clear_history": {
+                "type": "boolean",
+                "description": "Clear history of the search to start a new search. Default is False which means the state is retained across calls."
             }
         },
-        "required": ["queries", "type"]
+        "required": ["query"]
     }
 }
 
 
-web_research_spec = {
-    "name": "web_researcher",
-    "category": "information_retrieval",
-    "class_name": "WebResearcher.run",
-    "description": "Gathers information from the web and conduct research via gathering links, ranking them and summarizing the results. Can help with code development or general online research.",
-    "status": "accepted",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "topic": {
-                "type": "string",
-                "description": "Research topic, for example: dataiku vs. datarobot."
-            },
-        },
-        "required": ["topic"]
-    }
-}
 zapier_api_check_spec = {
     "name": "zapier_api_check",
     "category": "communication",
@@ -758,8 +731,7 @@ files_function_specs = [
 external_function_specs = [
     upsert_function_spec,
     test_function_spec,
-    serper_spec,
-    web_research_spec,
+    web_surf_spec,
     zapier_api_check_spec,
     zapier_api_get_configuration_link_spec,
     zapier_api_list_exposed_actions_spec,

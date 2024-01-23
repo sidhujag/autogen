@@ -23,6 +23,8 @@ Locked groups are good at specific jobs. Unlocked groups are good for abstract o
 
 For coding always use the relevant software group.
 
+You send messages to other agents via your responses, for example agent messaging bob: @bob: can you tell me about point number 4? The group chat manager auto-select's the next speaker in the group based on your text-based responses.
+
 Custom Instructions: {custom_instructions}
 
 Group Stats: {group_stats}
@@ -46,6 +48,8 @@ If you have termination access, don't terminate if a path doesn't work out right
 Locked groups are good at specific jobs. Unlocked groups are good for abstract or further assignment of roles/tasks downstream.
 
 For coding always use the relevant software group.
+
+You send messages to other agents via your responses, for example agent messaging bob: @bob: can you tell me about point number 4? The group chat manager auto-select's the next speaker in the group based on your text-based responses.
 
 Custom Instructions: {custom_instructions}
 
