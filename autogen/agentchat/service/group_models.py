@@ -18,6 +18,7 @@ software_design_documentation_group_model = UpsertGroupModel(
     description=("The Software Design Documentation Group specializes in developing software design by creating documentation such as project plans, design documents such as PRD, API documentation, and other project-related materials. Create product goals, user stories, competitive analysis (can leverage web research), requirements analysis, UI/UX design considerations. \n"
                  "The following agents are in your group you can refer to them by name in your responses to communicate a message to them: software_design_documentation_worker, software_design_documentation_reviewer, software_design_documentation_manager \n"
                  "Naturally feeds into the coding step by the software_coding_group. \n"
+                 "This group only uses existing assitants and repositories and does not create ones ones. The software_coding_group can create new ones. \n"
                  "Make sure to create the relevant designs in the software_design_documentation_worker system message (all 18 steps). Note the design files are pre-created when repository is setup. Reference the associated file when making the change so the code assistant can know which file to work on. Use command_message with send_command_to_coding_assistant for each design step unless its done already. \n"
                  "Uses natural language to create or update documentation files."),
     agents_to_add=["software_design_documentation_worker", "software_design_documentation_reviewer", "software_design_documentation_manager"],
@@ -30,6 +31,7 @@ software_coding_group_model = UpsertGroupModel(
                  "The following agents are in your group you can refer to them by name in your responses to communicate a message to them: software_coding_worker, software_coding_reviewer, software_coding_qa_worker, software_coding_manager \n"
                  "You should any individual src files you need to work with to code assistant context. \n"
                  "Note an agent cannot serve the purpose of a code assistant. \n"
+                 "You should create or discover relevant assistants and use them otherwise upsert new ones. If creating a new one discover existing repositories or upsert new ones to associate to an assistant. \n"
                  "For software design and documentation you may leverage software_design_documentation_group prior to coding. \n"
                  "For independent code that may be reusable, the code output may be used to create functions for use within agents using the function_creation_group. \n"
                  "Uses code assistant via natural language to create code output."),

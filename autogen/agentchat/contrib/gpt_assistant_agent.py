@@ -18,6 +18,7 @@ class GPTAssistantAgent(ConversableAgent):
     This agent is unique in its reliance on the OpenAI Assistant for state management, differing from other agents like ConversableAgent.
     """
     cancellation_requested: bool = False
+    cancellation_msg: str = ""
     def __init__(
         self,
         name="GPT Assistant",
@@ -125,8 +126,9 @@ class GPTAssistantAgent(ConversableAgent):
         return GPTAssistantAgent.cancellation_requested
 
     @staticmethod
-    def cancel_run():
+    def cancel_run(cancel_msg: str):
         GPTAssistantAgent.cancellation_requested = True
+        GPTAssistantAgent.cancellation_msg = cancel_msg
 
     async def execute_run(self, assistant_thread, max_retries=5):
         retries = 0
@@ -162,6 +164,7 @@ class GPTAssistantAgent(ConversableAgent):
             except KeyboardInterrupt:
                 self._cancel_run(run.id, assistant_thread.id)
                 GPTAssistantAgent.cancellation_requested = False
+                GPTAssistantAgent.cancellation_msg = ""
                 raise
             except Exception as e:
                 # If run is None or there's no last_error, it's an unexpected situation
@@ -169,6 +172,7 @@ class GPTAssistantAgent(ConversableAgent):
                 break
 
         GPTAssistantAgent.cancellation_requested = False
+        GPTAssistantAgent.cancellation_msg = ""
         return response
     
     async def _invoke_assistant(
@@ -255,8 +259,10 @@ class GPTAssistantAgent(ConversableAgent):
             logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: cancelled...')
             response = {
                 "role": "assistant",
-                "content": 'Run Finished',
+                "content": 'Run Cancelled',
             }
+            if GPTAssistantAgent.cancellation_msg != "":
+                response["content"] = GPTAssistantAgent.cancellation_msg
             return response, run
         elif run.status == "completed":
             logger.info(f'Run: {run.id} Thread: {assistant_thread.id}: completed...')

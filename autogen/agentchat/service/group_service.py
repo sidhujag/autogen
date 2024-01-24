@@ -3,7 +3,6 @@ from .. import GroupChatManager, GroupChat
 from typing import List
 import json
 import logging
-import asyncio
 import copy
 import re
 from autogen.token_count_utils import token_left
@@ -246,7 +245,7 @@ class GroupService:
             return json.dumps({"error": "Cannot initiate a chat to yourself. Are you trying to parallelize? All chats are synchronous."})
         to_group_obj.reset()
 
-        GPTAssistantAgent.cancel_run()
+        GPTAssistantAgent.cancel_run("Started nested chat, getting response...")
         def setup_nested_chat_event_task():
             async def start_task():
                 return await GroupService.start_nested_task(

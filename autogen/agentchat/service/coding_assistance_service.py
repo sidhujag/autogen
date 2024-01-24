@@ -5,9 +5,8 @@ from aider.coders import Coder
 from aider.io import InputOutput
 from openai import OpenAI
 import json
-import logging
-from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from pathlib import Path
+from autogen import UserProxyAgent
 
 class CodingAssistantService:
     @staticmethod
@@ -91,7 +90,7 @@ class CodingAssistantService:
 
     @staticmethod
     async def make_coding_assistant(backend_coding_assistant):
-        from . import MakeService
+        from . import MakeService, CodeAssistantAgent
         coding_assistant, err = await CodingAssistantService._create_coding_assistant(backend_coding_assistant)
         if err is not None:
             return None, err
@@ -104,6 +103,17 @@ class CodingAssistantService:
         coding_assistant.dry_run = backend_coding_assistant.dry_run
         coding_assistant.map_tokens = backend_coding_assistant.map_tokens
         coding_assistant.verbose = backend_coding_assistant.verbose
+        coding_assistant.code_assistant_agent = CodeAssistantAgent(
+            coding_assistant.name,
+            llm_config={"model": "gpt-4-1106-preview", "api_key": MakeService.auth.api_key},
+        )
+        coding_assistant.user_proxy = UserProxyAgent(
+            "user_proxy",
+            human_input_mode="NEVER",
+            code_execution_config=False,
+            default_auto_reply="",
+            is_termination_msg=lambda x: True,
+        )
         MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant.name] = coding_assistant
         return coding_assistant, None
 
@@ -207,20 +217,11 @@ class CodingAssistantService:
         
     @staticmethod
     async def send_command_to_coding_assistant(
+        command_message: str,
         name: Optional[str] = None,
-        command_show_repo_map: Optional[bool] = None,
-        command_message: Optional[str] = None,
-        command_add: Optional[str] = None,
-        command_drop: Optional[str] = None,
-        command_clear: Optional[bool] = None,
-        command_ls: Optional[bool] = None,
-        command_tokens: Optional[bool] = None,
-        command_undo: Optional[bool] = None,
-        command_diff: Optional[bool] = None,
-        command_git_command: Optional[str] = None,
-        command_show_file: Optional[str] = None
+        clear_history: Optional[bool] = None
     ) -> str:
-        from . import GroupService, GetGroupModel, UpsertGroupModel, CodeExecInput, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
+        from . import GroupService, GetGroupModel, UpsertGroupModel, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel
         # Wait for any previous task to complete
         current_group = await GroupService.get_group(GetGroupModel(name=GroupService.current_group_name))
         if current_group is None:
@@ -241,107 +242,10 @@ class CodingAssistantService:
             )])
             if err is not None:
                 return err
-        str_output = ''
-        cmd = None
-        if command_add:
-            logging.info(f"send_command_to_coding_assistant command_add: {command_add}")
-            coder.io.console.begin_capture()
-            coder.commands.cmd_add(command_add)
-            cmd = 'command_add'
-            coding_assistants, err = await CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-                name=name,
-                files=list(coder.abs_fnames)
-            )])
-            if err is not None:
-                logging.error(f"command_add failed: {err}")
-                return err
-        elif command_drop:
-            logging.info(f"send_command_to_coding_assistant command_drop: {command_drop}")
-            coder.io.console.begin_capture()
-            coder.commands.cmd_drop(command_drop)
-            cmd = 'command_drop'
-            coding_assistants, err = await CodingAssistantService.upsert_coding_assistants([UpsertCodingAssistantModel(
-                name=name,
-                files=list(coder.abs_fnames)
-            )])
-            if err is not None:
-                logging.error(f"command_drop failed: {err}")
-                return err
-        elif command_clear:
-            logging.info("send_command_to_coding_assistant cmd_clear")
-            coder.io.console.begin_capture()
-            coder.commands.cmd_clear(None)
-            cmd = 'command_clear'
-        elif command_ls:
-            logging.info("send_command_to_coding_assistant command_ls")
-            coder.io.console.begin_capture()
-            coder.commands.cmd_ls(None)
-            cmd = 'command_ls'
-        elif command_tokens:
-            logging.info("send_command_to_coding_assistant command_tokens")
-            coder.io.console.begin_capture()
-            coder.commands.cmd_tokens(None)
-            cmd = 'command_tokens'
-        elif command_undo:
-            logging.info("send_command_to_coding_assistant command_undo")
-            coder.io.console.begin_capture()
-            coder.commands.cmd_undo(None)
-            cmd = 'command_undo'
-        elif command_diff:
-            logging.info("send_command_to_coding_assistant command_diff")
-            coder.io.console.begin_capture()
-            coder.commands.cmd_diff(None)
-            cmd = 'command_diff'
-        elif command_git_command:
-            logging.info(f"send_command_to_coding_assistant command_git_command {command_git_command}")
-            response, err = await BackendService.execute_git_command(CodeExecInput(
-                workspace=code_repository.workspace,
-                command_git_command=command_git_command,
-            ))
-            if err is not None:
-                logging.error(f"command_git_command failed: {err}")
-                return err
-            return response
-        elif command_show_repo_map:
-            logging.info("send_command_to_coding_assistant command_show_repo_map")
-            coder.io.console.begin_capture()
-            repo_map = coder.get_repo_map()
-            if repo_map:
-                coder.io.tool_output(repo_map)
-            cmd = 'command_show_repo_map'
-        elif command_show_file:
-            logging.info(f"send_command_to_coding_assistant command_show_file {command_show_file}")
-            text, err = CodingAssistantService.show_file(command_show_file, Path(code_repository.workspace))
-            if err is not None:
-                logging.error(f"command_show_file failed: {err}")
-                return err
-            return text
-        if command_message:
-            logging.info(f"send_command_to_coding_assistant command_message {command_message}")
-            # cancel any assistant run so we can get group chat to run the code assistant
-            GPTAssistantAgent.cancel_run()
-
-            # Wrapper function for starting the code assistance task
-            def setup_code_assistance_event_task():
-                async def start_task():
-                    return await GroupService.start_code_assistance_task(
-                        CodingAssistantService.run_code_assistant,
-                        GroupService.process_code_assistance_results,
-                        coder,
-                        code_repository,
-                        command_message
-                    )
-                return start_task
-
-            current_group.code_assistance_event_task = setup_code_assistance_event_task()
-            current_group.code_assistance_event_task_msg = f"Code assistant command: {command_message}"
-            str_output = "Ran coding assistant. Please wait for results."
-        elif cmd is not None:
-            str_output = coder.io.console.end_capture()
-            return json.dumps({"success": f"{cmd}: {str_output}"})
-        else:
-            return json.dumps({"error": "Could not run code assistant, no commands or message provided"})
-
-        return str_output
+        coder.code_assistant_agent.current_group = current_group
+        coder.code_assistant_agent.coder = coder
+        coder.code_assistant_agent.code_repository = code_repository
+        await coder.user_proxy.a_initiate_chat(coder.code_assistant_agent, clear_history=clear_history or False, message=command_message)
+        return coder.user_proxy.last_message(coder.code_assistant_agent)["content"]
     
     
