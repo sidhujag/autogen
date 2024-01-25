@@ -157,6 +157,10 @@ class GroupService:
         return group
     
     @staticmethod
+    async def get_current_group() -> str:
+        return GroupService.current_group_name
+
+    @staticmethod
     async def get_group_info(name: str, full_description: bool = False) -> str:
         from . import GetGroupModel, GroupInfo, AgentService, MakeService, GetAgentModel
         backend_group = await GroupService.get_group(GetGroupModel(name=name))
@@ -258,7 +262,6 @@ class GroupService:
 
         current_group.nested_chat_event_task = setup_nested_chat_event_task()
         current_group.nested_chat_event_task_msg = f"Message sent from group ({GroupService.current_group_name}) to group ({group})!"
-        GroupService.current_group_name = to_group_obj.name
         to_group_obj.parent_group = current_group
         return json.dumps({"response": "Ran nested chat. Please wait for response."})
     
@@ -280,7 +283,8 @@ class GroupService:
         return GroupChatManager(
                 groupchat=groupchat,
                 name=backend_group.name,
-                llm_config={"model": "gpt-3.5-turbo-1106", "api_key": MakeService.auth.api_key}
+                llm_config={"model": "gpt-3.5-turbo-1106", "api_key": MakeService.auth.api_key},
+                is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE") or x.get("content", "").rstrip().endswith("TERMINATE.")
             ), None
 
     @staticmethod

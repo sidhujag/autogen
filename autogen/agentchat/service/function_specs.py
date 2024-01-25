@@ -58,6 +58,19 @@ get_group_info_spec = {
     }
 }
 
+get_current_group_spec = {
+    "name": "get_current_group",
+    "category": "communication",
+    "class_name": "GroupService.get_current_group",
+    "description": "Gets the current group you are in.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+        },
+        "required": []
+    }
+}
+
 get_function_info_spec = {
     "name": "get_function_info",
     "category": "communication",
@@ -485,33 +498,76 @@ zapier_api_create_action_spec = {
     }
 } 
 
-code_assistant_function_spec = {
-    "name": "send_command_to_coding_assistant",
+manage_coding_assistant_spec = {
+    "name": "manage_coding_assistant",
     "category": "programming",
-    "class_name": "CodingAssistantService.send_command_to_coding_assistant",
+    "class_name": "CodingAssistantService.manage_coding_assistant",
     "description": (
-        "Talk to a coding assistant. Each coding assistant is unique to a Github repository. This function acts as a central interface for agents to interact with the coding assistant, enabling a range of git operations within a repository. Changes are automatically committed and pushed to Github and PR automatically created if its a fork. It supports the full development cycle, facilitating branch management, local development, and code/document preparation for peer review. This function automatically manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding/designing workflows. The assistant can only see and edit files which have been 'added to the chat session'. Assistant state is retained across calls unless cleared explicitely."
+        "Manage a coding assistant through CLI commands. Get information from its context or the files inside the assistant context."
     ),
     "parameters": {
         "type": "object",
         "properties": {
-            "command_message": {
-                "type": "string",
-                "description": "Command for coding assistant. Can be a task or you can ask for help or list of commands available. Generally, you can list files in the repo, show a file contents, add/remove files using filenames or GLOB patterns, clear assistant history, undo latest changes, diff of latest changes, execute custom git commands against the repository and more."
-            },
             "name": {
                 "type": "string",
-                "description": "Code assistant name, must exist and have been created already via upsert_coding_assistant. Persisted across uses within a group. Leave empty if you want to use the same assistant again."
+                "description": "Code assistant name, must exist and have been created already via upsert_coding_assistant. Persisted across uses within a group. Leave empty if you want to use the same code assistant again."
             },
-            "clear_history": {
+            "command_show_repo_map": {
                 "type": "boolean",
-                "description": "Clear history of the coding assistant to start a new coding assistant query. This will remove queries and responses with the current assistant. Default is False which means the state and conversation is retained across calls."
-            }
+                "description": "Print the local repository map. Repository map is how the coding assistant efficiently maps the logical connection between files/objects/classes in the repository."
+            },
+            "command_clear": {
+                "type": "boolean",
+                "description": "Clear the coding assistant chat history of your local branch."
+            },
+            "command_ls": {
+                "type": "boolean",
+                "description": "List all known files and indicate which are included in the code assistant session."
+            },
+            "command_show_file": {
+                "type": "string",
+                "description": "Show contents of a file in the repository. Give the file name with any relative path if necessary."
+            },
+            "command_undo": {
+                "type": "boolean",
+                "description": "Undo the last git commit your local branch if it was done by code assistant."
+            },
+            "command_diff": {
+                "type": "boolean",
+                "description": "Display the diff of the last code assistant commit in your local branch."
+            },
+            "command_git_command": {
+                "type": "string",
+                "description": "Run a specified git command against the local branch using the GitPython library with `repo.git.execute(command_git_command.split())`. Examples: 'checkout feature-branch' to switch branches, 'add .' to add all files to staging, 'commit -m \"Your commit message\"' to commit changes, 'push' to push to remote, 'push -u origin feature-branch' to push to a new remote branch, 'pull origin main' to update from main, 'merge another-branch' to merge branches, 'branch' to list branches, 'status' for current status, 'log' to view commit history."
+            },
         },
-        "required": ["command_message"]
+        "required": []
     },
 }
 
+
+code_assistant_function_spec = {
+    "name": "run_coding_assistant",
+    "category": "programming",
+    "class_name": "CodingAssistantService.run_coding_assistant",
+    "description": (
+        "Invoke a coding assistant to do some coding. Each coding assistant is unique to a Github repository. Changes are automatically committed and pushed to Github and PR automatically created if its a fork. It supports the full development cycle, facilitating branch management, local development, and code/document preparation for peer review. This function automatically manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding/designing workflows. The code assistant can only see and edit files which have been 'added to the chat session'. Any referred files are automatically added to the session and can be edited. command_ls tells you what files are in session."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Query for coding assistant. Can be a task or request to the coder."
+            },
+            "name": {
+                "type": "string",
+                "description": "Code assistant name, must exist and have been created already via upsert_coding_assistant. Persisted across uses within a group. Leave empty if you want to use the same code assistant again."
+            }
+        },
+        "required": ["query"]
+    },
+}
 
 upsert_code_assistant_function_spec = {
     "name": "upsert_coding_assistant",
@@ -525,7 +581,7 @@ upsert_code_assistant_function_spec = {
         "properties": {
             "name": {
                 "type": "string",
-                "description": "Code assistant name. Used when sending message to assistant. Used as the unique identifier of the coding assistant."
+                "description": "Code assistant name. Not an agent."
             },
             "repository_name": {
                 "type": "string",
@@ -668,7 +724,7 @@ discover_code_repositories_spec = {
 
 group_info_function_specs = [
     get_group_info_spec,
-    get_function_info_spec,
+    get_current_group_spec,
     get_agent_info_spec,
     discover_agents_spec,
     discover_groups_spec,
@@ -698,6 +754,7 @@ external_function_specs = [
     zapier_api_execute_log_spec,
     zapier_api_create_action_spec,
     code_assistant_function_spec,
+    manage_coding_assistant_spec,
     upsert_code_repository_function_spec,
     upsert_code_assistant_function_spec,
     get_coding_assistant_info_spec,

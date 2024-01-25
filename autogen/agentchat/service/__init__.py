@@ -1,7 +1,6 @@
 from .agent_service import AgentService
 from .zapier_service import ZapierService
 from .web_researcher import WebSurf
-from .code_assistant import CodeAssistantAgent
 from .functions_service import FunctionsService
 from .make_service import MakeService
 from .coding_assistance_service import CodingAssistantService
@@ -101,6 +100,5 @@ __all__ = [
     "OPENAI_FILES",
     "MANAGEMENT",
     "ZapierService",
-    "WebSurf",
-    "CodeAssistantAgent"
+    "WebSurf"
 ]

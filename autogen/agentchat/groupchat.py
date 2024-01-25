@@ -376,13 +376,12 @@ class GroupChatManager(ConversableAgent):
         message = messages[-1]
         speaker = sender
         groupchat = config
-        if not GroupService.current_group_name:
-            GroupService.current_group_name = self.name
         if self.client_cache is not None:
             for a in groupchat.agents:
                 a.previous_cache = a.client_cache
                 a.client_cache = self.client_cache
         for i in range(groupchat.max_round):
+            GroupService.current_group_name = self.name
             groupchat.append(message, speaker)
             if self._is_termination_msg(message):
                 # The conversation is over
@@ -435,13 +434,13 @@ class GroupChatManager(ConversableAgent):
         message = messages[-1]
         speaker = sender
         groupchat = config
-        if not GroupService.current_group_name:
-            GroupService.current_group_name = self.name
+
         if self.client_cache is not None:
             for a in groupchat.agents:
                 a.previous_cache = a.client_cache
                 a.client_cache = self.client_cache
         for i in range(groupchat.max_round):
+            GroupService.current_group_name = self.name
             groupchat.append(message, speaker)
 
             if self._is_termination_msg(message):

@@ -5,8 +5,9 @@ from aider.coders import Coder
 from aider.io import InputOutput
 from openai import OpenAI
 import json
+import logging
+from autogen.agentchat.contrib.gpt_assistant_agent import GPTAssistantAgent
 from pathlib import Path
-from autogen import UserProxyAgent
 
 class CodingAssistantService:
     @staticmethod
@@ -90,7 +91,7 @@ class CodingAssistantService:
 
     @staticmethod
     async def make_coding_assistant(backend_coding_assistant):
-        from . import MakeService, CodeAssistantAgent
+        from . import MakeService
         coding_assistant, err = await CodingAssistantService._create_coding_assistant(backend_coding_assistant)
         if err is not None:
             return None, err
@@ -103,17 +104,6 @@ class CodingAssistantService:
         coding_assistant.dry_run = backend_coding_assistant.dry_run
         coding_assistant.map_tokens = backend_coding_assistant.map_tokens
         coding_assistant.verbose = backend_coding_assistant.verbose
-        coding_assistant.code_assistant_agent = CodeAssistantAgent(
-            coding_assistant.name,
-            llm_config={"model": "gpt-4-1106-preview", "api_key": MakeService.auth.api_key},
-        )
-        coding_assistant.user_proxy = UserProxyAgent(
-            "user_proxy",
-            human_input_mode="NEVER",
-            code_execution_config=False,
-            default_auto_reply="",
-            is_termination_msg=lambda x: True,
-        )
         MakeService.CODE_ASSISTANT_REGISTRY[coding_assistant.name] = coding_assistant
         return coding_assistant, None
 
@@ -216,12 +206,17 @@ class CodingAssistantService:
         return text, None
         
     @staticmethod
-    async def send_command_to_coding_assistant(
-        command_message: str,
+    async def manage_coding_assistant(
         name: Optional[str] = None,
-        clear_history: Optional[bool] = None
+        command_show_repo_map: Optional[bool] = None,
+        command_clear: Optional[bool] = None,
+        command_ls: Optional[bool] = None,
+        command_undo: Optional[bool] = None,
+        command_diff: Optional[bool] = None,
+        command_git_command: Optional[str] = None,
+        command_show_file: Optional[str] = None
     ) -> str:
-        from . import GroupService, GetGroupModel, UpsertGroupModel, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel
+        from . import GroupService, GetGroupModel, UpsertGroupModel, CodeExecInput, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
         # Wait for any previous task to complete
         current_group = await GroupService.get_group(GetGroupModel(name=GroupService.current_group_name))
         if current_group is None:
@@ -242,10 +237,103 @@ class CodingAssistantService:
             )])
             if err is not None:
                 return err
-        coder.code_assistant_agent.current_group = current_group
-        coder.code_assistant_agent.coder = coder
-        coder.code_assistant_agent.code_repository = code_repository
-        await coder.user_proxy.a_initiate_chat(coder.code_assistant_agent, clear_history=clear_history or False, message=command_message)
-        return coder.user_proxy.last_message(coder.code_assistant_agent)["content"]
+        str_output = ''
+        cmd = None
+        if command_clear:
+            logging.info("manage_coding_assistant cmd_clear")
+            coder.io.console.begin_capture()
+            coder.commands.cmd_clear(None)
+            cmd = 'command_clear'
+        elif command_ls:
+            logging.info("manage_coding_assistant command_ls")
+            coder.io.console.begin_capture()
+            coder.commands.cmd_ls(None)
+            cmd = 'command_ls'
+        elif command_undo:
+            logging.info("manage_coding_assistant command_undo")
+            coder.io.console.begin_capture()
+            coder.commands.cmd_undo(None)
+            cmd = 'command_undo'
+        elif command_diff:
+            logging.info("manage_coding_assistant command_diff")
+            coder.io.console.begin_capture()
+            coder.commands.cmd_diff(None)
+            cmd = 'command_diff'
+        elif command_git_command:
+            logging.info(f"manage_coding_assistant command_git_command {command_git_command}")
+            response, err = await BackendService.execute_git_command(CodeExecInput(
+                workspace=code_repository.workspace,
+                command_git_command=command_git_command,
+            ))
+            if err is not None:
+                logging.error(f"command_git_command failed: {err}")
+                return err
+            return response
+        elif command_show_repo_map:
+            logging.info("manage_coding_assistant command_show_repo_map")
+            coder.io.console.begin_capture()
+            repo_map = coder.get_repo_map()
+            if repo_map:
+                coder.io.tool_output(repo_map)
+            cmd = 'command_show_repo_map'
+        elif command_show_file:
+            logging.info(f"manage_coding_assistant command_show_file {command_show_file}")
+            text, err = CodingAssistantService.show_file(command_show_file, Path(code_repository.workspace))
+            if err is not None:
+                logging.error(f"command_show_file failed: {err}")
+                return err
+            return text
+        else:
+            return json.dumps({"error": "Could not manage code assistant, no commands or message provided"})
+
+        str_output = coder.io.console.end_capture()
+        return json.dumps({"success": f"{cmd}: {str_output}"})
+
+    @staticmethod
+    async def run_coding_assistant(
+        query: str,
+        name: Optional[str] = None,
+    ) -> str:
+        from . import GroupService, GetGroupModel, UpsertGroupModel, CodeRepositoryService, GetCodeRepositoryModel, GetCodingAssistantModel, UpsertCodingAssistantModel, BackendService
+        # Wait for any previous task to complete
+        current_group = await GroupService.get_group(GetGroupModel(name=GroupService.current_group_name))
+        if current_group is None:
+            return json.dumps({"error": f"Could not send message: current_group({GroupService.current_group_name}) not found"})
+        if current_group.code_assistance_event_task:
+            return json.dumps({"error": "Code assistant is currently running, please wait for it to finish before sending another command."})
+        name = name or current_group.current_code_assistant_name
+        coder = await CodingAssistantService.get_coding_assistant(GetCodingAssistantModel(name=name))
+        if coder is None:
+            return json.dumps({"error": f"Critical: Could not send message to coding_assistant({name}): does not exist. Check the name or make sure you have created one first."})
+        code_repository = await CodeRepositoryService.get_code_repository(GetCodeRepositoryModel(name=coder.repository_name))
+        if not code_repository:
+            return json.dumps({"error": f"Critical: Associated code repository({coder.repository_name}) not found."})
+        if current_group.current_code_assistant_name != name:
+            group_managers, err = await GroupService.upsert_groups([UpsertGroupModel(
+                name=current_group.name,
+                current_code_assistant_name=name,
+            )])
+            if err is not None:
+                return err
+        logging.info(f"run_coding_assistant command_message {query}")
+        # cancel any assistant run so we can get group chat to run the code assistant
+        GPTAssistantAgent.cancel_run("Running coding assistant, waiting on results...")
+
+        # Wrapper function for starting the code assistance task
+        def setup_code_assistance_event_task():
+            async def start_task():
+                return await GroupService.start_code_assistance_task(
+                    CodingAssistantService.run_code_assistant,
+                    GroupService.process_code_assistance_results,
+                    coder,
+                    code_repository,
+                    query
+                )
+            return start_task
+
+        current_group.code_assistance_event_task = setup_code_assistance_event_task()
+        current_group.code_assistance_event_task_msg = f"Code assistant query: {query}"
+        str_output = "Ran coding assistant. Please wait for results."
+        return str_output
     
     
