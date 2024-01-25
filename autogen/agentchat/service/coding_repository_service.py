@@ -44,19 +44,16 @@ class CodeRepositoryService:
 
     @staticmethod
     async def upsert_code_repository(
-        repository_name: Optional[str] = None,
-        repo_name: Optional[str] = None,
-        name: Optional[str] = None,
+        repository_name: str,
         description: Optional[str] = None,
         private: Optional[bool] = None,
         gh_remote_url: Optional[str] = None,
     ) -> str:
         from . import UpsertCodeRepositoryModel
-        rep_name = repository_name or repo_name or name
-        if not rep_name:
+        if not repository_name:
             return json.dumps({"error": "repository_name not provided!"})
         code_repositories, err = await CodeRepositoryService.upsert_code_repositories([UpsertCodeRepositoryModel(
-            name=rep_name,
+            name=repository_name,
             description=description,
             private=private,
             gh_remote_url=gh_remote_url

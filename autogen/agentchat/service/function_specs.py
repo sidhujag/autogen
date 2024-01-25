@@ -495,13 +495,13 @@ code_assistant_function_spec = {
     "parameters": {
         "type": "object",
         "properties": {
-            "name": {
-                "type": "string",
-                "description": "Code assistant name, must exist and have been created already via upsert_coding_assistant. Persisted across uses within a group. Leave empty if you want to use the same assistant again."
-            },
             "command_message": {
                 "type": "string",
                 "description": "Command for coding assistant. Can be a task or you can ask for help or list of commands available. Generally, you can list files in the repo, show a file contents, add/remove files using filenames or GLOB patterns, clear assistant history, undo latest changes, diff of latest changes, execute custom git commands against the repository and more."
+            },
+            "name": {
+                "type": "string",
+                "description": "Code assistant name, must exist and have been created already via upsert_coding_assistant. Persisted across uses within a group. Leave empty if you want to use the same assistant again."
             },
             "clear_history": {
                 "type": "boolean",
