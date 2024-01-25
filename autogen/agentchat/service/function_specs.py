@@ -551,14 +551,14 @@ code_assistant_function_spec = {
     "category": "programming",
     "class_name": "CodingAssistantService.run_coding_assistant",
     "description": (
-        "Invoke a coding assistant to do some coding. Each coding assistant is unique to a Github repository. Changes are automatically committed and pushed to Github and PR automatically created if its a fork. It supports the full development cycle, facilitating branch management, local development, and code/document preparation for peer review. This function automatically manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding/designing workflows. The code assistant can only see and edit files which have been 'added to the chat session'. Any referred files are automatically added to the session and can be edited. command_ls tells you what files are in session."
+        "Invoke a coding assistant to do some coding. Each coding assistant is unique to a Github repository. Changes are automatically committed and pushed to Github and PR automatically created if its a fork. It supports the full development cycle, facilitating branch management, local development, and code/document preparation for peer review. This function automatically manages local git changes, branch syncing, and pull request operations, ensuring seamless collaboration and efficient coding/designing workflows. The code assistant can only see and edit files which have been 'added to the chat session'. Any referred files are automatically added to the session and can be edited. command_ls tells you what files are in session. If files exist already relevant to your task then it probably already has started on the task, you should assess whether to continue on the task."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "Query for coding assistant. Can be a task or request to the coder."
+                "description": "Query for coding assistant. Can be a task or request to the coder. The coder keeps state across calls so query should be like talking to someone that has memory."
             },
             "name": {
                 "type": "string",

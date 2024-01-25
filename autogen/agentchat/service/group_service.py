@@ -120,7 +120,7 @@ class GroupService:
     RATING: [YOUR FINAL RATING]""",
             }
         )
-        while token_left(message, "gpt-4-1106-preview") < 4096:
+        while token_left(message, "gpt-4-1106-preview") < 32000:
             mid = int(len(messages) / 2)  # Remove from the middle
             del messages[mid]
         response = current_group.client.create(context=None, messages=messages)

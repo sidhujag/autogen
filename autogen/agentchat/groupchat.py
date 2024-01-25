@@ -487,7 +487,7 @@ class GroupChatManager(ConversableAgent):
                     break
                 is_term = self._is_termination_msg(reply)
                 if response:
-                    reply["content"] += f"\n\nRAN NESTED CHAT: {self.nested_chat_event_task_msg}\n\nRESPONSE:\n" + response
+                    reply["content"] += f"\n\nRAN NESTED CHAT: {self.nested_chat_event_task_msg}\n\n" + response
                 if is_term:
                     reply["content"] += "\nTERMINATE"
                     
