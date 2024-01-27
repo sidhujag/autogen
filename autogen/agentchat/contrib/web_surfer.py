@@ -18,7 +18,7 @@ class WebSurferAgent(ConversableAgent):
     """(In preview) An agent that acts as a basic web surfer that can search the web and visit web pages."""
 
     DEFAULT_PROMPT = (
-        "You are a helpful AI assistant with access to a web browser (via the provided functions). In fact, YOU ARE THE ONLY MEMBER OF YOUR PARTY WITH ACCESS TO A WEB BROWSER, so please help out where you can by performing web searches, navigating pages, and reporting what you find. Today's date is "
+        "You are a helpful AI assistant with access to a web browser (via the provided functions). In fact, YOU ARE THE ONLY MEMBER OF YOUR PARTY WITH ACCESS TO A WEB BROWSER, so please help out where you can by performing web searches, navigating pages, and reporting what you find. Two search engines are available at your disposal, google is good for quick real-time info but both are good general search engines. Default engine is bing because its fast and cheaper per query. For real-time related queries you can double both search engines. Today's date is "
         + datetime.now().date().isoformat()
     )
 
@@ -103,7 +103,19 @@ class WebSurferAgent(ConversableAgent):
                             "query": {
                                 "type": "string",
                                 "description": "The informational web search query to perform.",
-                            }
+                            },
+                            "search_engine": {
+                                "type": "string",
+                                "description": "Search engine to use, bing or google.",
+                                "enum": ["bing", "google"],
+                                "default": "bing"
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Category to filter search.",
+                                "enum": ["news", "places", "images", "search", "videos", "shopping", "sports", "events"],
+                                "default": "search"
+                            },
                         },
                     },
                     "required": ["query"],
@@ -117,7 +129,19 @@ class WebSurferAgent(ConversableAgent):
                             "query": {
                                 "type": "string",
                                 "description": "The navigational web search query to perform.",
-                            }
+                            },
+                            "search_engine": {
+                                "type": "string",
+                                "description": "Search engine to use, bing or google.",
+                                "enum": ["bing", "google"],
+                                "default": "bing"
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Category to filter search.",
+                                "enum": ["news", "places", "images", "search", "videos", "shopping", "sports", "events"],
+                                "default": "search"
+                            },
                         },
                     },
                     "required": ["query"],
@@ -217,15 +241,19 @@ class WebSurferAgent(ConversableAgent):
             header += f"Viewport position: Showing page {current_page+1} of {total_pages}.\n"
             return (header, self.browser.viewport)
 
-        def _informational_search(query):
-            self.browser.visit_page(f"bing: {query}")
+        def _informational_search(query: str, search_engine: str = "bing", category: Optional[str] = None):
+            if search_engine != "google" and search_engine != "bing":
+                return f"search engine must be either google or bing, you provided {search_engine}"
+            self.browser.visit_page(f"{search_engine}: {query}", category)
             header, content = _browser_state()
             return header.strip() + "\n=======================\n" + content
 
-        def _navigational_search(query):
-            self.browser.visit_page(f"bing: {query}")
+        def _navigational_search(query: str, search_engine: str = "bing", category: Optional[str] = None):
+            if search_engine != "google" and search_engine != "bing":
+                return f"search engine must be either google or bing, you provided {search_engine}"
+            self.browser.visit_page(f"{search_engine}: {query}", category)
 
-            # Extract the first linl
+            # Extract the first link
             m = re.search(r"\[.*?\]\((http.*?)\)", self.browser.page_content)
             if m:
                 self.browser.visit_page(m.group(1))
@@ -299,8 +327,8 @@ class WebSurferAgent(ConversableAgent):
 
         self._user_proxy.register_function(
             function_map={
-                "informational_web_search": lambda query: _informational_search(query),
-                "navigational_web_search": lambda query: _navigational_search(query),
+                "informational_web_search": lambda query, search_engine=None, category=None: _informational_search(query, search_engine, category),
+                "navigational_web_search": lambda query, search_engine=None, category=None: _navigational_search(query, search_engine, category),
                 "visit_page": lambda url: _visit_page(url),
                 "page_up": lambda: _page_up(),
                 "page_down": lambda: _page_down(),

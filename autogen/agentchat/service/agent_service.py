@@ -290,6 +290,7 @@ Group Stats: {group_stats}
                 is_termination_msg=lambda x: False,
                 llm_config=llm_config,
                 human_input_mode=backend_agent.human_input_mode,
+                prefix_message=backend_agent.name
             )
         return agent
 

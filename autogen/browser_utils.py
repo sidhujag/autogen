@@ -1,4 +1,3 @@
-import json
 import os
 import requests
 import re
@@ -9,7 +8,8 @@ import mimetypes
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union, Callable, Literal, Tuple
+from typing import Dict, List, Optional, Union
+from autogen.serper_utils import WebSearchSerperWrapper
 
 # Optional PDF support
 IS_PDF_CAPABLE = False
@@ -57,14 +57,16 @@ class SimpleTextBrowser:
         """Return the address of the current page."""
         return self.history[-1]
 
-    def set_address(self, uri_or_path):
+    def set_address(self, uri_or_path, category: Optional[str] = None):
         self.history.append(uri_or_path)
 
         # Handle special URIs
         if uri_or_path == "about:blank":
             self._set_page_content("")
         elif uri_or_path.startswith("bing:"):
-            self._bing_search(uri_or_path[len("bing:") :].strip())
+            self._bing_search(uri_or_path[len("bing:") :].strip(), category)
+        elif uri_or_path.startswith("google:"):
+            self._google_search(uri_or_path[len("google:") :].strip(), category)
         else:
             if not uri_or_path.startswith("http:") and not uri_or_path.startswith("https:"):
                 uri_or_path = urljoin(self.address, uri_or_path)
@@ -97,9 +99,9 @@ class SimpleTextBrowser:
     def page_up(self):
         self.viewport_current_page = max(self.viewport_current_page - 1, 0)
 
-    def visit_page(self, path_or_uri):
+    def visit_page(self, path_or_uri, category: Optional[str] = None):
         """Update the address, visit the page, and return the content of the viewport."""
-        self.set_address(path_or_uri)
+        self.set_address(path_or_uri, category)
         return self.viewport
 
     def _split_pages(self):
@@ -151,8 +153,14 @@ class SimpleTextBrowser:
 
         return results
 
-    def _bing_search(self, query):
-        results = self._bing_api_call(query)
+    def _bing_search(self, query, category: Optional[str] = None):
+        search_str = ""
+        if category:
+            search_str = f'{category}: {query}'
+        else:
+            search_str = query
+
+        results = self._bing_api_call(search_str)
 
         web_snippets = list()
         idx = 0
@@ -182,6 +190,23 @@ class SimpleTextBrowser:
             content += "\n\n## News Results:\n" + "\n\n".join(news_snippets)
         self._set_page_content(content)
 
+    def _google_search(self, query, category: Optional[str] = None):
+        search_str = ""
+        if not category:
+            category = "search"
+        if category == "sports" or category == "events":
+            search_str = f'{category}: {query}'
+            category = "search"
+        else:
+            search_str = query
+        results = WebSearchSerperWrapper.run([search_str], 15, category)
+        self.page_title = f"{query} - Search"
+
+        content = (
+            f"A Google search for '{query}'. results:\n\n## Web Results\n\n{results}"
+        )
+        self._set_page_content(content)
+        
     def _fetch_page(self, url):
         try:
             # Prepare the request parameters

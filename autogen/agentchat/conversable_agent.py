@@ -73,6 +73,7 @@ class ConversableAgent(Agent):
         llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
         description: Optional[str] = None,
+        prefix_message: Optional[str] = None,
     ):
         """
         Args:
@@ -181,7 +182,8 @@ class ConversableAgent(Agent):
         # Registered hooks are kept in lists, indexed by hookable method, to be called in their order of registration.
         # New hookable methods should be added to this list as required to support new agent capabilities.
         self.hook_lists = {self.process_last_message: []}  # This is currently the only hookable method.
-
+        self.prefix_message = prefix_message
+        
     def register_reply(
         self,
         trigger: Union[Type[Agent], str, Agent, Callable[[Agent], bool], List],
@@ -325,7 +327,7 @@ class ConversableAgent(Agent):
         """Convert a message to a dictionary.
 
         The message can be a string or a dictionary. The string will be put in the "content" field of the new dictionary.
-        This method ensures that 'self.name' is always prepended to the message content, and any previous prepends are removed.
+        This method ensures that 'self.prefix_message' is always prepended to the message content, and any previous prepends are removed.
         """
         def remove_previous_names(text):
             while ':' in text:
@@ -335,8 +337,9 @@ class ConversableAgent(Agent):
                 else:
                     break
             return text
-
-        prefix = f"{self.name}: "        
+        prefix = ''
+        if self.prefix_message:
+            prefix = f"{self.prefix_message}: " 
         if isinstance(message, str):
             message = remove_previous_names(message)
             return {"content": f"{prefix}{message}"}

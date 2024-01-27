@@ -319,7 +319,8 @@ class GroupService:
                 groupchat=groupchat,
                 name=backend_group.name,
                 llm_config={"model": "gpt-3.5-turbo-1106", "api_key": MakeService.auth.api_key},
-                is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE") or x.get("content", "").rstrip().endswith("TERMINATE.")
+                is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE") or x.get("content", "").rstrip().endswith("TERMINATE."),
+                prefix_message=backend_group.name
             ), None
 
     @staticmethod
