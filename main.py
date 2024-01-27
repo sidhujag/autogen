@@ -66,7 +66,7 @@ async def upsert_agents(models):
                     name=model.name,
                     instructions="",
                     tools=[],
-                    model="gpt-4-1106-preview",
+                    model="gpt-4-turbo-preview",
                 )
                 id = openai_assistant.id
             else:
@@ -76,7 +76,7 @@ async def upsert_agents(models):
                 name=model.name,
                 instructions="",
                 tools=[],
-                model="gpt-4-1106-preview",
+                model="gpt-4-turbo-preview",
             )
             id = openai_assistant.id
         model.assistant_id = id

@@ -141,7 +141,7 @@ class CodingAssistantService:
                 return None, json.dumps({"error": f"Code repository({backend_coding_assistant.repository_name}) not found"})
             io = InputOutput(pretty=False, yes=True, input_history_file=f".aider.input.history-{backend_coding_assistant.name}", chat_history_file=f".aider.chat.history-{backend_coding_assistant.name}.md")
             client = OpenAI(api_key=MakeService.auth.api_key)
-            main_model = models.Model.create(backend_coding_assistant.model or "gpt-4-1106-preview", client)
+            main_model = models.Model.create(backend_coding_assistant.model or "gpt-4-turbo-preview", client)
             coder = Coder.create(
                 main_model=main_model,
                 edit_format=None,
@@ -156,6 +156,7 @@ class CodingAssistantService:
                 map_tokens=backend_coding_assistant.map_tokens,
                 verbose=backend_coding_assistant.verbose,
             )
+            coder.last_processed_index = -1
             coder.commands.cmd_add("docs/**/*")
             if backend_coding_assistant.name not in code_repository.associated_code_assistants:
                 code_repository.associated_code_assistants.append(backend_coding_assistant.name)
@@ -176,10 +177,14 @@ class CodingAssistantService:
             coder.io.add_to_input_history(command_message)
             coder.io.tool_output()
             coder.run(with_message=command_message)
-            return {"success": coder.partial_response_content}
+            msgs = coder.done_messages + coder.cur_messages
+            new_messages = msgs[coder.last_processed_index + 1 :]
+            if new_messages:
+                coder.last_processed_index = len(msgs) - 1
+            return new_messages
         except Exception as e:
             print(f'run_code_assistant exec {str(e)}')
-            return {"error": str(e)}
+            return None
 
     @staticmethod
     def read_text(file_path: str) -> tuple[str, Optional[str]]:
@@ -244,6 +249,7 @@ class CodingAssistantService:
             coder.io.console.begin_capture()
             coder.commands.cmd_clear(None)
             cmd = 'command_clear'
+            coder.last_processed_index = -1
         elif command_ls:
             logging.info("manage_coding_assistant command_ls")
             coder.io.console.begin_capture()
@@ -332,8 +338,6 @@ class CodingAssistantService:
             return start_task
 
         current_group.code_assistance_event_task = setup_code_assistance_event_task()
-        current_group.code_assistance_event_task_msg = f"Code assistant query: {query}"
-        str_output = "Ran coding assistant. Please wait for results."
-        return str_output
+        return json.dumps({"success": "Ran coding assistant. Please wait for results."})
     
     

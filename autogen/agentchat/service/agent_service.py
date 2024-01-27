@@ -133,7 +133,7 @@ Group Stats: {group_stats}
                 name=agent,
                 instructions="",
                 tools=[],
-                model="gpt-4-1106-preview",
+                model="gpt-4-turbo-preview",
             )
             id = openai_assistant.id
         else:

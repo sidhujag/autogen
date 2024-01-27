@@ -39,7 +39,7 @@ class GPTAssistantAgent(ConversableAgent):
             system message will be set to the existing assistant instructions.
             llm_config (dict or False): llm inference configuration.
                 - assistant_id: ID of the assistant to use. If None, a new assistant will be created.
-                - model: Model to use for the assistant (gpt-4-1106-preview, gpt-3.5-turbo-1106).
+                - model: Model to use for the assistant (gpt-4-turbo-preview, gpt-3.5-turbo-1106).
                 - check_every_ms: check thread run status interval
                 - tools: Give Assistants access to OpenAI-hosted tools like Code Interpreter and Knowledge Retrieval,
                         or build your own tools using Function calling. ref https://platform.openai.com/docs/assistants/tools
@@ -76,7 +76,7 @@ class GPTAssistantAgent(ConversableAgent):
                     name=name,
                     instructions=instructions,
                     tools=llm_config.get("tools", []),
-                    model=llm_config.get("model", "gpt-4-1106-preview"),
+                    model=llm_config.get("model", "gpt-4-turbo-preview"),
                     file_ids=llm_config.get("file_ids", []),
                 )
             else:

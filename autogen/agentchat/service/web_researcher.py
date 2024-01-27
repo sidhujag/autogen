@@ -19,7 +19,7 @@ class WebSurf:
         if not WebSurf.web_surfer:
             WebSurf.web_surfer = WebSurferAgent(
                 "web_surfer",
-                llm_config={"model": "gpt-4-1106-preview", "api_key": MakeService.auth.api_key},
+                llm_config={"model": "gpt-4-turbo-preview", "api_key": MakeService.auth.api_key},
                 summarizer_llm_config={"model": "gpt-3.5-turbo-1106", "api_key": MakeService.auth.api_key},
                 browser_config={"viewport_size": page_size, "bing_api_key": os.getenv('BING_API_KEY')},
             )
