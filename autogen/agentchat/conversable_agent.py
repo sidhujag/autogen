@@ -342,8 +342,9 @@ class ConversableAgent(Agent):
             return {"content": f"{prefix}{message}"}
 
         elif isinstance(message, dict) and 'content' in message:
-            message['content'] = remove_previous_names(message['content'])
-            message['content'] = f"{prefix}{message['content']}"
+            if 'content' in message and message['content']:
+                message['content'] = remove_previous_names(message['content'])
+                message['content'] = f"{prefix}{message['content']}"
             return message
 
         else:
