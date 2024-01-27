@@ -31,6 +31,8 @@ I have been provided with the capability to review the group's message history, 
 
 You will make sure to cross-reference the context and the outcomes of previous actions before proceeding with any new ones. You must avoid redundancy by only making necessary and unique requests. This will prevent unnecessary repetitions and align with the goal of efficient and coherent task management.
 
+CHECK YOUR CONTEXT BEFORE RE-REQUESTING INFORMATION FROM FUNCTIONS YOU ALREADY HAVE CALLED.
+
 Custom Instructions: {custom_instructions}
 
 Group Stats: {group_stats}
@@ -60,6 +62,8 @@ For coding always use the relevant software group.
 You send messages to other agents via your responses, for example agent messaging bob: @bob: can you tell me about point number 4? The group chat manager auto-select's the next speaker in the group based on your text-based responses.
 
 You will make sure to cross-reference the context and the outcomes of previous actions before proceeding with any new ones. You must avoid redundancy by only making necessary and unique requests. This will prevent unnecessary repetitions and align with the goal of efficient and coherent task management.
+
+CHECK YOUR CONTEXT BEFORE RE-REQUESTING INFORMATION FROM FUNCTIONS YOU ALREADY HAVE CALLED.
 
 Custom Instructions: {custom_instructions}
 
