@@ -21,20 +21,29 @@ class GroupService:
         response_callback = None
         try:
             # Run the long-running task
-            response = await task_func(*args, **kwargs)
+            messages = await task_func(*args, **kwargs)
             # Process the results or error using the callback
             if callback:
-                response_callback = await callback(*args, response)
+                response_callback = await callback(*args, messages)
         except Exception as e:
             # Handle any unexpected errors here
             logging.error(f"Error in code assistance task: {e}")
         return response_callback
 
     @staticmethod
-    async def process_code_assistance_results(coder, code_repository, command_message, response):
+    async def process_code_assistance_results(coder, code_repository, command_message, messages):
         from . import BackendService, CodeExecInput, CodeRequestInput
-        if 'error' in response:
-            return json.dumps(response)
+        if not messages:
+            return [
+                {
+                    "role": "user",
+                    "content": command_message
+                },
+                {
+                    "role": "assistant",
+                    "content": "Unknown error"
+                }
+            ]
         if code_repository.is_forked:
             pr_title = "Feature: Adding new features by agent"
             pr_body = coder.description
@@ -46,7 +55,16 @@ class GroupService:
             ))
             if err is not None:
                 logging.error(f"command_pull_request failed: {err}")
-                return json.dumps(err)
+                return [
+                {
+                    "role": "user",
+                    "content": command_message
+                },
+                {
+                    "role": "assistant",
+                    "content": json.dumps(err)
+                }
+            ]
         else:
             git_response, err = await BackendService.execute_git_command(CodeExecInput(
                 workspace=code_repository.workspace,
@@ -54,7 +72,7 @@ class GroupService:
             ))
             if err is not None:
                 logging.error(f"command_git_command failed: {err}")
-        return json.dumps(response)
+        return messages
 
     @staticmethod
     async def start_nested_task(current_group_name: str, callback, *args, **kwargs):
@@ -116,11 +134,11 @@ class GroupService:
     
     Use the following template:
     
-    RESPONSE: [YOUR FINAL RESPONSE]
+    [YOUR FINAL RESPONSE]
     RATING: [YOUR FINAL RATING]""",
             }
         )
-        while token_left(message, "gpt-4-1106-preview") < 32000:
+        while token_left(message, "gpt-4-turbo-preview") < 32000:
             mid = int(len(messages) / 2)  # Remove from the middle
             del messages[mid]
         response = current_group.client.create(context=None, messages=messages)
@@ -128,19 +146,37 @@ class GroupService:
         # Define a regex pattern to find the RATING
         rating_pattern = re.compile(r'RATING:\s*(\d+\.?\d*)\s*')
         if not isinstance(extracted_response, str):
-            return str(extracted_response.model_dump(mode="dict"))  # Not sure what to do here
+            return [
+                {
+                    "role": "user",
+                    "content": message
+                },
+                {
+                    "role": "assistant",
+                    "content": str(extracted_response.model_dump(mode="dict"))
+                }
+            ]
         else:
             # Search for the rating in the response
             rating_match = rating_pattern.search(extracted_response)
             if rating_match:
                 # Extract the rating
                 rating = rating_match.group(1)
-                if float(rating) >= 7:
+                if float(rating) > 7:
                     # Increment the communication stats
                     current_group.outgoing[recipient.name] = current_group.outgoing.get(recipient.name, 0) + 1
                     recipient.incoming[current_group.name] = recipient.incoming.get(current_group.name, 0) + 1
                     await BackendService.update_communication_stats(UpdateComms(sender=current_group.name, receiver=recipient.name))
-            return extracted_response
+            return [
+                {
+                    "role": "user",
+                    "content": message
+                },
+                {
+                    "role": "assistant",
+                    "content": extracted_response
+                }
+            ]
 
     @staticmethod
     async def get_group(group_model) -> GroupChatManager:
@@ -261,7 +297,6 @@ class GroupService:
             return start_task
 
         current_group.nested_chat_event_task = setup_nested_chat_event_task()
-        current_group.nested_chat_event_task_msg = f"Message sent from group ({GroupService.current_group_name}) to group ({group})!"
         to_group_obj.parent_group = current_group
         return json.dumps({"response": "Ran nested chat. Please wait for response."})
     

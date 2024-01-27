@@ -321,18 +321,35 @@ class ConversableAgent(Agent):
         """
         return None if self._code_execution_config is False else self._code_execution_config.get("use_docker")
 
-    @staticmethod
-    def _message_to_dict(message: Union[Dict, str]) -> Dict:
+    def _message_to_dict(self, message: Union[Dict, str]) -> Dict:
         """Convert a message to a dictionary.
 
         The message can be a string or a dictionary. The string will be put in the "content" field of the new dictionary.
+        This method ensures that 'self.name' is always prepended to the message content, and any previous prepends are removed.
         """
+        def remove_previous_names(text):
+            while ':' in text:
+                potential_name, _, remainder = text.partition(':')
+                if potential_name.strip().isidentifier():
+                    text = remainder.strip()
+                else:
+                    break
+            return text
+
+        prefix = f"{self.name}: "        
         if isinstance(message, str):
-            return {"content": message}
-        elif isinstance(message, dict):
+            message = remove_previous_names(message)
+            return {"content": f"{prefix}{message}"}
+
+        elif isinstance(message, dict) and 'content' in message:
+            message['content'] = remove_previous_names(message['content'])
+            message['content'] = f"{prefix}{message['content']}"
             return message
+
         else:
+            # Handle cases where message is neither a string nor a dictionary with 'content'
             return dict(message)
+
 
     @staticmethod
     def _normalize_name(name):

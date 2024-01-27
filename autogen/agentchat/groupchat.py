@@ -345,9 +345,7 @@ class GroupChatManager(ConversableAgent):
         self.description = ""
         self.incoming = {}
         self.outgoing = {}
-        self.code_assistance_event_task_msg = None
         self.code_assistance_event_task = None
-        self.nested_chat_event_task_msg = None
         self.nested_chat_event_task = None
         self.parent_group = None
         self.current_code_assistant_name = None
@@ -442,16 +440,36 @@ class GroupChatManager(ConversableAgent):
         for i in range(groupchat.max_round):
             GroupService.current_group_name = self.name
             groupchat.append(message, speaker)
-
             if self._is_termination_msg(message):
                 # The conversation is over
                 break
-
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
                 AgentService.update_agent_system_message(agent, self)
                 if agent != speaker:
                     await self.a_send(message, agent, request_reply=False, silent=True)
+            if self.code_assistance_event_task:
+                try:
+                    messages = await self.code_assistance_event_task()
+                except KeyboardInterrupt:
+                    break
+                if messages:
+                    for msg in messages:
+                        for agent in groupchat.agents:
+                            await self.a_send(msg, agent, request_reply=False, silent=True)
+                self.code_assistance_event_task = None
+                self.code_assistance_user = None
+            elif self.nested_chat_event_task:
+                try:
+                    messages = await self.nested_chat_event_task()
+                except KeyboardInterrupt:
+                    break
+                if messages:
+                    for msg in messages:
+                        for agent in groupchat.agents:
+                            await self.a_send(msg, agent, request_reply=False, silent=True)
+                self.nested_chat_event_task = None
+                self.parent_group = None
             if i == groupchat.max_round - 1:
                 # the last round
                 break
@@ -471,31 +489,11 @@ class GroupChatManager(ConversableAgent):
                     raise
             if reply is None:
                 break
-            if self.code_assistance_event_task:
-                try:
-                    response = await self.code_assistance_event_task()
-                except KeyboardInterrupt:
-                    break
-                if response:
-                    reply["content"] = f"\nRAN CODE ASSISTANT: {self.code_assistance_event_task_msg}\n\nRESPONSE:\n" + response
-                self.code_assistance_event_task = None
-                self.code_assistance_event_task_msg = None
-            elif self.nested_chat_event_task:
-                try:
-                    response = await self.nested_chat_event_task()
-                except KeyboardInterrupt:
-                    break
-                is_term = self._is_termination_msg(reply)
-                if response:
-                    reply["content"] += f"\n\nRAN NESTED CHAT: {self.nested_chat_event_task_msg}\n\n" + response
-                if is_term:
-                    reply["content"] += "\nTERMINATE"
-                    
-                self.nested_chat_event_task = None
-                self.nested_chat_event_task_msg = None
-                self.parent_group = None
+            # The speaker sends the message without requesting a reply
             await speaker.a_send(reply, self, request_reply=False)
             message = self.last_message(speaker)
+            if i == groupchat.max_round - 1:
+                groupchat.append(message, speaker)
         if self.client_cache is not None:
             for a in groupchat.agents:
                 a.client_cache = a.previous_cache
