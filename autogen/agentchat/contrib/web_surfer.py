@@ -256,7 +256,7 @@ class WebSurferAgent(ConversableAgent):
             # We are likely going to need to fix this later, but summarize only as many tokens that fit in the buffer
             limit = 4096
             try:
-                limit = get_max_token_limit(self.summarizer_llm_config["config_list"][0]["model"])
+                limit = get_max_token_limit(self.summarizer_llm_config["model"])
             except ValueError:
                 pass  # limit is unknown
             except TypeError:
