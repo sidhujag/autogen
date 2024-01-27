@@ -32,7 +32,7 @@ const ModelsView = ({}: any) => {
   const deleteModelUrl = `${serverUrl}/models/delete`;
 
   const defaultModel: IModelConfig = {
-    model: "gpt-4-1106-preview",
+    model: "gpt-4-turbo-preview",
     description: "Sample model",
     user_id: user?.email,
   };

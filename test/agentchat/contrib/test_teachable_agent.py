@@ -26,7 +26,7 @@ except ImportError:
 
 
 # Specify the model to use by uncommenting one of the following lines.
-# filter_dict={"model": ["gpt-4-1106-preview"]}
+# filter_dict={"model": ["gpt-4-turbo-preview"]}
 # filter_dict={"model": ["gpt-4-0613"]}
 # filter_dict={"model": ["gpt-3.5-turbo-1106"]}
 # filter_dict={"model": ["gpt-3.5-turbo-0613"]}

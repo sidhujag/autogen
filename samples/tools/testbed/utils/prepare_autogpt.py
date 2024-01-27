@@ -81,7 +81,7 @@ for data_path in data_paths:
         "template": "Templates/TwoAgents",
         "substitutions": {
             "scenario.py": {
-                "__MODEL__": "gpt-4-1106-preview",
+                "__MODEL__": "gpt-4-turbo-preview",
                 "__TASK__": data["task"],
                 "__TARGET_FOLDER__": f"file/{data['name']}" if artifacts_in else "",
             },

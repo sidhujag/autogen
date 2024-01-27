@@ -226,7 +226,7 @@ export const formatDuration = (seconds: number) => {
 export const sampleWorkflowConfig = (type = "twoagents") => {
   const llm_model_config: IModelConfig[] = [
     {
-      model: "gpt-4-1106-preview",
+      model: "gpt-4-turbo-preview",
     },
   ];
 
@@ -313,7 +313,7 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
 export const getModels = () => {
   const models = [
     {
-      model: "gpt-4-1106-preview",
+      model: "gpt-4-turbo-preview",
     },
     {
       model: "gpt-3.5-turbo-16k",
