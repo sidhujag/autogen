@@ -466,8 +466,11 @@ class GroupChatManager(ConversableAgent):
                     break
                 if messages:
                     for msg in messages:
+                        await speaker.a_send(msg, self, request_reply=False)
                         for agent in groupchat.agents:
-                            await self.a_send(msg, agent, request_reply=False, silent=True)
+                            if agent != speaker:
+                                await self.a_send(msg, agent, request_reply=False, silent=True)
+                        groupchat.append(msg, speaker)
                 self.nested_chat_event_task = None
                 self.parent_group = None
             if i == groupchat.max_round - 1:

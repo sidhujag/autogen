@@ -123,18 +123,18 @@ class GroupService:
             {
                 "role": "user",
                 "content": f"""
-    Read the above conversation and return a final response to the calling agent (group that messaged you) here. The query is repeated here for convenience:
+    Read the above conversation and return a final answer to the calling agent (group that messaged you) here. The query is repeated here for convenience:
 
     {message}
 
     To output the final response:
     
-    YOUR FINAL RESPONSE should be a summary but not miss details from the conversation that is pertitent for an answer to questioning agent. You should not assume context is provided to the group that messaged you as contexts are independent. You need to provide the output based on the query on what was requested. YOUR FINAL RESPONSE should include how well the final response captures the requirement of the query based on YOUR FINAL RATING.
-    YOUR FINAL RATING should be a number grading for the group like a teacher would grade. On a scale of 10 how well did the group completed the query it was assigned with by another group. Grade YOUR FINAL RESPONSE 0 - fail (no context or answer provided), 5 - improvements needed (calling agent has insufficient context or clarity), 7 - satisfactory (context provided but could be missing some salient points), 10 - exceptional (perfect response to query with all context and details). Just put the number.
+    YOUR FINAL ANSWER should be a summary but not miss details from the conversation that is pertitent for an answer to questioning agent. You should not assume context is provided to the group that messaged you as contexts are independent. You need to provide the output based on the query on what was requested. YOUR FINAL ANSWER should include how well the final answer captures the requirement of the query based on YOUR FINAL RATING.
+    YOUR FINAL RATING should be a number grading for the group like a teacher would grade. On a scale of 10 how well did the returned message answer the query. Grade YOUR FINAL RESPONSE 0 - fail (no context or answer provided), 5 - improvements needed (answer has insufficient context or clarity), 7 - satisfactory (answer provided but could be missing some salient points), 10 - exceptional (perfect answer to query with all context and details). Just put the number.
     
     Use the following template:
     
-    [YOUR FINAL RESPONSE]
+    [YOUR FINAL ANSWER]
     RATING: [YOUR FINAL RATING]""",
             }
         )
@@ -149,7 +149,7 @@ class GroupService:
             return [
                 {
                     "role": "user",
-                    "content": message
+                    "content": f"A nested chat to group: '{recipient.name}', was initiated with the message: '{message}', and the group has returned with an answer (see next message)."
                 },
                 {
                     "role": "assistant",
@@ -170,7 +170,7 @@ class GroupService:
             return [
                 {
                     "role": "user",
-                    "content": message
+                    "content": f"A nested chat to group: '{recipient.name}', was initiated with the message: '{message}', and the group has returned with an answer (see next message)."
                 },
                 {
                     "role": "assistant",
