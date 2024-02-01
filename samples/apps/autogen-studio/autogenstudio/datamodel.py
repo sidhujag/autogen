@@ -200,7 +200,6 @@ class AgentWorkFlowConfig:
     id: Optional[str] = None
     user_id: Optional[str] = None
     timestamp: Optional[str] = None
-    session_id: Optional[str] = None
     # how the agent message summary is generated. last: only last message is used, none: no summary,  llm: use llm to generate summary
     summary_method: Optional[Literal["last", "none", "llm"]] = "last"
 
@@ -244,7 +243,6 @@ class Session(object):
             self.timestamp = datetime.now().isoformat()
         if self.id is None:
             self.id = str(uuid.uuid4())
-            self.flow_config.session_id = self.id
 
     def dict(self):
         result = asdict(self)
