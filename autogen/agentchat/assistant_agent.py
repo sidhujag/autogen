@@ -70,9 +70,6 @@ Reply "TERMINATE" in the end when everything is done.
             **kwargs,
         )
 
-            # Pass the session context to the parent class
-            self.session_context = SessionContext()
-
         # Update the provided description if None, and we are using the default system_message,
         # then use the default description.
         if description is None:

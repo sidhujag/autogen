@@ -25,7 +25,6 @@ from ..code_utils import (
 from ..function_utils import get_function_schema, load_basemodels_if_needed, serialize_to_str
 from .agent import Agent
 from .._pydantic import model_dump
-from samples.apps.autogen-studio.autogenstudio.session_context import SessionContext
 
 try:
     from termcolor import colored
@@ -324,8 +323,6 @@ class ConversableAgent(Agent):
         """
         return None if self._code_execution_config is False else self._code_execution_config.get("use_docker")
 
-        self.session_context = SessionContext()
-
     def _message_to_dict(self, message: Union[Dict, str]) -> Dict:
         """Convert a message to a dictionary.
 
@@ -348,9 +345,6 @@ class ConversableAgent(Agent):
             return {"content": f"{prefix}{message}"}
 
         elif isinstance(message, dict) and 'content' in message:
-            # Include session ID in the system prompt
-            if 'session_id' in message:
-                message['content'] = f"Session ID: {message['session_id']} - {message['content']}"
             if 'content' in message and message['content']:
                 message['content'] = remove_previous_names(message['content'])
                 message['content'] = f"{prefix}{message['content']}"
