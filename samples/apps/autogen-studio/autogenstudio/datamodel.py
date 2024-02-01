@@ -238,6 +238,7 @@ class Session(object):
     id: Optional[str] = None
     timestamp: Optional[str] = None
     flow_config: AgentWorkFlowConfig = None
+    context_id: Optional[str] = None
 
     def __post_init__(self):
         if self.timestamp is None:
@@ -245,10 +246,13 @@ class Session(object):
         if self.id is None:
             self.id = str(uuid.uuid4())
             self.flow_config.session_id = self.id
+        if self.context_id is None:
+            self.context_id = str(uuid.uuid4())
 
     def dict(self):
         result = asdict(self)
         result["flow_config"] = self.flow_config.dict()
+        result["context_id"] = self.context_id
         return result
 
 
@@ -298,3 +302,17 @@ class DBWebRequestModel(object):
     agent: Optional[AgentFlowSpec] = None
     workflow: Optional[AgentWorkFlowConfig] = None
     model: Optional[Model] = None
+@dataclass
+class StorageSessionContextSkill:
+    """Skill to create and manage a storage session context"""
+
+    def create_context(self, session: Session) -> str:
+        """Create a new storage session context"""
+        session.context_id = str(uuid.uuid4())
+        return session.context_id
+
+    def setup_storage_context(self, session: Session, storage_service: Any) -> None:
+        """Setup the storage session context"""
+        # This method should be implemented to interact with the actual storage service
+        # For example, it could initialize a namespace or a directory for the session context
+        pass
