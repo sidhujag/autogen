@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 class CodingAssistantService:
-    assistants_exist: Set[str] = {}
+    assistants_exist: Set[str] = set()
     
     @staticmethod
     def create_coding_assistant(
@@ -40,7 +40,7 @@ class CodingAssistantService:
             if 'error' in clone_response:
                 return None, clone_response
         
-        io = InputOutput(pretty=True, yes=True, input_history_file=f".aider.input.history-{assistant_name}", chat_history_file=f".aider.chat.history-{assistant_name}.md")
+        io = InputOutput(pretty=False, yes=True, input_history_file=f".aider.input.history-{assistant_name}", chat_history_file=f".aider.chat.history-{assistant_name}.md")
         client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         main_model = models.Model.create("gpt-4-turbo-preview", client)
         coder = Coder.create(
