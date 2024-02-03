@@ -84,6 +84,7 @@ def get_file_type(file_path: str) -> str:
         ".pl",
         ".sql",
         ".config",
+        ".txt",
     }
 
     # Supported image extensions
