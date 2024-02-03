@@ -74,7 +74,6 @@ class ConversableAgent(Agent):
         llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
         description: Optional[str] = None,
-        prefix_message: Optional[str] = None,
     ):
         """
         Args:
@@ -191,8 +190,7 @@ class ConversableAgent(Agent):
         # Registered hooks are kept in lists, indexed by hookable method, to be called in their order of registration.
         # New hookable methods should be added to this list as required to support new agent capabilities.
         self.hook_lists = {self.process_last_message: []}  # This is currently the only hookable method.
-        self.prefix_message = prefix_message
-        
+
     def register_reply(
         self,
         trigger: Union[Type[Agent], str, Agent, Callable[[Agent], bool], List],
@@ -332,37 +330,18 @@ class ConversableAgent(Agent):
         """
         return None if self._code_execution_config is False else self._code_execution_config.get("use_docker")
 
-    def _message_to_dict(self, message: Union[Dict, str]) -> Dict:
+    @staticmethod
+    def _message_to_dict(message: Union[Dict, str]) -> Dict:
         """Convert a message to a dictionary.
 
         The message can be a string or a dictionary. The string will be put in the "content" field of the new dictionary.
-        This method ensures that 'self.prefix_message' is always prepended to the message content, and any previous prepends are removed.
         """
-        def remove_previous_names(text):
-            while ':' in text:
-                potential_name, _, remainder = text.partition(':')
-                if potential_name.strip().isidentifier():
-                    text = remainder.strip()
-                else:
-                    break
-            return text
-        prefix = ''
-        if self.prefix_message:
-            prefix = f"{self.prefix_message}: " 
         if isinstance(message, str):
-            message = remove_previous_names(message)
-            return {"content": f"{prefix}{message}"}
-
-        elif isinstance(message, dict) and 'content' in message:
-            if 'content' in message and message['content']:
-                message['content'] = remove_previous_names(message['content'])
-                message['content'] = f"{prefix}{message['content']}"
+            return {"content": message}
+        elif isinstance(message, dict):
             return message
-
         else:
-            # Handle cases where message is neither a string nor a dictionary with 'content'
             return dict(message)
-
 
     @staticmethod
     def _normalize_name(name):
@@ -1581,15 +1560,13 @@ class ConversableAgent(Agent):
 
         is_exec_success = False
         if func is not None:
-            arguments = func_call.get("arguments", "{}")
-            if isinstance(arguments, str):
-                # Extract arguments from a json-like string and put it into a dict.
-                input_string = self._format_json_str(arguments)
-                try:
-                    arguments = json.loads(input_string)
-                except json.JSONDecodeError as e:
-                    arguments = None
-                    content = f"Error: {e}\n Your argument should follow json format. input_string {input_string}"
+            # Extract arguments from a json-like string and put it into a dict.
+            input_string = self._format_json_str(func_call.get("arguments", "{}"))
+            try:
+                arguments = json.loads(input_string)
+            except json.JSONDecodeError as e:
+                arguments = None
+                content = f"Error: {e}\n You argument should follow json format."
 
             # Try to execute the function
             if arguments is not None:

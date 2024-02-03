@@ -1,4 +1,5 @@
 from collections import defaultdict
+import openai
 import json
 import time
 import logging
@@ -12,13 +13,13 @@ from typing import Dict, Optional, Union, List, Tuple, Any
 
 logger = logging.getLogger(__name__)
 
+
 class GPTAssistantAgent(ConversableAgent):
     """
     An experimental AutoGen agent class that leverages the OpenAI Assistant API for conversational capabilities.
     This agent is unique in its reliance on the OpenAI Assistant for state management, differing from other agents like ConversableAgent.
     """
-    cancellation_requested: bool = False
-    cancellation_msg: str = ""
+
     def __init__(
         self,
         name="GPT Assistant",
@@ -40,7 +41,7 @@ class GPTAssistantAgent(ConversableAgent):
             system message will be set to the existing assistant instructions.
             llm_config (dict or False): llm inference configuration.
                 - assistant_id: ID of the assistant to use. If None, a new assistant will be created.
-                - model: Model to use for the assistant (gpt-4-turbo-preview, gpt-3.5-turbo-1106).
+                - model: Model to use for the assistant (gpt-4-1106-preview, gpt-3.5-turbo-1106).
                 - check_every_ms: check thread run status interval
                 - tools: Give Assistants access to OpenAI-hosted tools like Code Interpreter and Knowledge Retrieval,
                         or build your own tools using Function calling. ref https://platform.openai.com/docs/assistants/tools
@@ -78,7 +79,7 @@ class GPTAssistantAgent(ConversableAgent):
                     name=name,
                     instructions=instructions,
                     tools=llm_config.get("tools", []),
-                    model=llm_config.get("model", "gpt-4-turbo-preview"),
+                    model=llm_config.get("model", "gpt-4-1106-preview"),
                     file_ids=llm_config.get("file_ids", []),
                 )
             else:
@@ -137,73 +138,15 @@ class GPTAssistantAgent(ConversableAgent):
 
         self._verbose = kwargs.pop("verbose", False)
         super().__init__(
-            name=name, system_message=instructions, llm_config=llm_config, **kwargs
+            name=name, system_message=instructions, human_input_mode="NEVER", llm_config=llm_config, **kwargs
         )
-        # lazly create thread
 
         # lazily create threads
         self._openai_threads = {}
         self._unread_index = defaultdict(int)
-        self.register_reply([Agent, None], GPTAssistantAgent._invoke_assistant, position=1)
+        self.register_reply(Agent, GPTAssistantAgent._invoke_assistant)
 
-    @staticmethod
-    def check_for_cancellation():
-        """
-        Checks for cancellation used during _get_run_response
-        """
-        return GPTAssistantAgent.cancellation_requested
-
-    @staticmethod
-    def cancel_run(cancel_msg: str):
-        GPTAssistantAgent.cancellation_requested = True
-        GPTAssistantAgent.cancellation_msg = cancel_msg
-
-    async def execute_run(self, assistant_thread, max_retries=5):
-        retries = 0
-        run = None
-        response = None
-        while retries < max_retries:
-            try:
-                # Attempt to create a new run to get responses from the assistant
-                run = self._openai_client.beta.threads.runs.create(
-                    thread_id=assistant_thread.id,
-                    assistant_id=self._openai_assistant.id,
-                    instructions=self.system_message,
-                )
-                # If the run was created successfully, get the response
-                response, run = await self._get_run_response(assistant_thread, run)
-                # Check if the run failed due to a server error
-                if run and run.status == "failed" and run.last_error:
-                    if (run.last_error.code == 'server_error' and 
-                        run.last_error.message == 'Sorry, something went wrong.'):
-                        retries += 1
-                        print(f"Attempt {retries} failed with server error: {run.last_error.message}")
-                        if retries < max_retries:
-                            print("Retrying...")
-                            continue
-                        else:
-                            print("Max retries reached. Giving up.")
-                            break
-                    else:
-                        # Handle other types of errors that might be present
-                        print(f"Run failed with a different error: {run.last_error.message}")
-                        break
-                break  # Exit loop if successful
-            except KeyboardInterrupt:
-                self._cancel_run(run.id, assistant_thread.id)
-                GPTAssistantAgent.cancellation_requested = False
-                GPTAssistantAgent.cancellation_msg = ""
-                raise
-            except Exception as e:
-                # If run is None or there's no last_error, it's an unexpected situation
-                print(f"An unexpected error occurred: {e}")
-                break
-
-        GPTAssistantAgent.cancellation_requested = False
-        GPTAssistantAgent.cancellation_msg = ""
-        return response
-    
-    async def _invoke_assistant(
+    def _invoke_assistant(
         self,
         messages: Optional[List[Dict]] = None,
         sender: Optional[Agent] = None,
@@ -220,24 +163,16 @@ class GPTAssistantAgent(ConversableAgent):
         Returns:
             A tuple containing a boolean indicating success and the assistant's reply.
         """
-        from ..groupchat import GroupChatManager
-        from ..service import GroupService
+
         if messages is None:
             messages = self._oai_messages[sender]
         unread_index = self._unread_index[sender] or 0
         pending_messages = messages[unread_index:]
+
         # Check and initiate a new thread if necessary
         if self._openai_threads.get(sender, None) is None:
-            msgs = []
-            if isinstance(sender, GroupChatManager):
-                group_response = json.loads(await GroupService.get_group_info(sender.name, True))
-                group_intro = f'To start this thread of conversation amongst multiple agents, I will give you group information and agents inside it, please note new agents may come, some may leave and you are to track them as you conversate within a group of agents. Note the instructions for each assistant in the thread and instructions every time you are asked to respond which will be for the assistant thats responding to the conversation. Assistant messages come from API responses from the agent in the previous message. For those that have termination access, terminate if you see the discussion and going in circles, to save costs. Do not terminate if a path does not work out right away, exhaust all of your possibilities to try different things to try to solve the problem. If the conversation shows there is a satisfactory answer already, terminate. If you have nothing to add either terminate or say you have nothing to add. Ensure the responses reflect the groups message history. Group Info: {group_response["response"]}'
-                msgs.append({
-                    "role": "user",
-                    "content": group_intro,
-                })
             self._openai_threads[sender] = self._openai_client.beta.threads.create(
-                messages=msgs,
+                messages=[],
             )
         assistant_thread = self._openai_threads[sender]
         # Process each unread message
@@ -245,116 +180,74 @@ class GPTAssistantAgent(ConversableAgent):
             self._openai_client.beta.threads.messages.create(
                 thread_id=assistant_thread.id,
                 content=message["content"],
-                role="user",
+                role=message["role"],
             )
-        #self.pretty_print_thread(assistant_thread)
-        
-        response = await self.execute_run(assistant_thread)
+
+        # Create a new run to get responses from the assistant
+        run = self._openai_client.beta.threads.runs.create(
+            thread_id=assistant_thread.id,
+            assistant_id=self._openai_assistant.id,
+            # pass the latest system message as instructions
+            instructions=self.system_message,
+        )
+
+        run_response_messages = self._get_run_response(assistant_thread, run)
+        assert len(run_response_messages) > 0, "No response from the assistant."
+
+        response = {
+            "role": run_response_messages[-1]["role"],
+            "content": "",
+        }
+        for message in run_response_messages:
+            # just logging or do something with the intermediate messages?
+            # if current response is not empty and there is more, append new lines
+            if len(response["content"]) > 0:
+                response["content"] += "\n\n"
+            response["content"] += message["content"]
+
         self._unread_index[sender] = len(self._oai_messages[sender]) + 1
-        if response and "content" in response and response["content"]:
-            return True, response
-        else:
-            return False, "No response from the assistant."
+        return True, response
 
-    def _process_messages(self, assistant_thread, run):
-        """
-        Processes and provides a response based on the run status.
-        Args:
-            assistant_thread: The thread object for the assistant.
-            run: The run object initiated with the OpenAI assistant.
-        """
-        if run.status == "failed":
-            logger.error(f'Run: {run.id} Thread: {assistant_thread.id}: failed...')
-            if run.last_error:
-                response = {
-                    "role": "assistant",
-                    "content": str(run.last_error),
-                }
-            else:
-                response = {
-                    "role": "assistant",
-                    "content": 'Failed',
-                }
-            return response, run
-        elif run.status == "expired":
-            logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: expired...')
-            response = {
-                "role": "assistant",
-                "content": 'Expired',
-            }
-            return new_messages, run
-        elif run.status == "cancelled":
-            logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: cancelled...')
-            response = {
-                "role": "assistant",
-                "content": 'Run Cancelled',
-            }
-            if GPTAssistantAgent.cancellation_msg != "":
-                response["content"] = GPTAssistantAgent.cancellation_msg
-            return response, run
-        elif run.status == "completed":
-            logger.info(f'Run: {run.id} Thread: {assistant_thread.id}: completed...')
-            response_messages = self._openai_client.beta.threads.messages.list(assistant_thread.id, order="asc")
-            new_messages = []
-            for msg in response_messages:
-                if msg.run_id == run.id:
-                    for content in msg.content:
-                        if content.type == "text":
-                            new_messages.append(
-                                {"role": msg.role, "content": self._format_assistant_message(content.text)}
-                            )
-                        elif content.type == "image_file":
-                            new_messages.append(
-                                {
-                                    "role": msg.role,
-                                    "content": f"Received file id={content.image_file.file_id}",
-                                }
-                            )
-            response = {
-                "role": new_messages[-1]["role"],
-                "content": "",
-            }
-            for message in new_messages:
-                # just logging or do something with the intermediate messages?
-                # if current response is not empty and there is more, append new lines
-                if len(response["content"]) > 0:
-                    response["content"] += "\n\n"
-                response["content"] += message["content"]
-            return response, run
-
-    async def _get_run_response(self, assistant_thread, run):
+    def _get_run_response(self, thread, run):
         """
         Waits for and processes the response of a run from the OpenAI assistant.
+
         Args:
-            assistant_thread: The thread object for the assistant.
             run: The run object initiated with the OpenAI assistant.
+
+        Returns:
+            Updated run object, status of the run, and response messages.
         """
-        from autogen.agentchat.service import GetFunctionModel, FunctionsService
         while True:
-            run = self._openai_client.beta.threads.runs.retrieve(run.id, thread_id=assistant_thread.id)
-            if run.status == "in_progress" or run.status == "queued":
-                time.sleep(self.llm_config.get("check_every_ms", 1000) / 1000)
-            elif run.status == "completed" or run.status == "cancelled" or run.status == "expired" or run.status == "failed":
-                return self._process_messages(assistant_thread, run)
-            elif run.status == "cancelling":
-                logger.warn(f'Run: {run.id} Thread: {assistant_thread.id}: cancelling...')
+            run = self._wait_for_run(run.id, thread.id)
+            if run.status == "completed":
+                response_messages = self._openai_client.beta.threads.messages.list(thread.id, order="asc")
+
+                new_messages = []
+                for msg in response_messages:
+                    if msg.run_id == run.id:
+                        for content in msg.content:
+                            if content.type == "text":
+                                new_messages.append(
+                                    {"role": msg.role, "content": self._format_assistant_message(content.text)}
+                                )
+                            elif content.type == "image_file":
+                                new_messages.append(
+                                    {
+                                        "role": msg.role,
+                                        "content": f"Received file id={content.image_file.file_id}",
+                                    }
+                                )
+                return new_messages
             elif run.status == "requires_action":
-                logger.info(f'Run: {run.id} Thread: {assistant_thread.id}: required action...')
                 actions = []
                 for tool_call in run.required_action.submit_tool_outputs.tool_calls:
                     function = tool_call.function
-                    function_dict = function.dict()
-                    # if function not found in function map then try to find it from registry and add it before executing
-                    if not self.can_execute_function(function_dict["name"]):
-                        function = await FunctionsService.get_functions([GetFunctionModel(name=function_dict["name"])])
-                        if function:
-                            response = FunctionsService.define_function_internal(self, function[0])
-                            logger.info(f"Tool definition on demand ({function_dict['name']}), response: {response}")
-                    is_exec_success, tool_response = await self.a_execute_function(function_dict)
+                    is_exec_success, tool_response = self.execute_function(function.dict(), self._verbose)
                     tool_response["metadata"] = {
                         "tool_call_id": tool_call.id,
                         "run_id": run.id,
-                        "thread_id": assistant_thread.id,
+                        "thread_id": thread.id,
                     }
 
                     logger.info(
@@ -371,36 +264,38 @@ class GPTAssistantAgent(ConversableAgent):
                         for action in actions
                     ],
                     "run_id": run.id,
-                    "thread_id": assistant_thread.id,
+                    "thread_id": thread.id,
                 }
-                if GPTAssistantAgent.check_for_cancellation():
-                    self._cancel_run(run.id, assistant_thread.id)
-                else:
-                    run = self._openai_client.beta.threads.runs.submit_tool_outputs(**submit_tool_outputs)
+
+                run = self._openai_client.beta.threads.runs.submit_tool_outputs(**submit_tool_outputs)
             else:
                 run_info = json.dumps(run.dict(), indent=2)
                 raise ValueError(f"Unexpected run status: {run.status}. Full run info:\n\n{run_info})")
 
-
-    def _cancel_run(self, run_id: str, thread_id: str):
+    def _wait_for_run(self, run_id: str, thread_id: str) -> Any:
         """
-        Cancels a run.
+        Waits for a run to complete or reach a final state.
 
         Args:
             run_id: The ID of the run.
             thread_id: The ID of the thread associated with the run.
-        """
-        try:
-            self._openai_client.beta.threads.runs.cancel(run_id=run_id, thread_id=thread_id)
-            logger.info(f'Run: {run_id} Thread: {thread_id}: successfully sent cancellation signal.')
-        except Exception as e:
-            logger.error(f'Run: {run_id} Thread: {thread_id}: failed to send cancellation signal: {e}')
 
+        Returns:
+            The updated run object after completion or reaching a final state.
+        """
+        in_progress = True
+        while in_progress:
+            run = self._openai_client.beta.threads.runs.retrieve(run_id, thread_id=thread_id)
+            in_progress = run.status in ("in_progress", "queued")
+            if in_progress:
+                time.sleep(self.llm_config.get("check_every_ms", 1000) / 1000)
+        return run
 
     def _format_assistant_message(self, message_content):
         """
         Formats the assistant's message to include annotations and citations.
         """
+
         annotations = message_content.annotations
         citations = []
 
@@ -427,6 +322,10 @@ class GPTAssistantAgent(ConversableAgent):
         # Add footnotes to the end of the message before displaying to user
         message_content.value += "\n" + "\n".join(citations)
         return message_content.value
+
+    def can_execute_function(self, name: str) -> bool:
+        """Whether the agent can execute the function."""
+        return False
 
     def reset(self):
         """
@@ -460,9 +359,11 @@ class GPTAssistantAgent(ConversableAgent):
         if thread is None:
             print("No thread to print")
             return
+        # NOTE: that list may not be in order, sorting by created_at is important
         messages = self._openai_client.beta.threads.messages.list(
             thread_id=thread.id,
         )
+        messages = sorted(messages.data, key=lambda x: x.created_at)
         print("~~~~~~~THREAD CONTENTS~~~~~~~")
         for message in messages:
             content_types = [content.type for content in message.content]

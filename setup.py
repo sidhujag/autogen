@@ -19,9 +19,6 @@ install_requires = [
     "termcolor",
     "flaml",
     "python-dotenv",
-    "fastapi",
-    "uvicorn",
-    "gunicorn",
     "tiktoken",
     "aider-chat @ git+https://github.com/paul-gauthier/aider.git",
     "pydantic>=1.10,<3",  # could be both V1 and V2

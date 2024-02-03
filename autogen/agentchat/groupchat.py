@@ -2,7 +2,6 @@ import logging
 import random
 import re
 import sys
-import asyncio
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Tuple
 
@@ -94,12 +93,11 @@ class GroupChat:
         """Return the system message for selecting the next speaker. This is always the *first* message in the context."""
         if agents is None:
             agents = self.agents
-        return f"""You are a speaker selector in a chat group. The following speakers are available:
-
+        return f"""You are in a role play game. The following roles are available:
 {self._participant_roles(agents)}.
 
 Read the following conversation.
-Then select the next role from {[agent.name for agent in agents]} to play. Take note of roles' capabilities for deciding the next role. Don't select the same role repeatedly unless its intentional. For assistant responses that don't have a role prepended, assume the role is one from the message prior. Only return the role."""
+Then select the next role from {[agent.name for agent in agents]} to play. Only return the role."""
 
     def select_speaker_prompt(self, agents: Optional[List[Agent]] = None) -> str:
         """Return the floating system prompt selecting the next speaker. This is always the *last* message in the context."""
@@ -261,7 +259,6 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
             return self.next_agent(last_speaker, agents)
 
     def _participant_roles(self, agents: List[Agent] = None) -> str:
-        from autogen.agentchat.service import AgentService
         # Default to all agents registered
         if agents is None:
             agents = self.agents
@@ -272,8 +269,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
                 logger.warning(
                     f"The agent '{agent.name}' has an empty description, and may not work well with GroupChat."
                 )
-            capability_instr = AgentService.get_capability_instructions(agent.capability)
-            roles.append(f"{agent.name}, {agent.description}, {capability_instr}".strip())
+            roles.append(f"{agent.name}: {agent.description}".strip())
         return "\n".join(roles)
 
     def _mentioned_agents(self, message_content: Union[str, List], agents: List[Agent]) -> Dict:
@@ -304,10 +300,6 @@ Then select the next role from {[agent.name for agent in agents]} to play. Take 
 
 class GroupChatManager(ConversableAgent):
     """(In preview) A chat manager agent that can manage a group chat of multiple agents."""
-    @property
-    def agent_names(self) -> List[str]:
-        """Return the names of the agents in the group chat."""
-        return self.groupchat.agent_names
 
     def __init__(
         self,
@@ -345,15 +337,6 @@ class GroupChatManager(ConversableAgent):
             reset_config=GroupChat.reset,
             ignore_async_in_sync_chat=True,
         )
-        self.groupchat = groupchat
-        self.description = ""
-        self.incoming = {}
-        self.outgoing = {}
-        self.code_assistance_event_task = None
-        self.nested_chat_event_task = None
-        self.parent_group = None
-        self.current_code_assistant_name = None
-        self.locked = False
 
     def _prepare_chat(self, recipient: ConversableAgent, clear_history: bool, prepare_recipient: bool = True) -> None:
         super()._prepare_chat(recipient, clear_history, prepare_recipient)
@@ -372,7 +355,6 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ) -> Tuple[bool, Optional[str]]:
         """Run a group chat."""
-        from autogen.agentchat.service import AgentService, GroupService
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
@@ -383,14 +365,12 @@ class GroupChatManager(ConversableAgent):
                 a.previous_cache = a.client_cache
                 a.client_cache = self.client_cache
         for i in range(groupchat.max_round):
-            GroupService.current_group_name = self.name
             groupchat.append(message, speaker)
             if self._is_termination_msg(message):
                 # The conversation is over
                 break
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
-                AgentService.update_agent_system_message(agent, self)
                 if agent != speaker:
                     self.send(message, agent, request_reply=False, silent=True)
             if i == groupchat.max_round - 1:
@@ -438,53 +418,26 @@ class GroupChatManager(ConversableAgent):
         config: Optional[GroupChat] = None,
     ):
         """Run a group chat asynchronously."""
-        from autogen.agentchat.service import AgentService, GroupService
         if messages is None:
             messages = self._oai_messages[sender]
         message = messages[-1]
         speaker = sender
         groupchat = config
-
         if self.client_cache is not None:
             for a in groupchat.agents:
                 a.previous_cache = a.client_cache
                 a.client_cache = self.client_cache
         for i in range(groupchat.max_round):
-            GroupService.current_group_name = self.name
             groupchat.append(message, speaker)
+
             if self._is_termination_msg(message):
                 # The conversation is over
                 break
+
             # broadcast the message to all agents except the speaker
             for agent in groupchat.agents:
-                AgentService.update_agent_system_message(agent, self)
                 if agent != speaker:
                     await self.a_send(message, agent, request_reply=False, silent=True)
-            if self.code_assistance_event_task:
-                try:
-                    messages = await self.code_assistance_event_task()
-                except KeyboardInterrupt:
-                    break
-                if messages:
-                    for msg in messages:
-                        for agent in groupchat.agents:
-                            await self.a_send(msg, agent, request_reply=False, silent=True)
-                self.code_assistance_event_task = None
-                self.code_assistance_user = None
-            elif self.nested_chat_event_task:
-                try:
-                    messages = await self.nested_chat_event_task()
-                except KeyboardInterrupt:
-                    break
-                if messages:
-                    for msg in messages:
-                        await speaker.a_send(msg, self, request_reply=False)
-                        for agent in groupchat.agents:
-                            if agent != speaker:
-                                await self.a_send(msg, agent, request_reply=False, silent=True)
-                        groupchat.append(msg, speaker)
-                self.nested_chat_event_task = None
-                self.parent_group = None
             if i == groupchat.max_round - 1:
                 # the last round
                 break
@@ -507,8 +460,6 @@ class GroupChatManager(ConversableAgent):
             # The speaker sends the message without requesting a reply
             await speaker.a_send(reply, self, request_reply=False)
             message = self.last_message(speaker)
-            if i == groupchat.max_round - 1:
-                groupchat.append(message, speaker)
         if self.client_cache is not None:
             for a in groupchat.agents:
                 a.client_cache = a.previous_cache
