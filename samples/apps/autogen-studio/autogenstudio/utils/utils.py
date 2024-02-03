@@ -152,23 +152,26 @@ def get_modified_files(
 
     :return: A list of dictionaries with details of file paths in dest_dir that were modified and copied over.
              Dictionary format: {path: "", name: "", extension: ""}
-             Files with extensions "__pycache__", "*.pyc", "__init__.py", and "*.cache"
-             are ignored.
+             Files with extensions "__pycache__", "*.pyc", "__init__.py", "*.cache",
+             and directories/files starting with ".git" or ".aider", or files without an extension are ignored.
     """
     modified_files = []
-    ignore_extensions = {".pyc", ".cache"}
+    ignore_extensions = {".pyc", ".cache", ""}
     ignore_files = {"__pycache__", "__init__.py"}
+    ignore_prefixes = {".git", ".aider"}
 
     for root, dirs, files in os.walk(source_dir):
-        # Excluding the directory "__pycache__" if present
-        dirs[:] = [d for d in dirs if d not in ignore_files]
+        # Excluding directories and files based on ignore criteria
+        dirs[:] = [d for d in dirs if d not in ignore_files and not any(d.startswith(prefix) for prefix in ignore_prefixes)]
+        files = [f for f in files if not any(f.startswith(prefix) for prefix in ignore_prefixes)]
 
         for file in files:
             file_path = os.path.join(root, file)
             file_ext = os.path.splitext(file)[1]
             file_name = os.path.basename(file)
 
-            if file_ext in ignore_extensions or file_name in ignore_files:
+            # Ignore files based on extension, name, or prefix
+            if file_ext in ignore_extensions or file_name in ignore_files or any(file.startswith(prefix) for prefix in ignore_prefixes):
                 continue
 
             file_mtime = os.path.getmtime(file_path)
