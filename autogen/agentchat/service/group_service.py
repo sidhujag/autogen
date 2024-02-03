@@ -17,64 +17,6 @@ MANAGEMENT = 32
 class GroupService:
     current_group_name: str = None
     @staticmethod
-    async def start_code_assistance_task(task_func, callback, *args, **kwargs):
-        response_callback = None
-        try:
-            # Run the long-running task
-            messages = await task_func(*args, **kwargs)
-            # Process the results or error using the callback
-            if callback:
-                response_callback = await callback(*args, messages)
-        except Exception as e:
-            # Handle any unexpected errors here
-            logging.error(f"Error in code assistance task: {e}")
-        return response_callback
-
-    @staticmethod
-    async def process_code_assistance_results(coder, code_repository, command_message, messages):
-        from . import BackendService, CodeExecInput, CodeRequestInput
-        if not messages:
-            return [
-                {
-                    "role": "user",
-                    "content": command_message
-                },
-                {
-                    "role": "assistant",
-                    "content": "Unknown error"
-                }
-            ]
-        if code_repository.is_forked:
-            pr_title = "Feature: Adding new features by agent"
-            pr_body = coder.description
-            git_response, err = await BackendService.create_github_pull_request(CodeRequestInput(
-                repository_name=coder.repository_name,
-                title=pr_title,
-                body=pr_body,
-                branch=coder.repo.active_branch
-            ))
-            if err is not None:
-                logging.error(f"command_pull_request failed: {err}")
-                return [
-                {
-                    "role": "user",
-                    "content": command_message
-                },
-                {
-                    "role": "assistant",
-                    "content": json.dumps(err)
-                }
-            ]
-        else:
-            git_response, err = await BackendService.execute_git_command(CodeExecInput(
-                workspace=code_repository.workspace,
-                command_git_command="push",
-            ))
-            if err is not None:
-                logging.error(f"command_git_command failed: {err}")
-        return messages
-
-    @staticmethod
     async def start_nested_task(current_group_name: str, callback, *args, **kwargs):
         from . import GroupService, GetGroupModel
         response_callback = None

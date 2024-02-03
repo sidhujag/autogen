@@ -239,7 +239,7 @@ def get_skills_from_prompt(skills: List[Skill], work_dir: str) -> str:
     instruction = """
 
 While solving the task you may use functions below which will be available in a file called skills.py .
-To use a function skill.py in code, IMPORT THE FUNCTION FROM skills.py  and then use the function.
+To use a function skill.py in code, IMPORT THE FUNCTION FROM skills.py and then use the function.
 If you need to install python packages, write shell code to
 install via pip and use --quiet option.
 

@@ -9,9 +9,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from hashlib import md5
 from typing import Callable, Dict, List, Optional, Tuple, Union
-
+from dotenv import load_dotenv
 from autogen import oai
-
 try:
     import docker
 except ImportError:
@@ -356,6 +355,9 @@ def execute_code(
         str: The error message if the code fails to execute; the stdout otherwise.
         image: The docker image name after container run when docker is used.
     """
+    # Load .env file variables into os.environ, if not already loaded
+    load_dotenv()
+    # Now access the variables as before
     if all((code is None, filename is None)):
         error_msg = f"Either {code=} or {filename=} must be provided."
         logger.error(error_msg)
@@ -475,6 +477,7 @@ def execute_code(
         detach=True,
         # get absolute path to the working directory
         volumes={abs_path: {"bind": "/workspace", "mode": "rw"}},
+        environment=dict(os.environ),
     )
     start_time = time.time()
     while container.status != "exited" and time.time() - start_time < timeout:
