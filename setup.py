@@ -48,7 +48,7 @@ setuptools.setup(
             "nbformat",
             "pre-commit",
             "pytest-asyncio",
-            "pytest>=6.1.1",
+            "pytest>=6.1.1,<8",
         ],
         "blendsearch": ["flaml[blendsearch]"],
         "mathchat": ["sympy", "pydantic==1.10.9", "wolframalpha"],
