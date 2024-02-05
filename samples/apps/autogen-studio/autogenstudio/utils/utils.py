@@ -309,7 +309,7 @@ def get_default_agent_config(work_dir: str) -> AgentWorkFlowConfig:
     """
 
     llm_config = LLMConfig(
-        config_list=[{"model": "gpt-4"}],
+        config_list=[{"model": "gpt-4-turbo-preview"}],
         temperature=0,
     )
 

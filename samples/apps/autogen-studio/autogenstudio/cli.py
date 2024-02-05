@@ -2,13 +2,21 @@ import os
 from typing_extensions import Annotated
 import typer
 import uvicorn
+import threading
 
 from .version import VERSION
 from .utils.dbutils import DBManager
 
 app = typer.Typer()
 
-
+def run_server(host, port, reload, workers):
+    uvicorn.run(
+        "autogenstudio.web.app:app",
+        host=host,
+        port=port,
+        workers=workers,
+        reload=reload,
+    )
 @app.command()
 def ui(
     host: str = "127.0.0.1",
@@ -34,6 +42,9 @@ def ui(
     if appdir:
         os.environ["AUTOGENSTUDIO_APPDIR"] = appdir
 
+    thread1 = threading.Thread(target=run_server, args=(host, port - 1, reload, workers))
+    thread1.start()
+    
     uvicorn.run(
         "autogenstudio.web.app:app",
         host=host,
@@ -41,6 +52,7 @@ def ui(
         workers=workers,
         reload=reload,
     )
+    thread1.join()
 
 
 @app.command()

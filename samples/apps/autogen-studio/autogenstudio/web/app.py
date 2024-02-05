@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi import HTTPException
 from ..version import VERSION
-
 from ..datamodel import (
     ChatWebRequestModel,
     DBWebRequestModel,
@@ -29,6 +28,7 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:8001",
+        "http://localhost:8080",
         "http://localhost:8081",
     ],
     allow_credentials=True,
@@ -245,6 +245,28 @@ async def get_user_skills(user_id: str):
             "message": "Error occurred while retrieving skills: " + str(ex_error),
         }
 
+@api.get("/skill")
+async def get_skill(id: str):
+    try:
+        skill = dbutils.get_skill(id, dbmanager=dbmanager)
+        if skill:
+            return {
+                "status": True,
+                "message": "Skill retrieved successfully",
+                "data": skill,
+            }
+        else:
+            return {
+                "status": False,
+                "message": "Skill not found"
+            }
+    except Exception as ex_error:
+        print(ex_error)
+        return {
+            "status": False,
+            "message": "Error occurred while retrieving skill: " + str(ex_error),
+        }
+
 
 @api.post("/skills")
 async def create_user_skills(req: DBWebRequestModel):
@@ -303,17 +325,36 @@ async def get_user_agents(user_id: str):
             "message": "Error occurred while retrieving agents: " + str(ex_error),
         }
 
+@api.get("/agent")
+async def get_agent(id: str):
+    try:
+        agent = dbutils.get_agent(id, dbmanager=dbmanager)
+        if agent:
+            return {
+                "status": True,
+                "message": "Agent retrieved successfully",
+                "data": agent,
+            }
+        else:
+            return {
+                "status": False,
+                "message": "Agent not found",
+            }
+    except Exception as ex_error:
+        print(ex_error)
+        return {
+            "status": False,
+            "message": "Error occurred while retrieving agent: " + str(ex_error),
+        }
 
 @api.post("/agents")
 async def create_user_agents(req: DBWebRequestModel):
     """Create a new agent for a user"""
-
     try:
         agents = dbutils.upsert_agent(agent_flow_spec=req.agent, dbmanager=dbmanager)
-
         return {
             "status": True,
-            "message": "Agent created successfully",
+            "message": "Agent upserted successfully",
             "data": agents,
         }
 
@@ -471,3 +512,4 @@ async def get_version():
         "message": "Version retrieved successfully",
         "data": {"version": VERSION},
     }
+

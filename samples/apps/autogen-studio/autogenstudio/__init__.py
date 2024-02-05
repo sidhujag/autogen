@@ -3,3 +3,4 @@ from .workflowmanager import *
 from .datamodel import *
 from .codingassistanceservice import *
 from .repositoryservice import *
+from .agentservice import *

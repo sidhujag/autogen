@@ -534,6 +534,13 @@ def get_skills(user_id: str, dbmanager: DBManager) -> List[Skill]:
         skills.append(skill)
     return skills
 
+def get_skill(id: str, dbmanager: DBManager) -> Skill:
+    existing_skill = get_item_by_field("skills", "id", id, dbmanager)
+    if existing_skill:
+        skill = Skill(**existing_skill)
+        return skill
+    return None
+
 
 def upsert_skill(skill: Skill, dbmanager: DBManager) -> List[Skill]:
     """
@@ -633,6 +640,22 @@ def get_agents(user_id: str, dbmanager: DBManager) -> List[AgentFlowSpec]:
         agents.append(agent)
     return agents
 
+def get_agent(id: str, dbmanager: DBManager) -> AgentFlowSpec:
+    """
+    Find agent by id
+
+    :param id: The ID of the agent
+    :param dbmanager: The DBManager instance to interact with the database
+    :return: A AgentFlowSpec object
+    """
+
+    existing_agent = get_item_by_field("agents", "id", id, dbmanager)
+    if existing_agent:
+        existing_agent["config"] = json.loads(existing_agent["config"])
+        existing_agent["skills"] = json.loads(existing_agent["skills"] or "[]")
+        agent = AgentFlowSpec(**existing_agent)
+        return agent
+    return None
 
 def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[Dict[str, Any]]:
     """
@@ -696,7 +719,7 @@ def delete_agent(agent: AgentFlowSpec, dbmanager: DBManager) -> List[Dict[str, A
 def get_item_by_field(table: str, field: str, value: Any, dbmanager: DBManager) -> Optional[Dict[str, Any]]:
     query = f"SELECT * FROM {table} WHERE {field} = ?"
     args = (value,)
-    result = dbmanager.query(query=query, args=args)
+    result = dbmanager.query(query=query, args=args, return_json=True)
     return result[0] if result else None
 
 
