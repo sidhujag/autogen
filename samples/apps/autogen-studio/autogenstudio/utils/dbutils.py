@@ -3,6 +3,14 @@ import logging
 import sqlite3
 import threading
 import os
+import chromadb
+
+if chromadb.__version__ < "0.4.15":
+    from chromadb.api import API
+else:
+    from chromadb.api import ClientAPI as API
+from chromadb.api.types import QueryResult
+import chromadb.utils.embedding_functions as ef
 from typing import Any, List, Dict, Optional, Tuple
 from ..datamodel import AgentFlowSpec, AgentWorkFlowConfig, Gallery, Message, Model, Session, Skill
 
@@ -533,6 +541,42 @@ def get_skills(user_id: str, dbmanager: DBManager) -> List[Skill]:
         skill = Skill(**row)
         skills.append(skill)
     return skills
+
+
+def discover_skills(user_id: str, queries: List[str], dbmanager: DBManager) -> Dict[str, List[Skill]]:
+    """
+    Discover skills using semantic search and return a dictionary mapping each query to a list of relevant skills.
+    """
+    skills = get_skills(user_id, dbmanager)
+    
+    # Initialize the semantic search client
+    search_client = chromadb.Client()
+    embedding_function = ef.SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2")
+    
+    # Create or use an existing collection for skills
+    collection_name = "skills_collection"
+    collection = search_client.create_collection(name=collection_name, embedding_function=embedding_function)
+    
+    # Add skills to the collection
+    documents = [{"title": skill.title, "description": skill.description} for skill in skills]
+    ids = [skill.id for skill in skills]
+    collection.add(documents=documents, ids=ids)
+    
+    # Initialize a dictionary to store query results
+    skill_list_returned = {query: [] for query in queries}
+    
+    # Perform the queries and populate the dictionary
+    for query in queries:
+        results = collection.query(query_texts=[query], n_results=3)
+        for result in results:
+            matching_skill = next((skill for skill in skills if skill.id == result["id"]), None)
+            if matching_skill:
+                skill_list_returned[query].append(matching_skill)
+    
+    search_client.delete_collection(collection_name)
+    
+    return skill_list_returned
+
 
 def get_skill(id: str, dbmanager: DBManager) -> Skill:
     existing_skill = get_item_by_field("skills", "id", id, dbmanager)

@@ -48,6 +48,19 @@ class AgentService:
         return skills
 
     @staticmethod
+    def discover_skills(queries: List[str]) -> str:
+        # Construct payload for API request
+        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+        url = f"{server_url}/discover_skills"
+        payload = {
+            "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),
+            "tags": queries
+        }
+        # Send request to create or update agent
+        response = AgentService.fetch_json(url, payload, method="POST")
+        return response
+    
+    @staticmethod
     def manage_agent_skills(agent_id: str, skill_ids: List[str], action: str) -> str:
         fetched_skills = AgentService.fetch_skills(skill_ids) if skill_ids else []
         assistant = AgentService.fetch_agent(agent_id)

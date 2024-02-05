@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+from typing import List
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -245,6 +246,22 @@ async def get_user_skills(user_id: str):
             "message": "Error occurred while retrieving skills: " + str(ex_error),
         }
 
+@api.post("/discover_skills")
+async def discover_skills(req: DBWebRequestModel):
+    try:
+        skills = dbutils.discover_skills(req.user_id, req.tags, dbmanager=dbmanager)
+        return {
+            "status": True,
+            "message": "Skills discovered successfully",
+            "data": skills,
+        }
+    except Exception as ex_error:
+        print(ex_error)
+        return {
+            "status": False,
+            "message": "Error occurred while discovering skills: " + str(ex_error),
+        }
+        
 @api.get("/skill")
 async def get_skill(id: str):
     try:
