@@ -39,10 +39,13 @@ class AgentService:
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
         skills: List[Skill] = []
         for skill_id in skill_ids:
-            url = f"{server_url}/skill/{skill_id}"
+            url = f"{server_url}/skill?id={skill_id}"
             response = AgentService.fetch_json(url, method="GET")
             if response.get("status"):
                 skills.append(Skill(**response.get("data")))
+            elif response.get("message"):
+                msg = response.get("message")
+                print(f"Skill {skill_id} not found, error: {msg}. Skipping.")
             else:
                 print(f"Skill {skill_id} not found or error occurred. Skipping.")
         return skills
@@ -183,10 +186,13 @@ class AgentService:
         if not id:
             return None
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
-        url = f"{server_url}/agent/{id}"
+        url = f"{server_url}/agent?id={id}"
         response = AgentService.fetch_json(url, method="GET")
         if response.get("status"):
             return AgentFlowSpec(**response.get("data"))
+        elif response.get("message"):
+            msg = response.get("message")
+            print(f"Agent {id} not found, error: {msg}. Skipping.")
         else:
             print(f"Agent {id} not found or error occurred. Skipping.")
             return None
