@@ -146,8 +146,8 @@ class AgentService:
     def create_or_update_skill(
         id: Optional[str],
         title: Optional[str],
-        file_name: Optional[str],
         content: Optional[str],
+        file_name: Optional[str],
     ):
         # Initialize or fetch existing skill
         skill = None

@@ -292,7 +292,7 @@ async def create_user_skills(req: DBWebRequestModel):
 
         return {
             "status": True,
-            "message": "Skill created successfully",
+            "message": "Skill upserted successfully",
             "data": skills,
         }
 
@@ -489,7 +489,7 @@ async def create_user_workflow(req: DBWebRequestModel):
         workflow = dbutils.upsert_workflow(workflow=req.workflow, dbmanager=dbmanager)
         return {
             "status": True,
-            "message": "Workflow created successfully",
+            "message": "Workflow upserted successfully",
             "data": workflow,
         }
 
