@@ -292,7 +292,7 @@ async def create_user_skills(req: DBWebRequestModel):
 
         return {
             "status": True,
-            "message": "Skills retrieved successfully",
+            "message": "Skill created successfully",
             "data": skills,
         }
 
