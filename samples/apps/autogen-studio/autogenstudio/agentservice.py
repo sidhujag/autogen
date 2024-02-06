@@ -51,18 +51,21 @@ class AgentService:
         return skills
 
     @staticmethod
-    def discover_skills(queries: List[str]) -> str:
+    def discover_services(service_type: str, queries: List[str]) -> str:
+        if service_type != "agents" and service_type != "workflows" and service_type != "skills":
+            return json.dumps({"error": f"Invalid service type: {service_type}"})
         # Construct payload for API request
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
-        url = f"{server_url}/discover_skills"
+        url = f"{server_url}/discover_services"
         payload = {
             "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),
+            "msg_id": service_type,
             "tags": queries
         }
-        # Send request to create or update agent
+        # Send request to discover service
         response = AgentService.fetch_json(url, payload, method="POST")
         return response
-    
+
     @staticmethod
     def manage_agent_skills(agent_id: str, skill_ids: List[str], action: str) -> str:
         fetched_skills = AgentService.fetch_skills(skill_ids) if skill_ids else []
@@ -126,6 +129,63 @@ class AgentService:
                 return AgentFlowSpec(**agent)
         return None
     
+    @staticmethod
+    def sanitize_skill_output(skill: Skill) -> Skill:
+        return Skill(title=skill.title, id=skill.id, description=skill.description, content="<omitted>", file_name=skill.file_name)
+    
+    @staticmethod
+    def find_matching_skill(skills: Dict[str, Any], id: Optional[str], file_name: str, content: str) -> Optional[Skill]:
+        for skill in skills:
+            if id and skill["id"] == id:
+                return Skill(**skill)
+            if skill["file_name"] == file_name and skill["content"] == content:
+                return Skill(**skill)
+        return None
+    
+    @staticmethod
+    def create_or_update_skill(
+        id: Optional[str],
+        title: Optional[str],
+        file_name: Optional[str],
+        content: Optional[str],
+    ):
+        # Initialize or fetch existing skill
+        skill = None
+        if id:
+            skill = AgentService.fetch_skills([id])
+        
+        if skill:
+            skill = skill[0]
+            if title:
+                skill.title = title
+            if file_name:
+                skill.file_name = file_name
+            if content:
+                skill.content = content
+        else:
+            skill = Skill(
+                title=title,
+                file_name=file_name,
+                content=content,
+                id=id  # This should be generated if not provided
+            )
+        # Construct payload for API request
+        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+        url = f"{server_url}/skills"
+        payload = {
+            "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),  # Dynamically fetch user email
+            "skill": skill.dict()
+        }
+        
+        # Send request to create or update agent
+        response = AgentService.fetch_json(url, payload, method="POST")
+        if 'data' in response:
+            find_agent = AgentService.find_matching_skill(response['data'], skill.id, skill.file_name, skill.content)
+            response.pop("data")
+            if find_agent:
+                response["data"] = AgentService.sanitize_skill_output(find_agent)
+        return response
+
     @staticmethod
     def create_or_update_agent(
         id: Optional[str],

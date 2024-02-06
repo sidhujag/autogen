@@ -543,47 +543,62 @@ def get_skills(user_id: str, dbmanager: DBManager) -> List[Skill]:
     return skills
 
 
-def discover_skills(user_id: str, queries: List[str], dbmanager: DBManager) -> Dict[str, List[Skill]]:
-    """
-    Discover skills using semantic search and return a dictionary mapping each query to a list of relevant skills.
-    """
-    skills = get_skills(user_id, dbmanager)
+def search_vec_db(documents, ids, objects, queries):
     # Initialize the semantic search client
     search_client = chromadb.Client()
     embedding_function = ef.SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2")
-    
-    # Create or use an existing collection for skills
-    collection_name = "skills_collection"
+    collection_name = "collection"
     collection = search_client.create_collection(name=collection_name, embedding_function=embedding_function)
-    # Add skills to the collection
-    documents = [
-        "title: " + (skill.title if skill.title is not None else "No Title") + "\n\ncontent: " + (skill.content if skill.content is not None else "No Content")
-        for skill in skills
-    ]
-
-    ids = [skill.id for skill in skills]
     collection.add(documents=documents, ids=ids)
-    skill_list_returned = {}  # Dictionary to hold query results
-    added_skill_ids = set()  # Set to track added skill IDs
+    list_returned = {}  # Dictionary to hold query results
+    added_ids = set()  # Set to track added IDs
 
     # Perform the queries and populate the dictionary
     for query in queries:
-        skill_list_returned[query] = []  # Initialize list for this query
+        list_returned[query] = []  # Initialize list for this query
         results = collection.query(query_texts=[query], n_results=3)
 
         # Assuming 'results' structure contains 'ids' as first item in a nested list
         result_ids = results['ids'][0] if results['ids'] else []
         for result_id in result_ids:
-            # Check if skill ID has already been added
-            if result_id not in added_skill_ids:
-                matching_skill = next((skill for skill in skills if skill.id == result_id), None)
-                if matching_skill:
-                    skill_list_returned[query].append(matching_skill)
-                    added_skill_ids.add(result_id)  # Mark this skill ID as added
+            # Check if ID has already been added
+            if result_id not in added_ids:
+                matching_object = next((object for object in objects if object.id == result_id), None)
+                if matching_object:
+                    list_returned[query].append(matching_object)
+                    added_ids.add(result_id)  # Mark this ID as added
 
     search_client.delete_collection(collection_name)
-    return skill_list_returned
+    return list_returned
 
+def discover_services(service_type: str, user_id: str, queries: List[str], dbmanager: DBManager) -> Dict[str, List[Any]]:
+    """
+    Discover agents using semantic search and return a dictionary mapping each query to a list of relevant agents.
+    """
+    if service_type == "agents":
+        agents = get_agents(user_id, dbmanager)
+
+        documents = [
+            "name: " + (agent.config.name if agent.config.name is not None else "No Title") + "\n\ndescription: " + (agent.description if agent.description is not None else "No Description")
+            for agent in agents
+        ]
+
+        ids = [agent.id for agent in agents]
+    elif service_type == "skills":
+        skills = get_skills(user_id, dbmanager)
+
+        documents = [
+            "title: " + (skill.title if skill.title is not None else "No Title") + "\n\ncontent: " + (skill.content if skill.content is not None else "No Content")
+            for skill in skills
+        ]
+    elif service_type == "workflows":
+        workflows = get_workflows(user_id, dbmanager)
+
+        documents = [
+            "type: " + (workflow.type if workflow.type is not None else "No Type") + "\n\nname: " + (workflow.name if workflow.name is not None else "No Name") + "\n\ndescription: " + (workflow.description if workflow.description is not None else "No Description")
+            for workflow in workflows
+        ]
+    return search_vec_db(documents, ids, agents, queries)
 
 def get_skill(id: str, dbmanager: DBManager) -> Skill:
     existing_skill = get_item_by_field("skills", "id", id, dbmanager)

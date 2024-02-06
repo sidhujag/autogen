@@ -246,20 +246,20 @@ async def get_user_skills(user_id: str):
             "message": "Error occurred while retrieving skills: " + str(ex_error),
         }
 
-@api.post("/discover_skills")
-async def discover_skills(req: DBWebRequestModel):
+@api.post("/discover_services")
+async def discover_services(req: DBWebRequestModel):
     try:
-        skills = dbutils.discover_skills(req.user_id, req.tags, dbmanager=dbmanager)
+        services = dbutils.discover_services(req.msg_id, req.user_id, req.tags, dbmanager=dbmanager)
         return {
             "status": True,
-            "message": "Skills discovered successfully",
-            "data": skills,
+            "message": "Services discovered successfully",
+            "data": services,
         }
     except Exception as ex_error:
         print(ex_error)
         return {
             "status": False,
-            "message": "Error occurred while discovering skills: " + str(ex_error),
+            "message": "Error occurred while discovering services: " + str(ex_error),
         }
         
 @api.get("/skill")
@@ -323,7 +323,6 @@ async def delete_user_skills(req: DBWebRequestModel):
             "status": False,
             "message": "Error occurred while deleting skill: " + str(ex_error),
         }
-
 
 @api.get("/agents")
 async def get_user_agents(user_id: str):
