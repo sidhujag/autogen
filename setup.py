@@ -21,8 +21,9 @@ install_requires = [
     "python-dotenv",
     "tiktoken",
     "aider-chat @ git+https://github.com/paul-gauthier/aider.git",
-    "pydantic>=1.10,<3",  # could be both V1 and V2
-    "docker"
+    # Disallowing 2.6.0 can be removed when this is fixed https://github.com/pydantic/pydantic/issues/8705
+    "pydantic>=1.10,<3,!=2.6.0",  # could be both V1 and V2
+    "docker",
 ]
 
 
