@@ -51,6 +51,22 @@ class AgentService:
         return skills
 
     @staticmethod
+    def sanitize_discover_services_output(service_type: str, response_data):
+        sanitized_data = {}
+        if service_type == "skills":
+            for query, skills in response_data.items():
+                sanitized_skills = [AgentService.sanitize_skill_output(Skill(**skill)).dict() for skill in skills]
+                sanitized_data[query] = sanitized_skills
+        elif service_type == "agents":
+            for query, agents in response_data.items():
+                sanitized_agents = [AgentService.sanitize_agent_output(AgentFlowSpec(**agent)).dict() for agent in agents]
+                sanitized_data[query] = sanitized_agents
+        else:
+            raise ValueError("Invalid service type")
+
+        return sanitized_data
+
+    @staticmethod
     def discover_services(service_type: str, queries: List[str]) -> str:
         if service_type != "agents" and service_type != "skills":
             return json.dumps({"error": f"Invalid service type: {service_type}"})
@@ -64,6 +80,10 @@ class AgentService:
         }
         # Send request to discover service
         response = AgentService.fetch_json(url, payload, method="POST")
+        if 'data' in response:
+            response["data"] = AgentService.sanitize_discover_services_output(service_type, response["data"])
+        else:
+            response["data"] = ""
         return json.dumps(response)
 
     @staticmethod
@@ -98,7 +118,7 @@ class AgentService:
             find_agent = AgentService.find_matching_agent(response['data'], assistant.id, assistant.config.name, assistant.description)
             response["data"] = ""
             if find_agent:
-                response["data"] = AgentService.sanitize_agent_output(find_agent)
+                response["data"] = AgentService.sanitize_agent_output(find_agent).dict()
         else:
             response["data"] = ""
         return json.dumps(response)
@@ -150,6 +170,7 @@ class AgentService:
         title: Optional[str],
         content: Optional[str],
         file_name: Optional[str],
+        description: Optional[str],
     ):
         # Initialize or fetch existing skill
         skill = None
@@ -164,11 +185,14 @@ class AgentService:
                 skill.file_name = file_name
             if content:
                 skill.content = content
+            if description:
+                skill.description = description
         else:
             skill = Skill(
                 title=title,
                 file_name=file_name,
                 content=content,
+                description=description,
                 id=id  # This should be generated if not provided
             )
         # Construct payload for API request
@@ -185,7 +209,7 @@ class AgentService:
             find_agent = AgentService.find_matching_skill(response['data'], skill.id, skill.file_name, skill.content)
             response["data"] = ""
             if find_agent:
-                response["data"] = AgentService.sanitize_skill_output(find_agent)
+                response["data"] = AgentService.sanitize_skill_output(find_agent).dict()
         else:
             response["data"] = ""
         return json.dumps(response)
@@ -233,7 +257,7 @@ class AgentService:
             find_agent = AgentService.find_matching_agent(response['data'], assistant.id, assistant.config.name, assistant.description)
             response["data"] = ""
             if find_agent:
-                response["data"] = AgentService.sanitize_agent_output(find_agent)
+                response["data"] = AgentService.sanitize_agent_output(find_agent).dict()
         else:
             response["data"] = ""
         return json.dumps(response)

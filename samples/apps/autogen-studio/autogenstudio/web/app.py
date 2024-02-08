@@ -251,11 +251,17 @@ async def get_user_skills(user_id: str):
 async def discover_services(req: DBWebRequestModel):
     try:
         services = dbutils.discover_services(req.msg_id, req.user_id, req.tags, dbmanager=dbmanager)
-        return {
-            "status": True,
-            "message": "Services discovered successfully",
-            "data": services,
-        }
+        if services:
+            return {
+                "status": True,
+                "message": "Services discovered successfully",
+                "data": services,
+            }
+        else:
+            return {
+                "status": False,
+                "message": "Invalid service type",
+            }
     except Exception as ex_error:
         print(ex_error)
         return {

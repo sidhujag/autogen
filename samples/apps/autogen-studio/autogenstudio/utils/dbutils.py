@@ -72,6 +72,7 @@ SKILLS_TABLE_SQL = """
                 content TEXT,
                 title TEXT,
                 file_name TEXT,
+                description TEXT,
                 UNIQUE (id, user_id)
             )
             """
@@ -229,8 +230,8 @@ class DBManager:
                 skill = Skill(**skill)
 
                 self.cursor.execute(
-                    "INSERT INTO skills (id, user_id, timestamp, content, title, file_name) VALUES (?, ?, ?, ?, ?, ?)",
-                    (skill.id, "default", skill.timestamp, skill.content, skill.title, skill.file_name),
+                    "INSERT INTO skills (id, user_id, timestamp, content, title, file_name, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (skill.id, "default", skill.timestamp, skill.content, skill.title, skill.file_name, skill.description),
                 )
             for agent in agents:
                 agent = AgentFlowSpec(**agent)
@@ -576,7 +577,7 @@ def search_vec_db(documents, ids, objects, queries):
     # Perform the queries and populate the dictionary
     for query in queries:
         list_returned[query] = []  # Initialize list for this query
-        results = collection.query(query_texts=[query], n_results=3)
+        results = collection.query(query_texts=[query], n_results=5)
 
         # Assuming 'results' structure contains 'ids' as first item in a nested list
         result_ids = results['ids'][0] if results['ids'] else []
@@ -596,23 +597,25 @@ def discover_services(service_type: str, user_id: str, queries: List[str], dbman
     Discover agents using semantic search and return a dictionary mapping each query to a list of relevant agents.
     """
     if service_type == "agents":
-        agents = get_agents(user_id, dbmanager)
+        objs = get_agents(user_id, dbmanager)
 
         documents = [
             "name: " + (agent.config.name if agent.config.name is not None else "No Title") + "\n\ndescription: " + (agent.description if agent.description is not None else "No Description")
-            for agent in agents
+            for agent in objs
         ]
 
-        ids = [agent.id for agent in agents]
+        ids = [agent.id for agent in objs]
     elif service_type == "skills":
-        skills = get_skills(user_id, dbmanager)
+        objs = get_skills(user_id, dbmanager)
 
         documents = [
             "title: " + (skill.title if skill.title is not None else "No Title") + "\n\ncontent: " + (skill.content if skill.content is not None else "No Content")
-            for skill in skills
+            for skill in objs
         ]
-        ids = [skill.id for skill in skills]
-    return search_vec_db(documents, ids, agents, queries)
+        ids = [skill.id for skill in objs]
+    else:
+        return None
+    return search_vec_db(documents, ids, objs, queries)
 
 def get_skill(id: str, dbmanager: DBManager) -> Skill:
     existing_skill = get_item_by_field("skills", "id", id, dbmanager)
@@ -642,11 +645,12 @@ def upsert_skill(skill: Skill, dbmanager: DBManager) -> List[Skill]:
             "content": skill.content,
             "title": skill.title,
             "file_name": skill.file_name,
+            "description": skill.description,
         }
         update_item("skills", skill.id, updated_data, dbmanager)
     else:
-        query = "INSERT INTO skills (id, user_id, timestamp, content, title, file_name) VALUES (?, ?, ?, ?, ?, ?)"
-        args = (skill.id, skill.user_id, skill.timestamp, skill.content, skill.title, skill.file_name)
+        query = "INSERT INTO skills (id, user_id, timestamp, content, title, file_name, description) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        args = (skill.id, skill.user_id, skill.timestamp, skill.content, skill.title, skill.file_name, skill.description)
         dbmanager.query(query=query, args=args)
 
     skills = get_skills(user_id=skill.user_id, dbmanager=dbmanager)
