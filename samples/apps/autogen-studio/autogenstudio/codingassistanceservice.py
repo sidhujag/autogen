@@ -116,9 +116,6 @@ class CodingAssistantService:
         elif command == "cmd_git":
             logging.info("manage_coding_assistant cmd_git")
             coder.commands.cmd_git(args)
-        elif command == "cmd_test":
-            logging.info("manage_coding_assistant cmd_test")
-            coder.commands.cmd_test(args)
         elif command == "cmd_run":
             logging.info("manage_coding_assistant cmd_run")
             coder.commands.cmd_run(args)

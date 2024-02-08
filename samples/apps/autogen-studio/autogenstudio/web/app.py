@@ -300,7 +300,7 @@ async def create_user_skills(req: DBWebRequestModel):
         print(ex_error)
         return {
             "status": False,
-            "message": "Error occurred while creating skills: " + str(ex_error),
+            "message": "Error occurred while upserting skills: " + str(ex_error),
         }
 
 
@@ -378,7 +378,7 @@ async def create_user_agents(req: DBWebRequestModel):
         print(traceback.format_exc())
         return {
             "status": False,
-            "message": "Error occurred while creating agent: " + str(ex_error),
+            "message": "Error occurred while upserting agent: " + str(ex_error),
         }
 
 

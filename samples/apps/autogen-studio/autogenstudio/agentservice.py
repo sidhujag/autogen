@@ -52,7 +52,7 @@ class AgentService:
 
     @staticmethod
     def discover_services(service_type: str, queries: List[str]) -> str:
-        if service_type != "agents" and service_type != "workflows" and service_type != "skills":
+        if service_type != "agents" and service_type != "skills":
             return json.dumps({"error": f"Invalid service type: {service_type}"})
         # Construct payload for API request
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
@@ -64,7 +64,7 @@ class AgentService:
         }
         # Send request to discover service
         response = AgentService.fetch_json(url, payload, method="POST")
-        return response
+        return json.dumps(response)
 
     @staticmethod
     def manage_agent_skills(agent_id: str, skill_ids: List[str], action: str) -> str:
@@ -96,10 +96,12 @@ class AgentService:
         response = AgentService.fetch_json(url, payload, method="POST")
         if 'data' in response:
             find_agent = AgentService.find_matching_agent(response['data'], assistant.id, assistant.config.name, assistant.description)
-            response.pop("data")
+            response["data"] = ""
             if find_agent:
                 response["data"] = AgentService.sanitize_agent_output(find_agent)
-        return response
+        else:
+            response["data"] = ""
+        return json.dumps(response)
 
     @staticmethod
     def sanitize_agent_output(agent: AgentFlowSpec) -> AgentFlowSpec:
@@ -181,10 +183,12 @@ class AgentService:
         response = AgentService.fetch_json(url, payload, method="POST")
         if 'data' in response:
             find_agent = AgentService.find_matching_skill(response['data'], skill.id, skill.file_name, skill.content)
-            response.pop("data")
+            response["data"] = ""
             if find_agent:
                 response["data"] = AgentService.sanitize_skill_output(find_agent)
-        return response
+        else:
+            response["data"] = ""
+        return json.dumps(response)
 
     @staticmethod
     def create_or_update_agent(
@@ -227,10 +231,12 @@ class AgentService:
         response = AgentService.fetch_json(url, payload, method="POST")
         if 'data' in response:
             find_agent = AgentService.find_matching_agent(response['data'], assistant.id, assistant.config.name, assistant.description)
-            response.pop("data")
+            response["data"] = ""
             if find_agent:
                 response["data"] = AgentService.sanitize_agent_output(find_agent)
-        return response
+        else:
+            response["data"] = ""
+        return json.dumps(response)
 
     @staticmethod
     def fetch_agent(id: str) -> AgentFlowSpec:

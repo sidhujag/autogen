@@ -611,13 +611,7 @@ def discover_services(service_type: str, user_id: str, queries: List[str], dbman
             "title: " + (skill.title if skill.title is not None else "No Title") + "\n\ncontent: " + (skill.content if skill.content is not None else "No Content")
             for skill in skills
         ]
-    elif service_type == "workflows":
-        workflows = get_workflows(user_id, dbmanager)
-
-        documents = [
-            "type: " + (workflow.type if workflow.type is not None else "No Type") + "\n\nname: " + (workflow.name if workflow.name is not None else "No Name") + "\n\ndescription: " + (workflow.description if workflow.description is not None else "No Description")
-            for workflow in workflows
-        ]
+        ids = [skill.id for skill in skills]
     return search_vec_db(documents, ids, agents, queries)
 
 def get_skill(id: str, dbmanager: DBManager) -> Skill:
@@ -742,7 +736,7 @@ def get_agent(id: str, dbmanager: DBManager) -> AgentFlowSpec:
         return agent
     return None
 
-def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[Dict[str, Any]]:
+def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[AgentFlowSpec]:
     """
     Insert or update an agent for a specific user in the database.
 
@@ -784,7 +778,7 @@ def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[D
     return agents
 
 
-def delete_agent(agent: AgentFlowSpec, dbmanager: DBManager) -> List[Dict[str, Any]]:
+def delete_agent(agent: AgentFlowSpec, dbmanager: DBManager) -> List[AgentFlowSpec]:
     """
     Delete an agent for a specific user from the database.
 
@@ -815,7 +809,7 @@ def update_item(table: str, item_id: str, updated_data: Dict[str, Any], dbmanage
     dbmanager.query(query=query, args=args)
 
 
-def get_workflows(user_id: str, dbmanager: DBManager) -> List[Dict[str, Any]]:
+def get_workflows(user_id: str, dbmanager: DBManager) -> List[AgentWorkFlowConfig]:
     """
     Load workflows for a specific user from the database, sorted by timestamp.
 
@@ -837,7 +831,7 @@ def get_workflows(user_id: str, dbmanager: DBManager) -> List[Dict[str, Any]]:
     return workflows
 
 
-def upsert_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List[Dict[str, Any]]:
+def upsert_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List[AgentWorkFlowConfig]:
     """
     Insert or update a workflow for a specific user in the database.
 
@@ -890,7 +884,7 @@ def upsert_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List
     return get_workflows(user_id=workflow.user_id, dbmanager=dbmanager)
 
 
-def delete_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List[Dict[str, Any]]:
+def delete_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List[AgentWorkFlowConfig]:
     """
     Delete a workflow for a specific user from the database. If the workflow does not exist, do nothing.
 
