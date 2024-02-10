@@ -127,6 +127,27 @@ async def get_gallery_items(gallery_id: str = None):
             "message": "Error occurred while retrieving messages: " + str(ex_error),
         }
 
+@api.get("/session")
+async def get_session(id: str):
+    try:
+        session = dbutils.get_session(id, dbmanager=dbmanager)
+        if session:
+            return {
+                "status": True,
+                "message": "Session retrieved successfully",
+                "data": session,
+            }
+        else:
+            return {
+                "status": False,
+                "message": "Session not found"
+            }
+    except Exception as ex_error:
+        print(ex_error)
+        return {
+            "status": False,
+            "message": "Error occurred while retrieving session: " + str(ex_error),
+        }
 
 @api.get("/sessions")
 async def get_user_sessions(user_id: str = None):
@@ -156,7 +177,7 @@ async def create_user_session(req: DBWebRequestModel):
     # print(req.session, "**********" )
 
     try:
-        session = Session(user_id=req.session.user_id, flow_config=req.session.flow_config)
+        session = Session(id=req.session.id, user_id=req.session.user_id, flow_config=req.session.flow_config)
         user_sessions = dbutils.create_session(user_id=req.user_id, session=session, dbmanager=dbmanager)
         return {
             "status": True,
@@ -494,7 +515,28 @@ async def delete_user_model(req: DBWebRequestModel):
             "message": "Error occurred while deleting model: " + str(ex_error),
         }
 
-
+@api.get("/workflow")
+async def get_workflow(id: str):
+    try:
+        workflow = dbutils.get_workflow(id, dbmanager=dbmanager)
+        if workflow:
+            return {
+                "status": True,
+                "message": "Workflow retrieved successfully",
+                "data": workflow,
+            }
+        else:
+            return {
+                "status": False,
+                "message": "Workflow not found"
+            }
+    except Exception as ex_error:
+        print(ex_error)
+        return {
+            "status": False,
+            "message": "Error occurred while retrieving workflow: " + str(ex_error),
+        }
+        
 @api.get("/workflows")
 async def get_user_workflows(user_id: str):
     try:

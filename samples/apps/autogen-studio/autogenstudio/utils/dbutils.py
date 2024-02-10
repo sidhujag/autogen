@@ -453,6 +453,13 @@ def get_sessions(user_id: str, dbmanager: DBManager) -> List[dict]:
     return result
 
 
+def get_session(id: str, dbmanager: DBManager) -> List[dict]:
+    existing_session = get_item_by_field("sessions", "id", id, dbmanager)
+    if existing_session:
+        existing_session["flow_config"] = json.loads(existing_session["flow_config"])
+        return existing_session
+    return None
+
 def create_session(user_id: str, session: Session, dbmanager: DBManager) -> List[dict]:
     """
     Create a new session for a specific user in the database.
@@ -613,6 +620,14 @@ def discover_services(service_type: str, user_id: str, queries: List[str], dbman
             for skill in objs
         ]
         ids = [skill.id for skill in objs]
+    elif service_type == "workflows":
+        objs = get_workflows(user_id, dbmanager)
+
+        documents = [
+            "Name: " + (workflow.name if workflow.name is not None else "No Name") + "\n\ndescription: " + (workflow.description if workflow.description is not None else "No Description")
+            for workflow in objs
+        ]
+        ids = [workflow.id for workflow in objs]
     else:
         return None
     return search_vec_db(documents, ids, objs, queries)
@@ -622,6 +637,15 @@ def get_skill(id: str, dbmanager: DBManager) -> Skill:
     if existing_skill:
         skill = Skill(**existing_skill)
         return skill
+    return None
+
+def get_workflow(id: str, dbmanager: DBManager) -> Skill:
+    existing_workflow = get_item_by_field("workflows", "id", id, dbmanager)
+    if existing_workflow:
+        existing_workflow["sender"] = json.loads(existing_workflow["sender"])
+        existing_workflow["receiver"] = json.loads(existing_workflow["receiver"])
+        workflow = AgentWorkFlowConfig(**existing_workflow)
+        return workflow
     return None
 
 def upsert_skill(skill: Skill, dbmanager: DBManager) -> List[Skill]:

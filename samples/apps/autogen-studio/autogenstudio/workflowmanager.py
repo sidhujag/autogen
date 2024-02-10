@@ -32,9 +32,9 @@ class AutoGenWorkFlowManager:
             clear_folder(self.work_dir)
 
         # given the config, return an AutoGen agent object
-        self.sender = self.load(config.sender)
+        self.sender = self.load(config.sender, config.session_id)
         # given the config, return an AutoGen agent object
-        self.receiver = self.load(config.receiver)
+        self.receiver = self.load(config.receiver, config.session_id)
 
         if config.receiver.type == "groupchat":
             # append self.sender to the list of agents
@@ -103,7 +103,7 @@ class AutoGenWorkFlowManager:
                     request_reply=False,
                 )
 
-    def sanitize_agent_spec(self, agent_spec: AgentFlowSpec) -> AgentFlowSpec:
+    def sanitize_agent_spec(self, agent_spec: AgentFlowSpec, session_id: str) -> AgentFlowSpec:
         """
         Sanitizes the agent spec by setting loading defaults
 
@@ -149,13 +149,13 @@ class AutoGenWorkFlowManager:
             skills_prompt = ""
             skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
             if agent_spec.config.system_message:
-                agent_spec.config.system_message = agent_spec.config.system_message + "\n\n" + skills_prompt
+                agent_spec.config.system_message = agent_spec.config.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
             else:
-                agent_spec.config.system_message = get_default_system_message(agent_spec.type) + "\n\n" + skills_prompt
+                agent_spec.config.system_message = get_default_system_message(agent_spec.type) + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
 
         return agent_spec
 
-    def load(self, agent_spec: AgentFlowSpec) -> autogen.Agent:
+    def load(self, agent_spec: AgentFlowSpec, session_id: str) -> autogen.Agent:
         """
         Loads an agent based on the provided agent specification.
 
@@ -165,10 +165,10 @@ class AutoGenWorkFlowManager:
         Returns:
             An instance of the loaded agent.
         """
-        agent_spec = self.sanitize_agent_spec(agent_spec)
+        agent_spec = self.sanitize_agent_spec(agent_spec, session_id)
         if agent_spec.type == "groupchat":
             agents = [
-                self.load(self.sanitize_agent_spec(agent_config)) for agent_config in agent_spec.groupchat_config.agents
+                self.load(self.sanitize_agent_spec(agent_config, session_id)) for agent_config in agent_spec.groupchat_config.agents
             ]
             group_chat_config = agent_spec.groupchat_config.dict()
             group_chat_config["agents"] = agents

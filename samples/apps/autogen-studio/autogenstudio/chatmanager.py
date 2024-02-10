@@ -15,10 +15,12 @@ class AutoGenChatManager:
         work_dir = kwargs.get("work_dir", None)
         scratch_dir = os.path.join(work_dir, "scratch")
         os.environ['SCRATCH_DIR'] = scratch_dir
+        print(f'scratch_dir {scratch_dir}')
         # if no flow config is provided, use the default
         if flow_config is None:
             flow_config = get_default_agent_config(scratch_dir)
 
+        flow_config.session_id = message.session_id
         flow = AutoGenWorkFlowManager(config=flow_config, history=history, work_dir=scratch_dir)
         message_text = message.content.strip()
 
