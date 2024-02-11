@@ -21,7 +21,8 @@ class AutoGenChatManager:
             flow_config = get_default_agent_config(scratch_dir)
 
         flow_config.session_id = message.session_id
-        flow = AutoGenWorkFlowManager(config=flow_config, history=history, work_dir=scratch_dir)
+        print(f'history {history}')
+        flow = AutoGenWorkFlowManager(config=flow_config, history=history, work_dir=scratch_dir, clear_work_dir=False)
         message_text = message.content.strip()
 
         output = ""
@@ -37,6 +38,9 @@ class AutoGenChatManager:
         if flow_config.summary_method == "last":
             successful_code_blocks = extract_successful_code_blocks(flow.agent_history)
             last_message = flow.agent_history[-1]["message"]["content"] if flow.agent_history else ""
+            # if termination and seperated message then the one we care about is the previous message with the answer
+            if "TERMINATE" in last_message and len(last_message) <= 10:
+                last_message = flow.agent_history[-2]["message"]["content"] if flow.agent_history else ""
             successful_code_blocks = "\n\n".join(successful_code_blocks)
             output = (last_message + "\n" + successful_code_blocks) if successful_code_blocks else last_message
         elif flow_config.summary_method == "llm":

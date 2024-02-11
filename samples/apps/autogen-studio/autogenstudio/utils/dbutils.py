@@ -580,11 +580,14 @@ def search_vec_db(documents, ids, objects, queries):
     collection.add(documents=documents, ids=ids)
     list_returned = {}  # Dictionary to hold query results
     added_ids = set()  # Set to track added IDs
-
+    nresults = 5
+    count = collection.count()
+    if count < nresults:
+        nresults = count
     # Perform the queries and populate the dictionary
     for query in queries:
         list_returned[query] = []  # Initialize list for this query
-        results = collection.query(query_texts=[query], n_results=5)
+        results = collection.query(query_texts=[query], n_results=nresults)
 
         # Assuming 'results' structure contains 'ids' as first item in a nested list
         result_ids = results['ids'][0] if results['ids'] else []

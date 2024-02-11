@@ -54,15 +54,15 @@ class AgentService:
         sanitized_data = {}
         if service_type == "skills":
             for query, skills in response_data.items():
-                sanitized_skills = [AgentService.sanitize_skill_output(Skill(**skill)).dict() for skill in skills]
+                sanitized_skills = [AgentService.sanitize_skill_output(Skill(**skill)) for skill in skills]
                 sanitized_data[query] = sanitized_skills
         elif service_type == "agents":
             for query, agents in response_data.items():
-                sanitized_agents = [AgentService.sanitize_agent_output(AgentFlowSpec(**agent)).dict() for agent in agents]
+                sanitized_agents = [AgentService.sanitize_agent_output(AgentFlowSpec(**agent)) for agent in agents]
                 sanitized_data[query] = sanitized_agents
         elif service_type == "workflows":
             for query, workflows in response_data.items():
-                sanitized_workflows = [AgentService.sanitize_workflow_output(AgentWorkFlowConfig(**workflow)).dict() for workflow in workflows]
+                sanitized_workflows = [AgentService.sanitize_workflow_output(AgentWorkFlowConfig(**workflow)) for workflow in workflows]
                 sanitized_data[query] = sanitized_workflows
         else:
             raise ValueError("Invalid service type")
@@ -121,78 +121,51 @@ class AgentService:
             find_agent = AgentService.find_matching_agent(response['data'], assistant.id)
             response["data"] = ""
             if find_agent:
-                response["data"] = AgentService.sanitize_agent_output(find_agent).dict()
+                response["data"] = AgentService.sanitize_agent_output(find_agent)
         else:
             response["data"] = ""
         return json.dumps(response)
 
     @staticmethod
-    def sanitize_skill_output(skill: Skill) -> Skill:
-        return Skill(title=skill.title, id=skill.id, description=skill.description, content="<omitted>", file_name=skill.file_name)
+    def sanitize_skill_output(skill: Skill):
+        return {"title": skill.title, "skill_id": skill.id, "description": skill.description, "file_name": skill.file_name}
     
-
     @staticmethod
-    def sanitize_agent_output(agent: AgentFlowSpec) -> AgentFlowSpec:
+    def sanitize_agent_output(agent: AgentFlowSpec):
         sanitized_skills = [
             AgentService.sanitize_skill_output(skill)
             for skill in agent.skills
         ] if agent.skills else []
 
-        sanitized_agent = AgentFlowSpec(
-            type=agent.type,
-            config=AgentConfig(
-                name=agent.config.name,
-                system_message="<omitted>",
-            ),
-            id=agent.id,
-            skills=sanitized_skills,
-            description=agent.description
-        )
+        sanitized_agent = {
+            "type": agent.type,
+            "config": {
+                "name": agent.config.name,
+            },
+            "agent_id":agent.id,
+            "skills": sanitized_skills,
+            "description": agent.description
+        }
         return sanitized_agent
     
     @staticmethod
-    def sanitize_workflow_output(workflow: AgentWorkFlowConfig) -> AgentWorkFlowConfig:
-        sanitized_sender = AgentService.sanitize_agent_output(workflow.sender)
-        if workflow.receiver.type == "groupchat":
-            sanitized_receiver = AgentService.sanitize_group_chat_flow_spec(workflow.receiver)
-        else:
-            sanitized_receiver = AgentService.sanitize_agent_output(workflow.receiver)
-        
-        sanitized_workflow = AgentWorkFlowConfig(
-            name=workflow.name,
-            sender=sanitized_sender,
-            receiver=sanitized_receiver,
-            type=workflow.type,
-            id=workflow.id,
-            summary_method=workflow.summary_method,
-            description=workflow.description
-        )
+    def sanitize_workflow_output(workflow: AgentWorkFlowConfig):
+        sanitized_workflow = {
+            "name": workflow.name,
+            "type": workflow.type,
+            "workflow_id": workflow.id,
+            "summary_method": workflow.summary_method,
+            "description": workflow.description
+        }
         return sanitized_workflow
 
     @staticmethod
-    def sanitize_group_chat_flow_spec(group_chat_flow_spec: GroupChatFlowSpec) -> GroupChatFlowSpec:
-        sanitized_agents = [
-            AgentService.sanitize_agent_output(agent)
-            for agent in group_chat_flow_spec.groupchat_config.agents
-        ] if group_chat_flow_spec.groupchat_config and group_chat_flow_spec.groupchat_config.agents else []
-        
-        sanitized_group_chat_config = GroupChatConfig(
-            agents=sanitized_agents,
-            admin_name=group_chat_flow_spec.groupchat_config.admin_name if group_chat_flow_spec.groupchat_config else "Admin",
-            messages=[],
-            max_round=group_chat_flow_spec.groupchat_config.max_round if group_chat_flow_spec.groupchat_config else 10,
-        )
-        
-        sanitized_group_chat_flow_spec = GroupChatFlowSpec(
-            type="groupchat",
-            config=AgentConfig(
-                name=GroupChatFlowSpec.config.name,
-                system_message="<omitted>",
-            ),
-            groupchat_config=sanitized_group_chat_config,
-            id=group_chat_flow_spec.id,
-            description=group_chat_flow_spec.description,
-        )
+    def sanitize_group_chat_flow_spec(group_chat_flow_spec: GroupChatFlowSpec):
+        sanitized_group_chat_flow_spec = {
+            "type": "groupchat",
+            "workflow_id": group_chat_flow_spec.id,
+            "description": group_chat_flow_spec.description,
+        }
         return sanitized_group_chat_flow_spec
 
     @staticmethod
@@ -203,7 +176,7 @@ class AgentService:
         return None
     
     @staticmethod
-    def sanitize_session_output(session: Session) -> Session:
+    def sanitize_session_output(session: Session):
         session.flow_config = AgentService.sanitize_workflow_output(session.flow_config)
         return session
     
@@ -265,7 +238,7 @@ class AgentService:
             find_agent = AgentService.find_matching_skill(response['data'], skill.id)
             response["data"] = ""
             if find_agent:
-                response["data"] = AgentService.sanitize_skill_output(find_agent).dict()
+                response["data"] = AgentService.sanitize_skill_output(find_agent)
         else:
             response["data"] = ""
         return json.dumps(response)
@@ -312,7 +285,7 @@ class AgentService:
             find_agent = AgentService.find_matching_agent(response['data'], assistant.id)
             response["data"] = ""
             if find_agent:
-                response["data"] = AgentService.sanitize_agent_output(find_agent).dict()
+                response["data"] = AgentService.sanitize_agent_output(find_agent)
         else:
             response["data"] = ""
         return json.dumps(response)
@@ -393,7 +366,7 @@ class AgentService:
             return None
         
     @staticmethod
-    def initiate_destination_session(
+    def create_session(
         workflow_id: str
     ) -> Dict[str, Any]:
      
@@ -413,50 +386,41 @@ class AgentService:
         response = AgentService.fetch_json(url, payload, method="POST")
         if 'data' in response:
             find_session = AgentService.find_matching_session(response['data'], session.id)
-            response["data"] = ""
             if find_session:
-                response["data"] = AgentService.sanitize_session_output(find_session).dict()
-        else:
-            response["data"] = ""
+                return json.dumps({"session_id": session.id})
+            else:
+                return response
         return json.dumps(response)
 
     @staticmethod
-    def send_message_to_destination_session(
-        source_session_id: str,
-        destination_session_id: str,
+    def send_message_to_session(
+        current_session_id: str,
+        target_session_id: str,
         message_content: str,
-        message_type: str
     ) -> Dict[str, Any]:
-        if message_type != "SEND" and message_type != "REPLY":
-            return json.dumps({"error": f"Invalid message type {message_type}"})
-        content = {
-            "source_session_id": source_session_id,
-            "destination_session_id": destination_session_id,
-            "message_type": message_type,
-        }
-        if message_type != "SEND":
-            content["message"] = f"Message being sent from source session to destination session (YOU) to request some information in a REPLY. After finishing please send another message with message_type=REPLY to the source session. Message request: {message_content}"
-        elif message_type != "REPLY":
-            content["message"] = f"Response from a request for information. Response: {message_content}"
-        src_session = AgentService.fetch_session(source_session_id)
+        msg = f"Message FROM session ID: {current_session_id}: {message_content}"
+        src_session = AgentService.fetch_session(current_session_id)
         if not src_session:
-            return json.dumps({"error": f"Could not find source session, id: {source_session_id}"})
-        session = AgentService.fetch_session(destination_session_id)
+            return json.dumps({"error": f"Could not find current session, id: {current_session_id}"})
+        session = AgentService.fetch_session(target_session_id)
         if not session:
-            return json.dumps({"error": f"Could not find destination session, id: {destination_session_id}"})
+            return json.dumps({"error": f"Could not find target session, id: {target_session_id}"})
         workflow = AgentService.fetch_workflow(session.flow_config.id)
         if not workflow:
-            return json.dumps({"error": f"Could not find workflow from destination session (destination_session_id), workflow id: {session.flow_config.id}"})
-        
-        message = Message(role="assistant", content=message_content, root_msg_id="0", session_id = destination_session_id, user_id=os.getenv("USER_EMAIL", "guestuser@gmail.com"))
+            return json.dumps({"error": f"Could not find workflow from target session (target_session_id), workflow id: {session.flow_config.id}"})
+        workflow.session_id = target_session_id
+        message = Message(role="user", content=msg, root_msg_id="0", session_id = target_session_id, user_id=os.getenv("USER_EMAIL", "guestuser@gmail.com"))
         # Construct payload for API request
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
         url = f"{server_url}/messages"
         payload = {
             "message": message.dict(),
-            "flow_config": workflow
+            "flow_config": workflow.dict()
         }
         
         # Send request to create or update agent
         response = AgentService.fetch_json(url, payload, method="POST")
+        if response.get("status") and "metadata" in response and "messages" in response["metadata"]:
+            response["target_session_id"] = target_session_id
+            response["metadata"].pop('messages')
         return json.dumps(response)

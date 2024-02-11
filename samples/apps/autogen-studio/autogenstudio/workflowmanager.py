@@ -168,7 +168,7 @@ class AutoGenWorkFlowManager:
         agent_spec = self.sanitize_agent_spec(agent_spec, session_id)
         if agent_spec.type == "groupchat":
             agents = [
-                self.load(self.sanitize_agent_spec(agent_config, session_id)) for agent_config in agent_spec.groupchat_config.agents
+                self.load(self.sanitize_agent_spec(agent_config, session_id), session_id) for agent_config in agent_spec.groupchat_config.agents
             ]
             group_chat_config = agent_spec.groupchat_config.dict()
             group_chat_config["agents"] = agents
