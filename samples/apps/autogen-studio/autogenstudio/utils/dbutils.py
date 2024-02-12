@@ -43,14 +43,14 @@ MODELS_TABLE_SQL = """
 MESSAGES_TABLE_SQL = """
             CREATE TABLE IF NOT EXISTS messages (
                 user_id TEXT NOT NULL,
-                session_id TEXT,
+                session_id TEXT NOT NULL,
                 root_msg_id TEXT NOT NULL,
-                msg_id TEXT,
+                msg_id TEXT NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 metadata TEXT,
                 timestamp DATETIME,
-                UNIQUE (user_id, root_msg_id, msg_id)
+                UNIQUE (user_id, session_id, root_msg_id, msg_id)
             )
             """
 
