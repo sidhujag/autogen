@@ -364,17 +364,19 @@ def get_default_agent_config(work_dir: str) -> AgentWorkFlowConfig:
     return flow_config
 
 
+
 def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:
     """
     Parses through a list of messages containing code blocks and execution statuses,
     returning the array of code blocks that executed successfully and retains
-    the backticks for Markdown rendering.
+    the backticks for Markdown rendering. It includes the code output commented
+    out at the bottom of the code block.
 
     Parameters:
     messages (List[Dict[str, str]]): A list of message dictionaries containing 'content' and 'role' keys.
 
     Returns:
-    List[str]: A list containing the code blocks that were successfully executed, including backticks.
+    List[str]: A list containing the code blocks that were successfully executed, including backticks and commented output.
     """
     successful_code_blocks = []
     # Regex pattern to capture code blocks enclosed in triple backticks.
@@ -383,12 +385,18 @@ def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:
     for i, row in enumerate(messages):
         message = row["message"]
         if message["role"] == "user" and "execution succeeded" in message["content"]:
-            if i > 0 and messages[i - 1]["message"]["role"] == "assistant":
+            # Extract the code block execution result
+            code_output_start = message["content"].find("Code output:") + len("Code output:")
+            code_output = message["content"][code_output_start:].strip()
+            if i > 0:
                 prev_content = messages[i - 1]["message"]["content"]
                 # Find all matches for code blocks
                 code_blocks = re.findall(code_block_regex, prev_content)
                 # Add the code blocks with backticks
-                successful_code_blocks.extend(code_blocks)
+                for block in code_blocks:
+                    # Insert the code output before the closing backticks
+                    block_with_output = block[:-3] + "\n\n# Code output:\n# " + code_output + "\n```"
+                    successful_code_blocks.append(block_with_output)
 
     return successful_code_blocks
 
