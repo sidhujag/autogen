@@ -14,6 +14,7 @@ class AutoGenChatManager:
     def chat(self, message: Message, history: List, flow_config: AgentWorkFlowConfig = None, **kwargs) -> None:
         work_dir = kwargs.get("work_dir", None)
         scratch_dir = os.path.join(work_dir, "scratch")
+        os.makedirs(scratch_dir, exist_ok=True)
         os.environ['SCRATCH_DIR'] = scratch_dir
         print(f'scratch_dir {scratch_dir}')
         # if no flow config is provided, use the default

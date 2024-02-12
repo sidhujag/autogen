@@ -267,6 +267,7 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
     code_execution_config: {
       work_dir: null,
       use_docker: false,
+      executor: "commandline-local",
     },
   };
   const userProxyFlowSpec: IAgentFlowSpec = {

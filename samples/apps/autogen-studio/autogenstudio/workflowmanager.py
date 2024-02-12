@@ -143,6 +143,7 @@ class AutoGenWorkFlowManager:
             code_execution_config["work_dir"] = self.work_dir
             # tbd check if docker is installed
             code_execution_config["use_docker"] = False
+            code_execution_config["commandline-local"] = {"work_dir": self.work_dir}
             agent_spec.config.code_execution_config = code_execution_config
         if agent_spec.skills:
             # get skill prompt, also write skills to a file named skills.py

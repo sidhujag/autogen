@@ -335,7 +335,8 @@ def get_default_agent_config(work_dir: str) -> AgentWorkFlowConfig:
             code_execution_config={
                 "work_dir": work_dir,
                 "use_docker": False,
-                "executor": "commandline-local"
+                "executor": "commandline-local",
+                "commandline-local": {"work_dir": work_dir}
             },
             max_consecutive_auto_reply=10,
             llm_config=llm_config,
