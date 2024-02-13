@@ -47,7 +47,9 @@ class AutoGenChatManager:
                 "reflection_with_llm",
                 flow.receiver
             )
-            print(f"summary: {output}")
+            successful_code_blocks = extract_successful_code_blocks(flow.agent_history)
+            successful_code_blocks = "\n\n".join(successful_code_blocks)
+            output = (output + "\n" + successful_code_blocks) if successful_code_blocks else output
         elif flow_config.summary_method == "none":
             output = ""
 
