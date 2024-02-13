@@ -95,12 +95,14 @@ class AutoGenWorkFlowManager:
                     msg.content,
                     self.receiver,
                     request_reply=False,
+                    silent=True
                 )
             elif msg.role == "assistant":
                 self.receiver.send(
                     msg.content,
                     self.sender,
                     request_reply=False,
+                    silent=True
                 )
 
     def sanitize_agent_spec(self, agent_spec: AgentFlowSpec, session_id: str) -> AgentFlowSpec:
@@ -143,6 +145,7 @@ class AutoGenWorkFlowManager:
             code_execution_config["work_dir"] = self.work_dir
             # tbd check if docker is installed
             code_execution_config["use_docker"] = False
+            code_execution_config["executor"] = "commandline-local"
             code_execution_config["commandline-local"] = {"work_dir": self.work_dir}
             agent_spec.config.code_execution_config = code_execution_config
         if agent_spec.skills:
