@@ -199,6 +199,7 @@ class AgentService:
         id: Optional[str],
         title: Optional[str],
         content: Optional[str],
+        examples: Optional[str],
         file_name: Optional[str],
         description: Optional[str],
     ):
@@ -215,13 +216,20 @@ class AgentService:
                 skill.file_name = file_name
             if content:
                 skill.content = content
+            if examples:
+                skill.examples = examples
             if description:
                 skill.description = description
         else:
+            if not content:
+                return json.dumps({"error": "No content provided"})
+            if not examples:
+                return json.dumps({"error": "No example(s) provided"})
             skill = Skill(
                 title=title,
                 file_name=file_name,
                 content=content,
+                examples=examples,
                 description=description,
             )
         # Construct payload for API request

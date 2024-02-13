@@ -26,7 +26,11 @@ dependencies = [
     "arxiv",
     "pyautogen>=0.2.14",
     "chromadb",
-    "sentence_transformers"
+    "sentence_transformers",
+    "beautifulsoup4", 
+    "markdownify", 
+    "pdfminer.six", 
+    "pathvalidate"
 ]
 optional-dependencies = {web = ["fastapi", "uvicorn"]}
 

@@ -261,7 +261,11 @@ install via pip and use --quiet option.
 
 ##### Begin of {skill.title} #####
 
+CONTENT:
 {skill.content}
+
+EXAMPLE USAGE:
+{skill.examples}
 
 #### End of {skill.title} ####
 

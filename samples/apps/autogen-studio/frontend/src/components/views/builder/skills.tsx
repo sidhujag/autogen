@@ -206,6 +206,7 @@ const SkillsView = ({}: any) => {
     handler: any;
   }) => {
     const editorRef = React.useRef<any | null>(null);
+    const exampleRef = React.useRef<any | null>(null);
     const [localSkill, setLocalSkill] = React.useState<ISkill | null>(skill);
     return (
       <Modal
@@ -237,7 +238,11 @@ const SkillsView = ({}: any) => {
               setShowSkillModal(false);
               if (editorRef.current) {
                 const value = editorRef.current.getValue();
-                const updatedSkill = { ...localSkill, content: value };
+                var examples = null
+                if(exampleRef.current) {
+                  examples = exampleRef.current.getValue();
+                }
+                const updatedSkill = { ...localSkill, content: value, examples: examples };
                 setSkill(updatedSkill);
                 handler(updatedSkill);
               }
@@ -275,12 +280,20 @@ const SkillsView = ({}: any) => {
               />
             </div> */}
 
-            <div style={{ height: "70vh" }} className="h-full  mt-2 rounded">
+            <div style={{ height: "40vh" }} className="h-full  mt-2 rounded">
               <MonacoEditor
                 value={localSkill?.content}
                 language="python"
                 editorRef={editorRef}
               />
+            </div>
+            <div style={{ height: "20vh" }} className="h-full  mt-2 rounded">
+                <div className="inline-block"><b> Examples </b></div>
+                <MonacoEditor
+                  value={localSkill?.examples}
+                  language="python"
+                  editorRef={exampleRef}
+                />
             </div>
           </div>
         )}

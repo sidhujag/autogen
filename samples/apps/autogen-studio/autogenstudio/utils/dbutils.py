@@ -70,6 +70,7 @@ SKILLS_TABLE_SQL = """
                 user_id TEXT NOT NULL,
                 timestamp DATETIME NOT NULL,
                 content TEXT,
+                examples TEXT,
                 title TEXT,
                 file_name TEXT,
                 description TEXT,
@@ -241,8 +242,8 @@ class DBManager:
                 skill = Skill(**skill)
 
                 self.cursor.execute(
-                    "INSERT INTO skills (id, user_id, timestamp, content, title, file_name, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (skill.id, "default", skill.timestamp, skill.content, skill.title, skill.file_name, skill.description),
+                    "INSERT INTO skills (id, user_id, timestamp, content, examples, title, file_name, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (skill.id, "default", skill.timestamp, skill.content, skill.examples, skill.title, skill.file_name, skill.description),
                 )
             for agent in agents:
                 agent = AgentFlowSpec(**agent)
@@ -685,14 +686,15 @@ def upsert_skill(skill: Skill, dbmanager: DBManager) -> List[Skill]:
             "user_id": skill.user_id,
             "timestamp": skill.timestamp,
             "content": skill.content,
+            "examples": skill.examples,
             "title": skill.title,
             "file_name": skill.file_name,
             "description": skill.description,
         }
         update_item("skills", skill.id, updated_data, dbmanager)
     else:
-        query = "INSERT INTO skills (id, user_id, timestamp, content, title, file_name, description) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        args = (skill.id, skill.user_id, skill.timestamp, skill.content, skill.title, skill.file_name, skill.description)
+        query = "INSERT INTO skills (id, user_id, timestamp, content, examples, title, file_name, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        args = (skill.id, skill.user_id, skill.timestamp, skill.content, skill.examples, skill.title, skill.file_name, skill.description)
         dbmanager.query(query=query, args=args)
 
     skills = get_skills(user_id=skill.user_id, dbmanager=dbmanager)

@@ -34,6 +34,7 @@ class Message(object):
 class Skill(object):
     title: str
     content: str
+    examples: str
     file_name: Optional[str] = None
     id: Optional[str] = None
     description: Optional[str] = None

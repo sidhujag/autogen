@@ -122,6 +122,7 @@ export interface ISkill {
   title: string;
   file_name?: string;
   content: string;
+  examples: string;
   id?: string;
   timestamp?: string;
   description?: string;

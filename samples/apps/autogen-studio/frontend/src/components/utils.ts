@@ -399,6 +399,7 @@ export const getSampleSkill = () => {
     title: "save_cat_ascii_art_to_png",
     description: "save cat ascii art to png",
     content: content,
+    examples: "from skills import save_cat_ascii_art_to_png\n\nsave_cat_ascii_art_to_png()\n",
   };
 
   return skill;
