@@ -20,9 +20,7 @@ class AutoGenChatManager:
         # if no flow config is provided, use the default
         if flow_config is None:
             flow_config = get_default_agent_config(scratch_dir)
-
         flow_config.session_id = message.session_id
-        print(f'history {history}')
         flow = AutoGenWorkFlowManager(config=flow_config, history=history, work_dir=scratch_dir, clear_work_dir=False)
         message_text = message.content.strip()
 
@@ -45,7 +43,11 @@ class AutoGenChatManager:
             successful_code_blocks = "\n\n".join(successful_code_blocks)
             output = (last_message + "\n" + successful_code_blocks) if successful_code_blocks else last_message
         elif flow_config.summary_method == "llm":
-            output = ""
+            output = flow.sender._summarize_chat(
+                "reflection_with_llm",
+                flow.receiver
+            )
+            print(f"summary: {output}")
         elif flow_config.summary_method == "none":
             output = ""
 
