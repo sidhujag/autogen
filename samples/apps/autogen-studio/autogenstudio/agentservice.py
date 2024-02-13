@@ -364,36 +364,97 @@ class AgentService:
         else:
             print(f"Workflow {id} not found or error occurred. Skipping.")
             return None
+
+    @staticmethod
+    def fetch_workflow_session(workflow_id: str, current_session_id: str) -> str:
+        """
+        Fetches workflow target session by workflow/current session id pair
+
+        Args:
+            workflow_id (str): workflow ID
+            current_session_id (str): current session ID
+
+        Returns:
+            Dict[str, Any]: Targt session ID if it exists for the workflow
+        """
+        if not workflow_id:
+            return None
+        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+        url = f"{server_url}/workflow_session?workflow_id={workflow_id}&current_session_id={current_session_id}"
+        response = AgentService.fetch_json(url, method="GET")
+        if response.get("status"):
+            if 'data' not in response or not response.get('data'):
+                return None
+            return response.get("data")["target_session_id"]
+        return None
+
+    @staticmethod
+    def upsert_workflow_session(workflow_id: str, target_session_id: str, current_session_id: str) -> bool:
+        """
+        Associates a session ID to a workflow
+
+        Args:
+            workflow_id (str): workflow ID
+            target_session_id (str): target session ID
+            current_session_id (str): current session ID
+
+        Returns:
+            Dict[str, str]: workflow session
+        """
+        if not workflow_id or not target_session_id or not current_session_id:
+            return None
+        # Construct payload for API request
+        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+        url = f"{server_url}/workflow_session"
+        payload = {
+            "workflow_id": workflow_id,
+            "target_session_id": target_session_id,
+            "current_session_id": current_session_id
+        }
+        
+        # Send request to create or update agent
+        response = AgentService.fetch_json(url, payload, method="POST")
+        if 'data' not in response or 'status' not in response or not response.get('status'):
+            return False
+        data = response.get('data')
+        return data and data.get('workflow_id') == workflow_id and data.get('target_session_id') == target_session_id and data.get('current_session_id') == current_session_id
         
     @staticmethod
-    def create_session(
-        workflow_id: str
+    def get_target_session(
+        workflow_id: str,
+        current_session_id: str,
+        new_session: Optional[bool] = None
     ) -> Dict[str, Any]:
      
         workflow = AgentService.fetch_workflow(workflow_id)
         if not workflow:
             return json.dumps({"error": f"Could not find workflow, id: {workflow_id}"})
-        session = Session(user_id=os.getenv("USER_EMAIL", "guestuser@gmail.com"), flow_config=workflow.dict())
-        # Construct payload for API request
-        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
-        url = f"{server_url}/sessions"
-        payload = {
-            "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),
-            "session": session.dict()
-        }
-        
-        # Send request to create or update agent
-        response = AgentService.fetch_json(url, payload, method="POST")
-        if 'data' in response:
-            find_session = AgentService.find_matching_session(response['data'], session.id)
-            if find_session:
-                return json.dumps({"session_id": session.id})
-            else:
-                return response
-        return json.dumps(response)
+        src_session = AgentService.fetch_session(current_session_id)
+        if not src_session:
+            return json.dumps({"error": f"Could not find current session, id: {current_session_id}"})
+        existing_session_id = AgentService.fetch_workflow_session(workflow_id, current_session_id)
+        if not existing_session_id or new_session:
+            session = Session(user_id=os.getenv("USER_EMAIL", "guestuser@gmail.com"), flow_config=workflow.dict())
+            if not AgentService.upsert_workflow_session(workflow.id, session.id, current_session_id):
+                return json.dumps({"error": f"Could not associate workflow {workflow_id} to session {session.id}"})
+            # Construct payload for API request
+            server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+            url = f"{server_url}/sessions"
+            payload = {
+                "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),
+                "session": session.dict()
+            }
+            
+            # Send request to create or update agent
+            response = AgentService.fetch_json(url, payload, method="POST")
+            if 'status' in response and response.get('status'):
+                return json.dumps({"target_session_id": session.id})
+            return json.dumps(response)
+        else:
+            return json.dumps({"target_session_id": existing_session_id})
 
     @staticmethod
-    def send_message_to_session(
+    def send_message_to_target_session(
         current_session_id: str,
         target_session_id: str,
         message_content: str,
@@ -420,7 +481,6 @@ class AgentService:
         
         # Send request to create or update agent
         response = AgentService.fetch_json(url, payload, method="POST")
-        if response.get("status") and "metadata" in response and "messages" in response["metadata"]:
-            response["target_session_id"] = target_session_id
-            response["metadata"].pop('messages')
+        if response.get("status") and "metadata" in response and "messages" in response.get("metadata"):
+            response.get("metadata").pop('messages')
         return json.dumps(response)

@@ -303,3 +303,9 @@ class DBWebRequestModel(object):
     agent: Optional[AgentFlowSpec] = None
     workflow: Optional[AgentWorkFlowConfig] = None
     model: Optional[Model] = None
+
+@dataclass
+class UpsertWorkflowSession(object):
+    target_session_id: str
+    current_session_id: str
+    workflow_id: str

@@ -14,6 +14,7 @@ from ..datamodel import (
     DeleteMessageWebRequestModel,
     Message,
     Session,
+    UpsertWorkflowSession
 )
 from ..utils import md5_hash, init_webserver_folders, DBManager, dbutils, test_model
 
@@ -515,6 +516,51 @@ async def delete_user_model(req: DBWebRequestModel):
             "message": "Error occurred while deleting model: " + str(ex_error),
         }
 
+@api.get("/workflow_session")
+async def get_workflow_session(workflow_id: str, current_session_id: str):
+    try:
+        workflow_session = dbutils.get_workflow_session(workflow_id, current_session_id, dbmanager=dbmanager)
+        if workflow_session:
+            return {
+                "status": True,
+                "message": "Workflow session retrieved successfully",
+                "data": workflow_session,
+            }
+        else:
+            return {
+                "status": False,
+                "message": "Workflow session not found"
+            }
+    except Exception as ex_error:
+        print(ex_error)
+        return {
+            "status": False,
+            "message": "Error occurred while retrieving workflow session: " + str(ex_error),
+        }
+
+@api.post("/workflow_session")
+async def upsert_workflow_session(req: UpsertWorkflowSession):
+    """Upsert a new session for a workflow"""
+    try:
+        session = dbutils.upsert_workflow_session(workflow_id=req.workflow_id, target_session_id=req.target_session_id, current_session_id=req.current_session_id, dbmanager=dbmanager)
+        if session:
+            return {
+                "status": True,
+                "message": "Workflow session upserted successfully",
+                "data": session,
+            }
+        else:
+            return {
+                "status": False,
+                "message": "Workflow session not upserted"
+            }
+    except Exception as ex_error:
+        print(ex_error)
+        return {
+            "status": False,
+            "message": "Error occurred while upserting workflow session: " + str(ex_error),
+        }
+            
 @api.get("/workflow")
 async def get_workflow(id: str):
     try:

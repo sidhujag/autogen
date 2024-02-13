@@ -116,7 +116,15 @@ GALLERY_TABLE_SQL = """
             )
             """
 
-
+WORKFLOW_SESSION_TABLE_SQL = """
+            CREATE TABLE IF NOT EXISTS workflow_session (
+                workflow_id TEXT NOT NULL,
+                target_session_id TEXT NOT NULL,
+                current_session_id TEXT NOT NULL,
+                UNIQUE (workflow_id, target_session_id, current_session_id)
+            )
+            """
+            
 lock = threading.Lock()
 logger = logging.getLogger()
 
@@ -201,6 +209,9 @@ class DBManager:
 
         # Create a workflows table
         self.cursor.execute(WORKFLOWS_TABLE_SQL)
+        
+        # Create a workflow session table
+        self.cursor.execute(WORKFLOW_SESSION_TABLE_SQL)
 
         # init skills table with content of defaultskills.json in current directory
         current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -468,7 +479,7 @@ def create_session(user_id: str, session: Session, dbmanager: DBManager) -> List
     :param dbmanager: The DBManager instance to interact with the database
     :return: A list of dictionaries, each representing a session
     """
-    query = "INSERT INTO sessions (user_id, id, timestamp, flow_config) VALUES (?, ?, ?,?)"
+    query = "INSERT INTO sessions (user_id, id, timestamp, flow_config) VALUES (?, ?, ?, ?)"
     args = (session.user_id, session.id, session.timestamp, json.dumps(session.flow_config.dict()))
     dbmanager.query(query=query, args=args)
     sessions = get_sessions(user_id=user_id, dbmanager=dbmanager)
@@ -491,6 +502,10 @@ def delete_session(session: Session, dbmanager: DBManager) -> List[dict]:
 
     query = "DELETE FROM messages WHERE session_id = ?"
     args = (session.id,)
+    dbmanager.query(query=query, args=args)
+
+    query = "DELETE FROM workflow_session WHERE current_session_id = ? OR target_session_id = ?"
+    args = (session.id,session.id)
     dbmanager.query(query=query, args=args)
 
     return get_sessions(user_id=session.user_id, dbmanager=dbmanager)
@@ -862,6 +877,29 @@ def get_workflows(user_id: str, dbmanager: DBManager) -> List[AgentWorkFlowConfi
     return workflows
 
 
+def get_workflow_session(workflow_id: str, current_session_id: str, dbmanager: DBManager):
+    query = "SELECT * FROM workflow_session WHERE workflow_id = ? AND current_session_id = ?"
+    args = (workflow_id, current_session_id)
+    result = dbmanager.query(query=query, args=args, return_json=True)
+    return result[0] if result else None
+
+def upsert_workflow_session(workflow_id: str, target_session_id: str, current_session_id: str, dbmanager: DBManager):
+    existing_workflow_session = get_workflow_session(workflow_id, current_session_id, dbmanager)
+    if existing_workflow_session:
+        if existing_workflow_session["target_session_id"] != target_session_id:
+            query = f"UPDATE workflow_session SET target_session_id = {target_session_id} WHERE workflow_id = ? AND current_session_id = ?"
+            args = (workflow_id, current_session_id)
+            dbmanager.query(query=query, args=args)
+    else:
+        query = "INSERT INTO workflow_session (workflow_id, target_session_id, current_session_id) VALUES (?, ?, ?)"
+        args = (
+            workflow_id,
+            target_session_id,
+            current_session_id
+        )
+        dbmanager.query(query=query, args=args)
+    return get_workflow_session(workflow_id, current_session_id, dbmanager)
+
 def upsert_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List[AgentWorkFlowConfig]:
     """
     Insert or update a workflow for a specific user in the database.
@@ -894,7 +932,7 @@ def upsert_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List
         }
         update_item("workflows", workflow.id, updated_data, dbmanager)
     else:
-        query = "INSERT INTO workflows (id, user_id, timestamp, sender, receiver, type, name, description, summary_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)"
+        query = "INSERT INTO workflows (id, user_id, timestamp, sender, receiver, type, name, description, summary_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         args = (
             workflow.id,
             workflow.user_id,
@@ -928,6 +966,10 @@ def delete_workflow(workflow: AgentWorkFlowConfig, dbmanager: DBManager) -> List
 
     query = "DELETE FROM workflows WHERE id = ? AND user_id = ?"
     args = (workflow.id, workflow.user_id)
+    dbmanager.query(query=query, args=args)
+
+    query = "DELETE FROM workflow_session WHERE workflow_id = ?"
+    args = (workflow.id,)
     dbmanager.query(query=query, args=args)
 
     return get_workflows(user_id=workflow.user_id, dbmanager=dbmanager)
