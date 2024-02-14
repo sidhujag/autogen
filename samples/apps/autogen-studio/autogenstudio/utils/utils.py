@@ -255,7 +255,7 @@ If you need to install python packages, write shell code to
 install via pip and use --quiet option.
 
          """
-    prompt = ""  # filename:  skills.py
+    prompt = ""
     for skill in skills:
         prompt += f"""
 
@@ -271,16 +271,25 @@ EXAMPLE USAGE:
 
         """
 
+    skill_str = ""  # filename:  skills.py
+    for skill in skills:
+        skill_str += f"""
+
+##### Begin of {skill.title} #####
+
+{skill.content}
+
+#### End of {skill.title} ####
+
+        """
+        
     # check if work_dir exists
     if not os.path.exists(work_dir):
         os.makedirs(work_dir)
 
     # overwrite skills.py in work_dir
     with open(os.path.join(work_dir, "skills.py"), "w", encoding="utf-8") as f:
-        f.write(prompt)
-    # overwrite skills.py in work_dir
-    with open(os.path.join(work_dir, "skills.py"), "w", encoding="utf-8") as f:
-        f.write(prompt)
+        f.write(skill_str)
 
     return instruction + prompt
 

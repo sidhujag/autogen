@@ -5,6 +5,7 @@ import markdownify
 import io
 import uuid
 import mimetypes
+import pickle
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
@@ -30,7 +31,7 @@ except ModuleNotFoundError:
 
 class SimpleTextBrowser:
     """(In preview) An extremely simple text-based web browser comparable to Lynx. Suitable for Agentic use."""
-
+    pickle_file: str = None
     def __init__(
         self,
         start_page: Optional[str] = None,
@@ -38,6 +39,7 @@ class SimpleTextBrowser:
         downloads_folder: Optional[Union[str, None]] = None,
         bing_api_key: Optional[Union[str, None]] = None,
         request_kwargs: Optional[Union[Dict[str, Any], None]] = None,
+        current_session_id: Optional[str] = None
     ):
         self.start_page: str = start_page if start_page else "about:blank"
         self.viewport_size = viewport_size  # Applies only to the standard uri types
@@ -46,11 +48,44 @@ class SimpleTextBrowser:
         self.page_title: Optional[str] = None
         self.viewport_current_page = 0
         self.viewport_pages: List[Tuple[int, int]] = list()
-        self.set_address(self.start_page)
         self.bing_api_key = bing_api_key
+        self.set_address(self.start_page)
         self.request_kwargs = request_kwargs
 
         self._page_content = ""
+        self.current_session_id = current_session_id
+        self.pickle_file = f"simple_text_browser_session_{self.current_session_id}.pkl"
+        self._load_state()
+        
+            
+    def _load_state(self):
+        if self.pickle_file:
+            try:
+                with open(self.pickle_file, 'rb') as f:
+                    state = pickle.load(f)
+                    self.history = state['history']
+                    self.page_title = state['page_title']
+                    self.viewport_current_page = state['viewport_current_page']
+                    self.viewport_pages = state['viewport_pages']
+                    self._page_content = state['page_content']
+            except (FileNotFoundError, EOFError, pickle.UnpicklingError):
+                print(f'Could not deserialize from pickle file {self.pickle_file}, might not exist yet...')
+
+    def _save_state(self):
+        if self.pickle_file:
+            state = {
+                'history': self.history,
+                'page_title': self.page_title,
+                'viewport_current_page': self.viewport_current_page,
+                'viewport_pages': self.viewport_pages,
+                'page_content': self._page_content
+            }
+            print(f'state {state}')
+            with open(self.pickle_file, 'wb') as f:
+                try:
+                    pickle.dump(state, f)
+                except Exception as e:
+                    print(f'Could not serialize pickle file {self.pickle_file}, Exception: {str(e)}')
 
     @property
     def address(self) -> str:
@@ -74,6 +109,7 @@ class SimpleTextBrowser:
             self._fetch_page(uri_or_path)
 
         self.viewport_current_page = 0
+        self._save_state()
 
     @property
     def viewport(self) -> str:
@@ -93,11 +129,14 @@ class SimpleTextBrowser:
         if self.viewport_current_page >= len(self.viewport_pages):
             self.viewport_current_page = len(self.viewport_pages) - 1
 
+
     def page_down(self) -> None:
         self.viewport_current_page = min(self.viewport_current_page + 1, len(self.viewport_pages) - 1)
+        self._save_state()
 
     def page_up(self) -> None:
         self.viewport_current_page = max(self.viewport_current_page - 1, 0)
+        self._save_state()
 
     def visit_page(self, path_or_uri: str, category: Optional[str] = None):
         """Update the address, visit the page, and return the content of the viewport."""

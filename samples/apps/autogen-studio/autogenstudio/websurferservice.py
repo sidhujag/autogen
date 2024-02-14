@@ -7,7 +7,7 @@ from autogen import OpenAIWrapper
 from autogen.browser_utils import SimpleTextBrowser
 from autogen.token_count_utils import count_token, get_max_token_limit
 from autogen.oai.openai_utils import filter_config
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -15,15 +15,6 @@ logger = logging.getLogger(__name__)
 class WebSurferService():
     @staticmethod
     def _create_summarizer_client(summarizer_llm_config: Dict[str, Any]):
-        preferred_models = filter_config(  # type: ignore[no-untyped-call]
-            summarizer_llm_config["config_list"],  # type: ignore[index]
-            {"model": ["gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-3.5-turbo-16k"]},
-        )
-        if len(preferred_models) == 0:
-            logger.warning(
-                "The summarizer did not find the preferred model (gpt-3.5-turbo-16k) in the config list. "
-                "Semantic operations on webpages (summarization or Q&A) might be costly or ineffective."
-            )
         # Create the summarizer client
         summarization_client = None if summarizer_llm_config is False else OpenAIWrapper(**summarizer_llm_config)  # type: ignore[arg-type]
         return summarization_client
@@ -48,8 +39,14 @@ class WebSurferService():
                                 category: Annotated[Optional[str], "Category to filter search. One of 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events' (Defaults to 'search')"] = 'search') -> str:
         if search_engine != "google" and search_engine != "bing":
             return f"search engine must be either google or bing, you provided {search_engine}"
-        load_dotenv()
-        browser_config={"current_session_id": current_session_id, "viewport_size": 4096, "bing_api_key": os.getenv('BING_API_KEY')}
+        load_dotenv(find_dotenv(usecwd=True))
+        scratchdir = os.getenv('SCRATCH_DIR')
+        bingkey = os.getenv('BING_API_KEY')
+        if not scratchdir:
+            return "Could not find SCRATCH_DIR in the environment variables!"
+        if not bingkey:
+            return f"Could not find BING_API_KEY in the environment variables! os environ {os.environ}"
+        browser_config={"current_session_id": current_session_id, "downloads_folder": scratchdir, "bing_api_key": bingkey}
         browser = SimpleTextBrowser(**(browser_config))
         browser.visit_page(f"{search_engine}: {query}", category)
         header, content = WebSurferService._browser_state(browser)
@@ -62,8 +59,14 @@ class WebSurferService():
                                 category: Annotated[Optional[str], "Category to filter search. One of 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events' (Defaults to 'search')"] = 'search') -> str:
         if search_engine != "google" and search_engine != "bing":
             return f"search engine must be either google or bing, you provided {search_engine}"
-        load_dotenv()
-        browser_config={"current_session_id": current_session_id, "viewport_size": 4096, "bing_api_key": os.getenv('BING_API_KEY')}
+        load_dotenv(find_dotenv(usecwd=True))
+        scratchdir = os.getenv('SCRATCH_DIR')
+        bingkey = os.getenv('BING_API_KEY')
+        if not scratchdir:
+            return "Could not find SCRATCH_DIR in the environment variables!"
+        if not bingkey:
+            return f"Could not find BING_API_KEY in the environment variables! os environ {os.environ}"
+        browser_config={"current_session_id": current_session_id, "downloads_folder": scratchdir, "bing_api_key": bingkey}
         browser = SimpleTextBrowser(**(browser_config))
         browser.visit_page(f"{search_engine}: {query}", category)
 
@@ -79,8 +82,8 @@ class WebSurferService():
     @staticmethod
     def visit_page(current_session_id: Annotated[str, "The current session ID."],
                    url: Annotated[str, "The relative or absolute url of the webapge to visit."]) -> str:
-        load_dotenv()
-        browser_config={"current_session_id": current_session_id, "viewport_size": 4096, "bing_api_key": os.getenv('BING_API_KEY')}
+        load_dotenv(find_dotenv(usecwd=True))
+        browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))
         browser.visit_page(url)
         header, content = WebSurferService._browser_state(browser)
@@ -88,8 +91,8 @@ class WebSurferService():
 
     @staticmethod
     def page_up(current_session_id: Annotated[str, "The current session ID."]) -> str:
-        load_dotenv()
-        browser_config={"current_session_id": current_session_id, "viewport_size": 4096, "bing_api_key": os.getenv('BING_API_KEY')}
+        load_dotenv(find_dotenv(usecwd=True))
+        browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))
         browser.page_up()
         header, content = WebSurferService._browser_state(browser)
@@ -97,8 +100,8 @@ class WebSurferService():
 
     @staticmethod
     def page_down(current_session_id: Annotated[str, "The current session ID."]) -> str:
-        load_dotenv()
-        browser_config={"current_session_id": current_session_id, "viewport_size": 4096, "bing_api_key": os.getenv('BING_API_KEY')}
+        load_dotenv(find_dotenv(usecwd=True))
+        browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))
         browser.page_down()
         header, content = WebSurferService._browser_state(browser)
@@ -110,11 +113,13 @@ class WebSurferService():
         question: Annotated[Optional[str], "[Optional] The question to directly answer. (Defaults to summarizing current page)"] = None,
         url: Annotated[Optional[str], "[Optional] The url of the page. (Defaults to the current page)"] = None,
     ) -> str:
-        load_dotenv()
+        load_dotenv(find_dotenv(usecwd=True))
         summarizer_llm_config={"model": "gpt-3.5-turbo-1106", "api_key": os.getenv('OPENAI_API_KEY')}
-        browser_config={"current_session_id": current_session_id, "viewport_size": 4096, "bing_api_key": os.getenv('BING_API_KEY')}
+        browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))
         summarization_client = WebSurferService._create_summarizer_client(summarizer_llm_config)
+        if not summarization_client:
+            return "Could not create a summarization client!"
         if url is not None and url != browser.address:
             browser.visit_page(url)
 
