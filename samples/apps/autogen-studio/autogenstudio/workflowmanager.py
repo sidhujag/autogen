@@ -151,11 +151,12 @@ class AutoGenWorkFlowManager:
         if agent_spec.skills:
             # get skill prompt, also write skills to a file named skills.py
             skills_prompt = ""
+            time = "Today's date is " + datetime.now().date().isoformat()
             skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
             if agent_spec.config.system_message:
-                agent_spec.config.system_message = agent_spec.config.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
+                agent_spec.config.system_message = time + "\n\n" + agent_spec.config.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
             else:
-                agent_spec.config.system_message = get_default_system_message(agent_spec.type) + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
+                agent_spec.config.system_message = time + "\n\n" + get_default_system_message(agent_spec.type) + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
 
         return agent_spec
 
