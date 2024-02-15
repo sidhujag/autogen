@@ -5,7 +5,7 @@ import markdownify
 import io
 import uuid
 import mimetypes
-import pickle
+import json
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
@@ -58,18 +58,19 @@ class SimpleTextBrowser:
         self._load_state()
         
             
+    
     def _load_state(self):
         if self.pickle_file:
             try:
-                with open(self.pickle_file, 'rb') as f:
-                    state = pickle.load(f)
+                with open(self.pickle_file, 'r') as f:
+                    state = json.load(f)
                     self.history = state['history']
                     self.page_title = state['page_title']
                     self.viewport_current_page = state['viewport_current_page']
                     self.viewport_pages = state['viewport_pages']
                     self._page_content = state['page_content']
-            except (FileNotFoundError, EOFError, pickle.UnpicklingError):
-                print(f'Could not deserialize from pickle file {self.pickle_file}, might not exist yet...')
+            except (FileNotFoundError, json.JSONDecodeError):
+                print(f'Could not deserialize from file {self.pickle_file}, might not exist yet...')
 
     def _save_state(self):
         if self.pickle_file:
@@ -80,12 +81,13 @@ class SimpleTextBrowser:
                 'viewport_pages': self.viewport_pages,
                 'page_content': self._page_content
             }
-            print(f'state {state}')
-            with open(self.pickle_file, 'wb') as f:
+            if os.path.exists(self.pickle_file):
+                os.remove(self.pickle_file)
+            with open(self.pickle_file, 'w') as f:
                 try:
-                    pickle.dump(state, f)
+                    json.dump(state, f)
                 except Exception as e:
-                    print(f'Could not serialize pickle file {self.pickle_file}, Exception: {str(e)}')
+                    print(f'Could not serialize file {self.pickle_file}, Exception: {str(e)}')
 
     @property
     def address(self) -> str:
