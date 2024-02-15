@@ -237,7 +237,7 @@ class SimpleTextBrowser:
             category = "search"
         if category == "sports" or category == "events":
             search_str = f'{category}: {query}'
-            category = "search"
+            category = "news"
         else:
             search_str = query
         results = WebSearchSerperWrapper.run([search_str], 15, category)
