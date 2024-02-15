@@ -6,7 +6,6 @@ from typing_extensions import Annotated
 from autogen import OpenAIWrapper
 from autogen.browser_utils import SimpleTextBrowser
 from autogen.token_count_utils import count_token, get_max_token_limit
-from dotenv import load_dotenv, find_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,6 @@ class WebSurferService():
                                 category: Annotated[Optional[str], "Category to filter search. One of 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events' (Defaults to 'search')"] = 'search') -> str:
         if search_engine != "google" and search_engine != "bing":
             return f"search engine must be either google or bing, you provided {search_engine}"
-        load_dotenv(find_dotenv(usecwd=True))
         scratchdir = os.getenv('SCRATCH_DIR')
         bingkey = os.getenv('BING_API_KEY')
         if not scratchdir:
@@ -58,7 +56,6 @@ class WebSurferService():
                                 category: Annotated[Optional[str], "Category to filter search. One of 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events' (Defaults to 'search')"] = 'search') -> str:
         if search_engine != "google" and search_engine != "bing":
             return f"search engine must be either google or bing, you provided {search_engine}"
-        load_dotenv(find_dotenv(usecwd=True))
         scratchdir = os.getenv('SCRATCH_DIR')
         bingkey = os.getenv('BING_API_KEY')
         if not scratchdir:
@@ -81,7 +78,6 @@ class WebSurferService():
     @staticmethod
     def visit_page(current_session_id: Annotated[str, "The current session ID."],
                    url: Annotated[str, "The relative or absolute url of the webapge to visit."]) -> str:
-        load_dotenv(find_dotenv(usecwd=True))
         browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))
         browser.visit_page(url)
@@ -90,7 +86,6 @@ class WebSurferService():
 
     @staticmethod
     def page_up(current_session_id: Annotated[str, "The current session ID."]) -> str:
-        load_dotenv(find_dotenv(usecwd=True))
         browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))
         browser.page_up()
@@ -99,7 +94,6 @@ class WebSurferService():
 
     @staticmethod
     def page_down(current_session_id: Annotated[str, "The current session ID."]) -> str:
-        load_dotenv(find_dotenv(usecwd=True))
         browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))
         browser.page_down()
@@ -112,7 +106,6 @@ class WebSurferService():
         question: Annotated[Optional[str], "[Optional] The question to directly answer. (Defaults to summarizing current page)"] = None,
         url: Annotated[Optional[str], "[Optional] The url of the page. (Defaults to the current page)"] = None,
     ) -> str:
-        load_dotenv(find_dotenv(usecwd=True))
         summarizer_llm_config={"model": "gpt-3.5-turbo-1106", "api_key": os.getenv('OPENAI_API_KEY')}
         browser_config={"current_session_id": current_session_id, "downloads_folder": os.getenv('SCRATCH_DIR'), "bing_api_key": os.getenv('BING_API_KEY')}
         browser = SimpleTextBrowser(**(browser_config))

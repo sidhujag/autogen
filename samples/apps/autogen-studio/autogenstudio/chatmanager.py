@@ -5,7 +5,7 @@ from .datamodel import AgentWorkFlowConfig, Message
 from .utils import extract_successful_code_blocks, get_default_agent_config, get_modified_files
 from .workflowmanager import AutoGenWorkFlowManager
 import os
-
+from dotenv import load_dotenv, find_dotenv
 
 class AutoGenChatManager:
     def __init__(self) -> None:
@@ -16,6 +16,7 @@ class AutoGenChatManager:
         scratch_dir = os.path.join(work_dir, "scratch")
         os.makedirs(scratch_dir, exist_ok=True)
         os.environ['SCRATCH_DIR'] = scratch_dir
+        load_dotenv(find_dotenv(usecwd=True))
         print(f'scratch_dir {scratch_dir}')
         # if no flow config is provided, use the default
         if flow_config is None:
