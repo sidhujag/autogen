@@ -6,7 +6,6 @@ from typing_extensions import Annotated
 from autogen import OpenAIWrapper
 from autogen.browser_utils import SimpleTextBrowser
 from autogen.token_count_utils import count_token, get_max_token_limit
-from autogen.oai.openai_utils import filter_config
 from dotenv import load_dotenv, find_dotenv
 
 logger = logging.getLogger(__name__)
@@ -126,7 +125,7 @@ class WebSurferService():
         # We are likely going to need to fix this later, but summarize only as many tokens that fit in the buffer
         limit = 4096
         try:
-            limit = get_max_token_limit(summarizer_llm_config["config_list"][0]["model"])  # type: ignore[index]
+            limit = get_max_token_limit(summarizer_llm_config["model"])  # type: ignore[index]
         except ValueError:
             pass  # limit is unknown
         except TypeError:
