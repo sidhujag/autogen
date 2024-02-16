@@ -170,7 +170,7 @@ class AutoGenWorkFlowManager:
         """
         agent_spec = self.sanitize_agent_spec(agent_spec, session_id)
         if agent_spec.type == "groupchat":
-            agents = [
+            agents: List[autogen.ConversableAgent] = [
                 self.load(self.sanitize_agent_spec(agent_config, session_id), session_id) for agent_config in agent_spec.groupchat_config.agents
             ]
             group_chat_config = agent_spec.groupchat_config.dict()
@@ -178,6 +178,8 @@ class AutoGenWorkFlowManager:
             groupchat = autogen.GroupChat(**group_chat_config)
             agent = autogen.GroupChatManager(groupchat=groupchat, **agent_spec.config.dict())
             agent.register_reply([autogen.Agent, None], reply_func=self.process_reply, config={"callback": None})
+            for agent in agents:
+                agent.register_reply([autogen.Agent, None], reply_func=self.process_reply, config={"callback": None})
             return agent
 
         else:
