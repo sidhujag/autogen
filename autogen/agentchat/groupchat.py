@@ -381,6 +381,9 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
         final, name = selector.generate_oai_reply(messages)
+        # special condition if we should terminate
+        if selector._is_termination_msg(name):
+            return None
         return self._finalize_speaker(last_speaker, final, name, agents)
 
     async def a_select_speaker(self, last_speaker: Agent, selector: ConversableAgent) -> Agent:
@@ -391,6 +394,9 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
         final, name = await selector.a_generate_oai_reply(messages)
+        # special condition if we should terminate
+        if selector._is_termination_msg(name):
+            return None
         return self._finalize_speaker(last_speaker, final, name, agents)
 
     def _finalize_speaker(self, last_speaker: Agent, final: bool, name: str, agents: Optional[List[Agent]]) -> Agent:
@@ -545,6 +551,9 @@ class GroupChatManager(ConversableAgent):
             try:
                 # select the next speaker
                 speaker = groupchat.select_speaker(speaker, self)
+                if not speaker:
+                    # terminated
+                    break
                 # let the speaker speak
                 reply = speaker.generate_reply(sender=self)
             except KeyboardInterrupt:
@@ -613,6 +622,9 @@ class GroupChatManager(ConversableAgent):
             try:
                 # select the next speaker
                 speaker = await groupchat.a_select_speaker(speaker, self)
+                if not speaker:
+                    # terminated
+                    break
                 # let the speaker speak
                 reply = await speaker.a_generate_reply(sender=self)
             except KeyboardInterrupt:
