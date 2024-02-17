@@ -16,7 +16,6 @@ class AutoGenWorkFlowManager:
     def __init__(
         self,
         config: AgentWorkFlowConfig,
-        history: Optional[List[Message]] = None,
         work_dir: str = None,
         clear_work_dir: bool = True,
     ) -> None:
@@ -39,9 +38,6 @@ class AutoGenWorkFlowManager:
 
         self.agent_history = []
 
-        #if history:
-        #    self.populate_history(history)
-
     def process_reply(self, recipient, messages, sender, config):
         if "callback" in config and config["callback"] is not None:
             callback = config["callback"]
@@ -60,106 +56,6 @@ class AutoGenWorkFlowManager:
         }
         self.agent_history.append(iteration)
         return False, None
-
-    def _sanitize_history_message(self, message: str) -> str:
-        """
-        Sanitizes the message e.g. remove references to execution completed
-
-        Args:
-            message: The message to be sanitized.
-
-        Returns:
-            The sanitized message.
-        """
-        to_replace = ["execution succeeded", "exitcode"]
-        for replace in to_replace:
-            message = message.replace(replace, "")
-        return message
-
-
-    def populate_history(self, history: List[Message]) -> None:
-        """
-        Populates the agent message history from the provided list of messages.
-
-        Args:
-            history: A list of messages to populate the agents' history.
-        """
-        for msg in history:
-            if isinstance(msg, dict):
-                msg = Message(**msg)
-            if msg.role == "user":
-                self.sender.send(
-                    msg.content,
-                    self.receiver,
-                    request_reply=False,
-                    silent=True
-                )
-            elif msg.role == "assistant":
-                self.receiver.send(
-                    msg.content,
-                    self.sender,
-                    request_reply=False,
-                    silent=True
-                )
-
-    # def _create_message_from_nested(self, parent_msg: Message, nested_content: str, nested_role: str) -> Message:
-    #     # Create a new Message instance for the nested message, borrowing fields from the parent message
-    #     return Message(
-    #         user_id=parent_msg.user_id,
-    #         role=nested_role,
-    #         content=nested_content,
-    #         root_msg_id=parent_msg.root_msg_id,
-    #         msg_id=str(uuid.uuid4()),
-    #         session_id=parent_msg.session_id,
-    #     )
-
-    # def populate_history(self, history: List[Message]) -> None:
-    #     if isinstance(self.receiver, autogen.GroupChatManager):
-    #         groupchat = True
-    #     for msg in history:
-    #         if isinstance(msg, dict):
-    #             msg = Message(**msg)
-    #         self._populate_history(msg)
- 
-    #         # Process nested messages in metadata
-    #         if msg.metadata and isinstance(msg.metadata, str):
-    #             try:
-    #                 metadata_dict = json.loads(msg.metadata)
-    #                 if 'messages' in metadata_dict:
-    #                     nested_messages = metadata_dict['messages']
-    #                     for nested_msg_dict in nested_messages:
-    #                         nested_sender = nested_msg_dict.get('sender', '')
-    #                         # Extract content and role from nested_msg_dict['message']
-    #                         if 'message' in nested_msg_dict:
-    #                             nested_content = nested_msg_dict['message'].get('content', '')
-    #                             nested_role = nested_msg_dict['message'].get('role', 'user')
-    #                             nested_msg: Message = self._create_message_from_nested(msg, nested_content, nested_role)
-    #                             # if this is a group chat append to the group chat context for speaker selection to work
-    #                             if groupchat and msg.role == "assistant":
-    #                                 sender_agent = self.receiver._groupchat.agent_by_name(nested_sender)
-    #                                 # incase sender outside of the group
-    #                                 if not sender_agent:
-    #                                     if nested_sender == self.receiver.name:
-    #                                         sender_agent = self.receiver
-    #                                     if nested_sender == self.sender.name:
-    #                                         sender_agent = self.sender
-    #                                 if sender_agent:
-    #                                     # append to group chat messages so speaker selection can work
-    #                                     self.receiver._groupchat.append({"content": nested_msg.content, "role": nested_msg.role}, sender_agent)
-    #                                     # send from sender to group chat manager
-    #                                     sender_agent.send(nested_msg.content, self.receiver, request_reply=False, silent=True)
-    #                                     # broadcast the message from to all other agents in group
-    #                                     for agent in self.receiver._groupchat.agents:
-    #                                         if agent != sender_agent:
-    #                                             self.receiver.send(nested_msg.content, agent, request_reply=False, silent=True)
-    #                                 else:
-    #                                     print(f'could not find sender_agent name: {nested_sender}, nested_msg {nested_msg}')
-    #                             else:
-    #                                 # it is not a group chat message just two agents
-    #                                 self._populate_history(nested_msg)
-    
-    #             except json.JSONDecodeError:
-    #                 print("Error decoding JSON from metadata")
 
     def sanitize_agent_spec(self, agent_spec: AgentFlowSpec, session_id: str) -> AgentFlowSpec:
         """
