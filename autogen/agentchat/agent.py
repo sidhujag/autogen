@@ -8,6 +8,8 @@ class Agent(Protocol):
     An agent can communicate with other agents and perform actions.
     Different agents can differ in what actions they perform in the `receive` method.
     """
+    def save_oai_messages(self):
+        ...
 
     @property
     def name(self) -> str:

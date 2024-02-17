@@ -5,6 +5,8 @@ import inspect
 import json
 import logging
 import re
+import pickle
+from pathlib import Path
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Type, TypeVar, Union
 import warnings
@@ -82,6 +84,7 @@ class ConversableAgent(LLMAgent):
         llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Union[str, Dict] = "",
         description: Optional[str] = None,
+        path_to_oai_dir: Optional[Path] = None,
     ):
         """
         Args:
@@ -129,6 +132,13 @@ class ConversableAgent(LLMAgent):
         self._name = name
         # a dictionary of conversations, default value is list
         self._oai_messages = defaultdict(list)
+        self._path_to_oai_file = None
+        if path_to_oai_dir:
+            self._path_to_oai_file = path_to_oai_dir / "oai_messages.pkl"
+            if self._path_to_oai_file.exists():
+                with open(self._path_to_oai_file, "rb") as f:
+                    self._oai_messages = pickle.load(f)
+
         self._oai_system_message = [{"content": system_message, "role": "system"}]
         self._description = description if description is not None else system_message
         self._is_termination_msg = (
@@ -225,6 +235,13 @@ class ConversableAgent(LLMAgent):
         # New hookable methods should be added to this list as required to support new agent capabilities.
         self.hook_lists = {self.process_last_message: [], self.process_all_messages: []}
 
+    def save_oai_messages(self):
+        """Saves self._oai_messages to disk."""
+        if self._path_to_oai_file:
+            self._path_to_oai_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._path_to_oai_file, "wb") as file:
+                pickle.dump(self._oai_messages, file)
+    
     @property
     def name(self) -> str:
         """Get the name of the agent."""
@@ -353,13 +370,13 @@ class ConversableAgent(LLMAgent):
         return self._max_consecutive_auto_reply if sender is None else self._max_consecutive_auto_reply_dict[sender]
 
     @property
-    def chat_messages(self) -> Dict[Agent, List[Dict]]:
+    def chat_messages(self) -> Dict[str, List[Dict]]:
         """A dictionary of conversations from agent to list of messages."""
         return self._oai_messages
 
     def chat_messages_for_summary(self, agent: Agent) -> List[Dict]:
         """A list of messages as a conversation to summarize."""
-        return self._oai_messages[agent]
+        return self._oai_messages[agent.name]
 
     def last_message(self, agent: Optional[Agent] = None) -> Optional[Dict]:
         """The last message exchanged with the agent.
@@ -380,11 +397,11 @@ class ConversableAgent(LLMAgent):
                 for conversation in self._oai_messages.values():
                     return conversation[-1]
             raise ValueError("More than one conversation is found. Please specify the sender to get the last message.")
-        if agent not in self._oai_messages.keys():
+        if agent.name not in self._oai_messages.keys():
             raise KeyError(
                 f"The agent '{agent.name}' is not present in any conversation. No history available for this agent."
             )
-        return self._oai_messages[agent][-1]
+        return self._oai_messages[agent.name][-1]
 
     @property
     def use_docker(self) -> Union[bool, str, None]:
@@ -464,7 +481,7 @@ class ConversableAgent(LLMAgent):
 
         if oai_message.get("function_call", False) or oai_message.get("tool_calls", False):
             oai_message["role"] = "assistant"  # only messages with role 'assistant' can have a function call.
-        self._oai_messages[conversation_id].append(oai_message)
+        self._oai_messages[conversation_id.name].append(oai_message)
         return True
 
     def send(
@@ -520,7 +537,7 @@ class ConversableAgent(LLMAgent):
             )
 
         chat_result = ChatResult(
-            chat_history=self.chat_messages[recipient],
+            chat_history=self.chat_messages[recipient.name],
             cost=gather_usage_summary([self, recipient]),
             human_input=self._human_input,
         )
@@ -579,7 +596,7 @@ class ConversableAgent(LLMAgent):
             )
 
         chat_result = ChatResult(
-            chat_history=self.chat_messages[recipient],
+            chat_history=self.chat_messages[recipient.name],
             cost=gather_usage_summary([self, recipient]),
             human_input=self._human_input,
         )
@@ -688,7 +705,7 @@ class ConversableAgent(LLMAgent):
         self._process_received_message(message, sender, silent)
         if request_reply is False or request_reply is None and self.reply_at_receive[sender] is False:
             return
-        reply = self.generate_reply(messages=self.chat_messages[sender], sender=sender)
+        reply = self.generate_reply(messages=self.chat_messages[sender.name], sender=sender)
         if reply is not None:
             self.send(reply, sender, silent=silent)
 
@@ -824,7 +841,7 @@ class ConversableAgent(LLMAgent):
             agent.client_cache = agent.previous_cache
             agent.previous_cache = None
         chat_result = ChatResult(
-            chat_history=self.chat_messages[recipient],
+            chat_history=self.chat_messages[recipient.name],
             summary=summary,
             cost=gather_usage_summary([self, recipient]),
             human_input=self._human_input,
@@ -868,7 +885,7 @@ class ConversableAgent(LLMAgent):
             agent.client_cache = agent.previous_cache
             agent.previous_cache = None
         chat_result = ChatResult(
-            chat_history=self.chat_messages[recipient],
+            chat_history=self.chat_messages[recipient.name],
             summary=summary,
             cost=gather_usage_summary([self, recipient]),
             human_input=self._human_input,
@@ -1039,7 +1056,7 @@ class ConversableAgent(LLMAgent):
             else:
                 self._oai_messages.clear()
         else:
-            self._oai_messages[recipient].clear()
+            self._oai_messages[recipient.name].clear()
             if nr_messages_to_preserve:
                 print(
                     colored(
@@ -1060,7 +1077,7 @@ class ConversableAgent(LLMAgent):
         if client is None:
             return False, None
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         extracted_response = self._generate_oai_reply_from_client(
             client, self._oai_system_message + messages, self.client_cache
         )
@@ -1125,7 +1142,7 @@ class ConversableAgent(LLMAgent):
         if self._code_execution_config is False:
             return False, None
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         last_n_messages = self._code_execution_config.get("last_n_messages", "auto")
 
         if not (isinstance(last_n_messages, (int, float)) and last_n_messages >= 0) and last_n_messages != "auto":
@@ -1172,7 +1189,7 @@ class ConversableAgent(LLMAgent):
         if code_execution_config is False:
             return False, None
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         last_n_messages = code_execution_config.pop("last_n_messages", "auto")
 
         if not (isinstance(last_n_messages, (int, float)) and last_n_messages >= 0) and last_n_messages != "auto":
@@ -1228,7 +1245,7 @@ class ConversableAgent(LLMAgent):
         if config is None:
             config = self
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         if "function_call" in message and message["function_call"]:
             func_call = message["function_call"]
@@ -1266,7 +1283,7 @@ class ConversableAgent(LLMAgent):
         if config is None:
             config = self
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         if "function_call" in message:
             func_call = message["function_call"]
@@ -1293,7 +1310,7 @@ class ConversableAgent(LLMAgent):
         if config is None:
             config = self
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         tool_returns = []
         for tool_call in message.get("tool_calls", []):
@@ -1350,7 +1367,7 @@ class ConversableAgent(LLMAgent):
         if config is None:
             config = self
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         async_tool_calls = []
         for tool_call in message.get("tool_calls", []):
@@ -1393,7 +1410,7 @@ class ConversableAgent(LLMAgent):
         if config is None:
             config = self
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         reply = ""
         no_human_input_msg = ""
@@ -1503,7 +1520,7 @@ class ConversableAgent(LLMAgent):
         if config is None:
             config = self
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         reply = ""
         no_human_input_msg = ""
@@ -1626,7 +1643,7 @@ class ConversableAgent(LLMAgent):
             raise AssertionError(error_msg)
 
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
 
         # Call the hookable method that gives registered hooks a chance to process all messages.
         # Message modifications do not affect the incoming messages or self._oai_messages.
@@ -1687,7 +1704,7 @@ class ConversableAgent(LLMAgent):
             raise AssertionError(error_msg)
 
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
 
         # Call the hookable method that gives registered hooks a chance to process all messages.
         # Message modifications do not affect the incoming messages or self._oai_messages.

@@ -1,10 +1,12 @@
 import os
+import json
+import uuid
 from typing import List, Optional
 import autogen
 from .datamodel import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig, Message
 from .utils import get_skills_from_prompt, clear_folder, sanitize_model
 from datetime import datetime
-
+from pathlib import Path
 
 class AutoGenWorkFlowManager:
     """
@@ -33,22 +35,18 @@ class AutoGenWorkFlowManager:
 
         # given the config, return an AutoGen agent object
         self.sender = self.load(config.sender, config.session_id)
-        # given the config, return an AutoGen agent object
-        if config.receiver.type == "groupchat":
-            config.receiver.groupchat_config.agents.append(config.sender)
         self.receiver = self.load(config.receiver, config.session_id)
 
         self.agent_history = []
 
-        if history:
-            self.populate_history(history)
+        #if history:
+        #    self.populate_history(history)
 
     def process_reply(self, recipient, messages, sender, config):
         if "callback" in config and config["callback"] is not None:
             callback = config["callback"]
             callback(sender, recipient, messages[-1])
         last_message = messages[-1]
-
         sender = sender.name
         recipient = recipient.name
         if "name" in last_message:
@@ -78,6 +76,7 @@ class AutoGenWorkFlowManager:
             message = message.replace(replace, "")
         return message
 
+
     def populate_history(self, history: List[Message]) -> None:
         """
         Populates the agent message history from the provided list of messages.
@@ -102,6 +101,65 @@ class AutoGenWorkFlowManager:
                     request_reply=False,
                     silent=True
                 )
+
+    # def _create_message_from_nested(self, parent_msg: Message, nested_content: str, nested_role: str) -> Message:
+    #     # Create a new Message instance for the nested message, borrowing fields from the parent message
+    #     return Message(
+    #         user_id=parent_msg.user_id,
+    #         role=nested_role,
+    #         content=nested_content,
+    #         root_msg_id=parent_msg.root_msg_id,
+    #         msg_id=str(uuid.uuid4()),
+    #         session_id=parent_msg.session_id,
+    #     )
+
+    # def populate_history(self, history: List[Message]) -> None:
+    #     if isinstance(self.receiver, autogen.GroupChatManager):
+    #         groupchat = True
+    #     for msg in history:
+    #         if isinstance(msg, dict):
+    #             msg = Message(**msg)
+    #         self._populate_history(msg)
+ 
+    #         # Process nested messages in metadata
+    #         if msg.metadata and isinstance(msg.metadata, str):
+    #             try:
+    #                 metadata_dict = json.loads(msg.metadata)
+    #                 if 'messages' in metadata_dict:
+    #                     nested_messages = metadata_dict['messages']
+    #                     for nested_msg_dict in nested_messages:
+    #                         nested_sender = nested_msg_dict.get('sender', '')
+    #                         # Extract content and role from nested_msg_dict['message']
+    #                         if 'message' in nested_msg_dict:
+    #                             nested_content = nested_msg_dict['message'].get('content', '')
+    #                             nested_role = nested_msg_dict['message'].get('role', 'user')
+    #                             nested_msg: Message = self._create_message_from_nested(msg, nested_content, nested_role)
+    #                             # if this is a group chat append to the group chat context for speaker selection to work
+    #                             if groupchat and msg.role == "assistant":
+    #                                 sender_agent = self.receiver._groupchat.agent_by_name(nested_sender)
+    #                                 # incase sender outside of the group
+    #                                 if not sender_agent:
+    #                                     if nested_sender == self.receiver.name:
+    #                                         sender_agent = self.receiver
+    #                                     if nested_sender == self.sender.name:
+    #                                         sender_agent = self.sender
+    #                                 if sender_agent:
+    #                                     # append to group chat messages so speaker selection can work
+    #                                     self.receiver._groupchat.append({"content": nested_msg.content, "role": nested_msg.role}, sender_agent)
+    #                                     # send from sender to group chat manager
+    #                                     sender_agent.send(nested_msg.content, self.receiver, request_reply=False, silent=True)
+    #                                     # broadcast the message from to all other agents in group
+    #                                     for agent in self.receiver._groupchat.agents:
+    #                                         if agent != sender_agent:
+    #                                             self.receiver.send(nested_msg.content, agent, request_reply=False, silent=True)
+    #                                 else:
+    #                                     print(f'could not find sender_agent name: {nested_sender}, nested_msg {nested_msg}')
+    #                             else:
+    #                                 # it is not a group chat message just two agents
+    #                                 self._populate_history(nested_msg)
+    
+    #             except json.JSONDecodeError:
+    #                 print("Error decoding JSON from metadata")
 
     def sanitize_agent_spec(self, agent_spec: AgentFlowSpec, session_id: str) -> AgentFlowSpec:
         """
@@ -176,17 +234,16 @@ class AutoGenWorkFlowManager:
             group_chat_config = agent_spec.groupchat_config.dict()
             group_chat_config["agents"] = agents
             groupchat = autogen.GroupChat(**group_chat_config)
-            agent = autogen.GroupChatManager(groupchat=groupchat, **agent_spec.config.dict())
+            oai_dir = Path(self.work_dir) / session_id / agent_spec.config.name
+            agent = autogen.GroupChatManager(groupchat=groupchat, path_to_oai_dir=oai_dir, **agent_spec.config.dict())
             agent.register_reply([autogen.Agent, None], reply_func=self.process_reply, config={"callback": None})
-            for agent in agents:
-                agent.register_reply([autogen.Agent, None], reply_func=self.process_reply, config={"callback": None})
             return agent
 
         else:
-            agent = self.load_agent_config(agent_spec.config, agent_spec.type)
+            agent = self.load_agent_config(agent_spec.config, agent_spec.type, session_id)
             return agent
 
-    def load_agent_config(self, agent_config: AgentConfig, agent_type: str) -> autogen.Agent:
+    def load_agent_config(self, agent_config: AgentConfig, agent_type: str, session_id: str) -> autogen.Agent:
         """
         Loads an agent based on the provided agent configuration.
 
@@ -197,10 +254,11 @@ class AutoGenWorkFlowManager:
         Returns:
             An instance of the loaded agent.
         """
+        oai_dir = Path(self.work_dir) / session_id / agent_config.name
         if agent_type == "assistant":
-            agent = autogen.AssistantAgent(**agent_config.dict())
+            agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_config.dict())
         elif agent_type == "userproxy":
-            agent = autogen.UserProxyAgent(**agent_config.dict())
+            agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_config.dict())
         else:
             raise ValueError(f"Unknown agent type: {agent_type}")
         agent.register_reply([autogen.Agent, None], reply_func=self.process_reply, config={"callback": None})
@@ -220,4 +278,6 @@ class AutoGenWorkFlowManager:
             message=message,
             clear_history=clear_history,
         )
+        self.sender.save_oai_messages()
+        self.receiver.save_oai_messages()
         # pass

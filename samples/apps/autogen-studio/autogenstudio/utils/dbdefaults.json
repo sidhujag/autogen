@@ -163,7 +163,8 @@
           "name": "userproxy",
           "human_input_mode": "NEVER",
           "max_consecutive_auto_reply": 5,
-          "system_message": "You are a helpful assistant.",
+          "system_message": "You are a helpful assistant. Read the history and terminate once done with a sufficient answer, don't terminate prematurely.",
+          "default_auto_reply": "TERMINATE",
           "code_execution_config": {
             "work_dir": null,
             "use_docker": false,
@@ -209,7 +210,8 @@
                 },
                 "human_input_mode": "NEVER",
                 "max_consecutive_auto_reply": 8,
-                "system_message": "You are a helpful assistant that can suggest a travel plan for a user. You are the primary cordinator who will receive suggestions or advice from other agents (local_assistant, language_assistant). You must ensure that the finally plan integrates the suggestions from other agents or team members. YOUR FINAL RESPONSE MUST BE THE COMPLETE PLAN."
+                "system_message": "You are a helpful assistant that can suggest a travel plan for a user. You are the primary cordinator who will receive suggestions or advice from other agents (local_assistant, language_assistant). You must ensure that the finally plan integrates the suggestions from other agents or team members. YOUR FINAL RESPONSE MUST BE THE COMPLETE PLAN. Don't repeat responses. Ensure that each prompt or question is unique or add a variation if you need to reiterate a question. Reply with TERMINATE if you think the group is finished.",
+                "default_auto_reply": "TERMINATE"
               }
             },
             {
@@ -228,7 +230,8 @@
                 },
                 "human_input_mode": "NEVER",
                 "max_consecutive_auto_reply": 8,
-                "system_message": "You are a helpful assistant that can review travel plans, providing critical feedback on how the trip can be enriched for enjoyment of the local culture. If the plan already includes local experiences, you can mention that the plan is satisfactory, with rationale."
+                "system_message": "You are a helpful assistant in a group that can review travel plans, providing critical feedback on how the trip can be enriched for enjoyment of the local culture. If the plan already includes local experiences, you can mention that the plan is satisfactory, with rationale. Don't repeat responses. Ensure that each prompt or question is unique or add a variation if you need to reiterate a question. Reply with TERMINATE if you think the group is finished.",
+                "default_auto_reply": "TERMINATE"
               }
             },
             {
@@ -247,7 +250,8 @@
                 },
                 "human_input_mode": "NEVER",
                 "max_consecutive_auto_reply": 8,
-                "system_message": "You are a helpful assistant that can review travel plans, providing feedback on important/critical tips about how best to address language or communication challenges for the given destination. If the plan already includes language tips, you can mention that the plan is satisfactory, with rationale."
+                "system_message": "You are a helpful assistant that can review travel plans, providing feedback on important/critical tips about how best to address language or communication challenges for the given destination. If the plan already includes language tips, you can mention that the plan is satisfactory, with rationale. Don't repeat responses. Ensure that each prompt or question is unique or add a variation if you need to reiterate a question. Reply with TERMINATE if you think the group is finished.",
+                "default_auto_reply": "TERMINATE"
               }
             }
           ]

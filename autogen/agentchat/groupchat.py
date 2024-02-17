@@ -382,7 +382,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
         selector.update_system_message(self.select_speaker_msg(agents))
         final, name = selector.generate_oai_reply(messages)
         # special condition if we should terminate
-        if selector._is_termination_msg(name):
+        if selector._is_termination_msg(selector._message_to_dict(name)):
             return None
         return self._finalize_speaker(last_speaker, final, name, agents)
 
@@ -395,7 +395,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
         selector.update_system_message(self.select_speaker_msg(agents))
         final, name = await selector.a_generate_oai_reply(messages)
         # special condition if we should terminate
-        if selector._is_termination_msg(name):
+        if selector._is_termination_msg(selector._message_to_dict(name)):
             return None
         return self._finalize_speaker(last_speaker, final, name, agents)
 
@@ -502,6 +502,10 @@ class GroupChatManager(ConversableAgent):
             ignore_async_in_sync_chat=True,
         )
 
+    def save_oai_messages(self):
+        for agent in self._groupchat.agents:
+            agent.save_oai_messages()
+
     @property
     def groupchat(self) -> GroupChat:
         """Returns the group chat managed by the group chat manager."""
@@ -531,7 +535,7 @@ class GroupChatManager(ConversableAgent):
     ) -> Tuple[bool, Optional[str]]:
         """Run a group chat."""
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         speaker = sender
         groupchat = config
@@ -597,7 +601,7 @@ class GroupChatManager(ConversableAgent):
     ):
         """Run a group chat asynchronously."""
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
         message = messages[-1]
         speaker = sender
         groupchat = config

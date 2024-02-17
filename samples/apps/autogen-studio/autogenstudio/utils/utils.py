@@ -165,7 +165,7 @@ def get_modified_files(
              and directories/files starting with ".git" or ".aider", or files without an extension are ignored.
     """
     modified_files = []
-    ignore_extensions = {".pyc", ".cache", ""}
+    ignore_extensions = {".pyc", ".cache", "", ".pkl"}
     ignore_files = {"__pycache__", "__init__.py"}
     ignore_prefixes = {".git", ".aider"}
 
