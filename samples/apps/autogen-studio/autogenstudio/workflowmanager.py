@@ -1,9 +1,7 @@
 import os
-import json
-import uuid
-from typing import List, Optional
+from typing import List, Dict
 import autogen
-from .datamodel import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig, Message
+from .datamodel import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig
 from .utils import get_skills_from_prompt, clear_folder, sanitize_model
 from datetime import datetime
 from pathlib import Path
@@ -38,24 +36,19 @@ class AutoGenWorkFlowManager:
 
         self.agent_history = []
 
-    def process_reply(self, recipient, messages, sender, config):
-        if "callback" in config and config["callback"] is not None:
-            callback = config["callback"]
-            callback(sender, recipient, messages[-1])
-        last_message = messages[-1]
+    def receive_message(self, message: Dict, sender: autogen.Agent, recipient: autogen.Agent):
         sender = sender.name
         recipient = recipient.name
-        if "name" in last_message:
-            sender = last_message["name"]
+        if "name" in message:
+            sender = message["name"]
 
         iteration = {
             "recipient": recipient,
             "sender": sender,
-            "message": last_message,
+            "message": message,
             "timestamp": datetime.now().isoformat(),
         }
         self.agent_history.append(iteration)
-        return False, None
 
     def sanitize_agent_spec(self, agent_spec: AgentFlowSpec, session_id: str) -> AgentFlowSpec:
         """
@@ -103,7 +96,7 @@ class AutoGenWorkFlowManager:
         if agent_spec.skills:
             # get skill prompt, also write skills to a file named skills.py
             skills_prompt = ""
-            time = "Today's date is " + datetime.now().date().isoformat()
+            time = "Use current date/time to carefully assess real-time information. Today's date is " + datetime.now().date().isoformat()
             skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
             if agent_spec.config.system_message:
                 agent_spec.config.system_message = time + "\n\n" + agent_spec.config.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
@@ -132,7 +125,7 @@ class AutoGenWorkFlowManager:
             groupchat = autogen.GroupChat(**group_chat_config)
             oai_dir = Path(self.work_dir) / session_id / agent_spec.config.name
             agent = autogen.GroupChatManager(groupchat=groupchat, path_to_oai_dir=oai_dir, **agent_spec.config.dict())
-            agent.register_reply([autogen.Agent, None], reply_func=self.process_reply, config={"callback": None})
+            agent.register_hook(hookable_method=agent.receive_message, hook=self.receive_message)
             return agent
 
         else:
@@ -157,7 +150,7 @@ class AutoGenWorkFlowManager:
             agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_config.dict())
         else:
             raise ValueError(f"Unknown agent type: {agent_type}")
-        agent.register_reply([autogen.Agent, None], reply_func=self.process_reply, config={"callback": None})
+        agent.register_hook(hookable_method=agent.receive_message, hook=self.receive_message)
         return agent
 
     def run(self, message: str, clear_history: bool = False) -> None:

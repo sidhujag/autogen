@@ -233,7 +233,7 @@ class ConversableAgent(LLMAgent):
 
         # Registered hooks are kept in lists, indexed by hookable method, to be called in their order of registration.
         # New hookable methods should be added to this list as required to support new agent capabilities.
-        self.hook_lists = {self.process_last_message: [], self.process_all_messages: []}
+        self.hook_lists = {self.process_last_message: [], self.process_all_messages: [], self.receive_message: []}
 
     def save_oai_messages(self):
         """Saves self._oai_messages to disk."""
@@ -670,6 +670,8 @@ class ConversableAgent(LLMAgent):
                 "Received message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
             )
         if not silent:
+            # Call the hookable method that gives registered hooks a chance to process the received message.
+            self.receive_message(message, "user", sender)
             self._print_received_message(message, sender)
 
     def receive(
@@ -2361,6 +2363,20 @@ class ConversableAgent(LLMAgent):
             processed_messages = hook(processed_messages)
         return processed_messages
 
+    def receive_message(self, message: Union[Dict, str], role: str, sender: Agent):
+        """
+        Calls any registered capability hooks to process received messages
+        """
+        hook_list = self.hook_lists[self.receive_message]
+        # If no hooks are registered, or if there are no messages to process, return the original message list.
+        if len(hook_list) > 0 and message is not None:
+            message = self._message_to_dict(message)
+            if "role" not in message:
+                message["role"] = role
+            # Call each hook (in order of registration) to process the messages.
+            for hook in hook_list:
+                hook(message, sender, self)
+    
     def process_last_message(self, messages):
         """
         Calls any registered capability hooks to use and potentially modify the text of the last message,
