@@ -85,6 +85,7 @@ AGENTS_TABLE_SQL = """
                 timestamp DATETIME NOT NULL,
                 config TEXT,
                 type TEXT,
+                init_code TEXT,
                 skills TEXT,
                 description TEXT,
                 UNIQUE (id, user_id)
@@ -249,7 +250,7 @@ class DBManager:
                 agent = AgentFlowSpec(**agent)
                 agent.skills = [skill.dict() for skill in agent.skills] if agent.skills else None
                 self.cursor.execute(
-                    "INSERT INTO agents (id, user_id, timestamp, config, type, skills, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO agents (id, user_id, timestamp, config, type, skills, description, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         agent.id,
                         "default",
@@ -258,6 +259,7 @@ class DBManager:
                         agent.type,
                         json.dumps(agent.skills),
                         agent.description,
+                        agent.init_code,
                     ),
                 )
 
@@ -805,11 +807,12 @@ def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[A
             "config": json.dumps(agent_flow_spec.config.dict()),
             "type": agent_flow_spec.type,
             "description": agent_flow_spec.description,
+            "init_code": agent_flow_spec.init_code,
             "skills": json.dumps([x.dict() for x in agent_flow_spec.skills] if agent_flow_spec.skills else []),
         }
         update_item("agents", agent_flow_spec.id, updated_data, dbmanager)
     else:
-        query = "INSERT INTO agents (id, user_id, timestamp, config, type, description, skills) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        query = "INSERT INTO agents (id, user_id, timestamp, config, type, description, skills, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         config_json = json.dumps(agent_flow_spec.config.dict())
         args = (
             agent_flow_spec.id,
@@ -819,6 +822,7 @@ def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[A
             agent_flow_spec.type,
             agent_flow_spec.description,
             json.dumps([x.dict() for x in agent_flow_spec.skills] if agent_flow_spec.skills else []),
+            agent_flow_spec.init_code,
         )
         dbmanager.query(query=query, args=args)
 

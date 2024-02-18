@@ -1107,7 +1107,7 @@ export const AgentFlowSpecView = ({
     config_list: [],
     temperature: 0.1,
   };
-
+  const editorRef = React.useRef<any | null>(null);
   return (
     <>
       <div className="text-accent ">{title}</div>
@@ -1296,6 +1296,32 @@ export const AgentFlowSpecView = ({
                   setFlowSpec(updatedFlowSpec);
                 }}
               />
+            }
+          />
+        }
+
+        {
+          <ControlRowView
+            title="Init Code"
+            className="mt-4 mt-2 rounded"
+            description="Initialization code to create the agent."
+            value={flowSpec.init_code || ""}
+            control={
+              <div style={{ height: "20vh" }}>
+                <MonacoEditor
+                  value={flowSpec.init_code || ""}
+                  language="python"
+                  editorRef={editorRef}
+                  onChange={(e) => {
+                    const updatedFlowSpec = {
+                      ...localFlowSpec,
+                      init_code: e,
+                    };
+                    setLocalFlowSpec(updatedFlowSpec);
+                    setFlowSpec(updatedFlowSpec);
+                  }}
+                />
+              </div>
             }
           />
         }

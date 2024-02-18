@@ -21,8 +21,9 @@
   ],
   "agents": [
     {
-      "type": "userproxy",
+      "type": "agent",
       "description": "A user proxy agent that executes code.",
+      "init_code": "agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
       "config": {
         "name": "userproxy",
         "human_input_mode": "NEVER",
@@ -38,8 +39,9 @@
       }
     },
     {
-      "type": "assistant",
+      "type": "agent",
       "description": "A primary assistant agent that writes plans and code to solve tasks.",
+      "init_code": "agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
       "skills": [
         {
           "title": "find_papers_arxiv",
@@ -158,7 +160,8 @@
       "description": "A group chat workflow",
       "type": "groupchat",
       "sender": {
-        "type": "userproxy",
+        "type": "agent",
+        "init_code": "agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
         "config": {
           "name": "userproxy",
           "human_input_mode": "NEVER",
@@ -174,6 +177,7 @@
       },
       "receiver": {
         "type": "groupchat",
+        "init_code": "agents = [self.load(self.sanitize_agent_spec(agent_spec_internal, session_id), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents]\ngroup_chat_config = agent_spec.groupchat_config.dict()\ngroup_chat_config['agents'] = agents\ngroupchat = autogen.GroupChat(**group_chat_config)\nagent = autogen.GroupChatManager(groupchat=groupchat, path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
         "config": {
           "name": "group_chat_manager",
           "llm_config": {
@@ -195,7 +199,8 @@
           "speaker_selection_method": "auto",
           "agents": [
             {
-              "type": "assistant",
+              "type": "agent",
+              "init_code": "agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
               "config": {
                 "name": "travel_planner",
                 "llm_config": {
@@ -215,7 +220,8 @@
               }
             },
             {
-              "type": "assistant",
+              "type": "agent",
+              "init_code": "agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
               "config": {
                 "name": "local_assistant",
                 "llm_config": {
@@ -235,7 +241,8 @@
               }
             },
             {
-              "type": "assistant",
+              "type": "agent",
+              "init_code": "agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
               "config": {
                 "name": "language_assistant",
                 "llm_config": {
@@ -262,8 +269,9 @@
       "name": "General Agent Workflow",
       "description": "This workflow is used for general purpose tasks.",
       "sender": {
-        "type": "userproxy",
+        "type": "agent",
         "description": "A user proxy agent that executes code.",
+        "init_code": "agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
         "config": {
           "name": "userproxy",
           "human_input_mode": "NEVER",
@@ -279,8 +287,9 @@
         }
       },
       "receiver": {
-        "type": "assistant",
+        "type": "agent",
         "description": "Default assistant to generate plans and write code to solve tasks.",
+        "init_code": "agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
         "skills": [
           {
             "title": "find_papers_arxiv",

@@ -124,8 +124,8 @@ class AgentConfig:
 @dataclass
 class AgentFlowSpec:
     """Data model to help flow load agents from config"""
-
-    type: Literal["assistant", "userproxy"]
+    type: Literal["agent"]
+    init_code: str
     config: AgentConfig
     id: Optional[str] = None
     timestamp: Optional[str] = None
@@ -170,6 +170,7 @@ class GroupChatFlowSpec:
     """Data model to help flow load agents from config"""
 
     type: Literal["groupchat"]
+    init_code: str
     config: AgentConfig = field(default_factory=AgentConfig)
     groupchat_config: Optional[GroupChatConfig] = field(default_factory=GroupChatConfig)
     id: Optional[str] = None

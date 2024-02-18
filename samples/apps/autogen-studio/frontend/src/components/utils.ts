@@ -271,7 +271,8 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
     },
   };
   const userProxyFlowSpec: IAgentFlowSpec = {
-    type: "userproxy",
+    type: "agent",
+    init_code: "agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
     config: userProxyConfig,
   };
 
@@ -285,7 +286,8 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
   };
 
   const assistantFlowSpec: IAgentFlowSpec = {
-    type: "assistant",
+    type: "agent",
+    init_code: "agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
     config: assistantConfig,
   };
 
@@ -304,6 +306,7 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
 
   const groupChatFlowSpec: IGroupChatFlowSpec = {
     type: "groupchat",
+    init_code: "agents = [self.load(self.sanitize_agent_spec(agent_spec_internal, session_id), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents]\ngroup_chat_config = agent_spec.groupchat_config.dict()\ngroup_chat_config['agents'] = agents\ngroupchat = autogen.GroupChat(**group_chat_config)\nagent = autogen.GroupChatManager(groupchat=groupchat, path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
     config: groupChatAssistantConfig,
     groupchat_config: {
       agents: [assistantFlowSpec, assistantFlowSpec],
@@ -313,12 +316,12 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
       speaker_selection_method: "auto",
       allow_repeat_speaker: false,
     },
-    description: "Default Group  Workflow",
+    description: "Default Group Workflow",
   };
 
   const groupChatWorkFlowConfig: IFlowConfig = {
     name: "Default Group Workflow",
-    description: "Default Group  Workflow",
+    description: "Default Group Workflow",
     sender: userProxyFlowSpec,
     receiver: groupChatFlowSpec,
     type: "groupchat",

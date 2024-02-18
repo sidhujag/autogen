@@ -254,6 +254,7 @@ class AgentService:
     @staticmethod
     def create_or_update_agent(
         id: Optional[str],
+        init_code: Optional[str],
         name: Optional[str],
         msg: Optional[str],
         description: Optional[str],
@@ -271,12 +272,14 @@ class AgentService:
                 assistant.description = description
             if name:
                 assistant.config.name = name
+            if init_code:
+                assistant.init_code = init_code
         else:
             # Create new assistant if it does not exist
             llm_config = LLMConfig(config_list=[{"model": "gpt-4-turbo-preview"}], temperature=0)
             assistant = AgentFlowSpec(
-                type="assistant",
-                config=AgentConfig(name=name, system_message=msg, llm_config=llm_config),
+                type="agent",
+                config=AgentConfig(name=name, init_code=init_code, system_message=msg, llm_config=llm_config),
                 description=description
             )
         # Construct payload for API request

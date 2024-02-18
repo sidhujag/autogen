@@ -39,8 +39,9 @@ const AgentsView = ({}: any) => {
   const [showAgentModal, setShowAgentModal] = React.useState(false);
 
   const sampleAgent: IAgentFlowSpec = {
-    type: "assistant",
+    type: "agent",
     description: "Sample assistant",
+    init_code: "agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
     user_id: user?.email,
     config: {
       name: "sample_assistant",

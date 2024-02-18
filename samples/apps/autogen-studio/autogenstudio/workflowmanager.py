@@ -41,7 +41,7 @@ class AutoGenWorkFlowManager:
         recipient = recipient.name
         if "name" in message:
             sender = message["name"]
-
+        # if sender is group chat, get summary if summary is set because that means a convo has completed and is returning to you
         iteration = {
             "recipient": recipient,
             "sender": sender,
@@ -65,12 +65,6 @@ class AutoGenWorkFlowManager:
         agent_spec.config.is_termination_msg = agent_spec.config.is_termination_msg or (
             lambda x: "TERMINATE" in x.get("content", "").rstrip()[-20:]
         )
-
-        def get_default_system_message(agent_type: str) -> str:
-            if agent_type == "assistant":
-                return autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE
-            else:
-                return "You are a helpful AI Assistant."
 
         # sanitize llm_config if present
         if agent_spec.config.llm_config is not False:
@@ -101,56 +95,104 @@ class AutoGenWorkFlowManager:
             if agent_spec.config.system_message:
                 agent_spec.config.system_message = time + "\n\n" + agent_spec.config.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
             else:
-                agent_spec.config.system_message = time + "\n\n" + get_default_system_message(agent_spec.type) + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
+                agent_spec.config.system_message = time + "\n\nYou are a helpful AI Assistant.\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
 
         return agent_spec
 
+    def setup_context(self, agent_spec: AgentFlowSpec, session_id: str):
+        oai_dir = Path(self.work_dir) / session_id / agent_spec.config.name
+        safe_builtins = {
+            'True': True,
+            'False': False,
+            'None': None,
+            'str': str,
+            'int': int,
+            'float': float,
+            'bool': bool,
+            'dict': dict,
+            'list': list,
+            'tuple': tuple,
+            'set': set,
+            'frozenset': frozenset,
+            'len': len,
+            'range': range,
+            'zip': zip,
+            'map': map,
+            'filter': filter,
+            'sorted': sorted,
+            'enumerate': enumerate,
+            'isinstance': isinstance,
+            'issubclass': issubclass,
+            'type': type,
+            'id': id,
+            'hash': hash,
+            'print': print,  # Consider removing if you don't want code to print to stdout.
+            'getattr': getattr,
+            'setattr': setattr,
+            'hasattr': hasattr,
+            'delattr': delattr,
+            'abs': abs,
+            'sum': sum,
+            'min': min,
+            'max': max,
+            'divmod': divmod,
+            'round': round,
+            'pow': pow,
+            'repr': repr,
+            'bytes': bytes,
+            'bytearray': bytearray,
+            'memoryview': memoryview,
+            'complex': complex,
+        }
+        # Define the context for exec to limit the accessible variables and functions
+        context = {
+            'autogen': autogen,
+            'oai_dir': oai_dir,
+            'agent_spec': agent_spec,
+            'self': self,
+            'session_id': session_id,
+            '__builtins__': safe_builtins
+        }
+        # Define a placeholder in the context for the agent to be created
+        context['agent'] = None
+        return context
+
     def load(self, agent_spec: AgentFlowSpec, session_id: str) -> autogen.Agent:
-        """
-        Loads an agent based on the provided agent specification.
-
-        Args:
-            agent_spec: The specification of the agent to be loaded.
-
-        Returns:
-            An instance of the loaded agent.
-        """
-        agent_spec = self.sanitize_agent_spec(agent_spec, session_id)
-        if agent_spec.type == "groupchat":
-            agents: List[autogen.ConversableAgent] = [
-                self.load(self.sanitize_agent_spec(agent_config, session_id), session_id) for agent_config in agent_spec.groupchat_config.agents
-            ]
-            group_chat_config = agent_spec.groupchat_config.dict()
-            group_chat_config["agents"] = agents
-            groupchat = autogen.GroupChat(**group_chat_config)
-            oai_dir = Path(self.work_dir) / session_id / agent_spec.config.name
-            agent = autogen.GroupChatManager(groupchat=groupchat, path_to_oai_dir=oai_dir, **agent_spec.config.dict())
-            agent.register_hook(hookable_method=agent.receive_message, hook=self.receive_message)
-            return agent
-
-        else:
-            agent = self.load_agent_config(agent_spec.config, agent_spec.type, session_id)
-            return agent
-
-    def load_agent_config(self, agent_config: AgentConfig, agent_type: str, session_id: str) -> autogen.Agent:
         """
         Loads an agent based on the provided agent configuration.
 
         Args:
             agent_config: The configuration of the agent to be loaded.
             agent_type: The type of the agent to be loaded.
+            session_id: Session identifier for the current session.
 
         Returns:
             An instance of the loaded agent.
         """
-        oai_dir = Path(self.work_dir) / session_id / agent_config.name
-        if agent_type == "assistant":
-            agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_config.dict())
-        elif agent_type == "userproxy":
-            agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_config.dict())
-        else:
-            raise ValueError(f"Unknown agent type: {agent_type}")
+        agent_spec = self.sanitize_agent_spec(agent_spec, session_id)
+        context = self.setup_context(agent_spec, session_id)
+        # Your init_code should end with assigning the newly created agent to 'agent'
+        # For example, init_code could be:
+        # """
+        # agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())
+        # """
+        # Ensure your init_code string assigns the instantiated object to 'agent'
+
+        try:
+            # Dynamically execute the init_code within the provided context
+            exec(agent_spec.init_code, context)
+        except Exception as e:
+            raise ValueError(f"Failed to initialize agent with init_code. Error: {e}")
+
+        # Retrieve the created agent from the context
+        agent: autogen.ConversableAgent = context['agent']
+
+        if agent is None:
+            raise ValueError("Initialization code did not correctly create an agent.")
+
+        # Assuming the agent is correctly instantiated, register hooks or perform additional setup
         agent.register_hook(hookable_method=agent.receive_message, hook=self.receive_message)
+
         return agent
 
     def run(self, message: str, clear_history: bool = False) -> None:

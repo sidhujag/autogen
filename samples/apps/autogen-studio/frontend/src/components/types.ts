@@ -44,7 +44,8 @@ export interface IAgentConfig {
 }
 
 export interface IAgentFlowSpec {
-  type: "assistant" | "userproxy" | "groupchat";
+  type: "agent" | "groupchat";
+  init_code: string;
   config: IAgentConfig;
   timestamp?: string;
   id?: string;
@@ -64,6 +65,7 @@ export interface IGroupChatConfig {
 
 export interface IGroupChatFlowSpec {
   type: "groupchat";
+  init_code: string;
   config: IAgentConfig;
   groupchat_config: IGroupChatConfig;
   id?: string;
