@@ -5,11 +5,12 @@ import {
 } from "@heroicons/react/24/outline";
 import { Modal, message } from "antd";
 import * as React from "react";
-import { IAgentFlowSpec, IStatus } from "../../types";
+import { IAgentFlowSpec, IStatus, IGroupChatFlowSpec } from "../../types";
 import { appContext } from "../../../hooks/provider";
 import { fetchJSON, getServerUrl, timeAgo, truncateText, sampleWorkflowConfig } from "../../utils";
 import {
   AgentFlowSpecView,
+  GroupChatFlowSpecView,
   BounceLoader,
   Card,
   LaunchButton,
@@ -26,9 +27,9 @@ const AgentsView = ({}: any) => {
 
   const { user } = React.useContext(appContext);
   const serverUrl = getServerUrl();
-  const listAgentsUrl = `${serverUrl}/agents?user_id=${user?.email}`;
-  const saveAgentsUrl = `${serverUrl}/agents`;
-  const deleteAgentUrl = `${serverUrl}/agents/delete`;
+  const listAgentsUrl = `${serverUrl}/groups?user_id=${user?.email}`;
+  const saveAgentsUrl = `${serverUrl}/groups`;
+  const deleteAgentUrl = `${serverUrl}/groups/delete`;
 
   const [agents, setAgents] = React.useState<IAgentFlowSpec[] | null>([]);
   const [selectedAgent, setSelectedAgent] =
@@ -38,7 +39,7 @@ const AgentsView = ({}: any) => {
 
   const [showAgentModal, setShowAgentModal] = React.useState(false);
 
-  const sampleFlow = sampleWorkflowConfig("twoagents")
+  const sampleFlow = sampleWorkflowConfig("groupchat")
   const sampleAgent = sampleFlow.receiver as IAgentFlowSpec
   const [newAgent, setNewAgent] = React.useState<IAgentFlowSpec | null>(
     sampleAgent
@@ -213,7 +214,7 @@ const AgentsView = ({}: any) => {
       <Modal
         title={
           <>
-            Agent Specification{" "}
+            Group Specification{" "}
             <span className="text-accent font-normal">
               {agent?.config.name}
             </span>{" "}
@@ -233,6 +234,13 @@ const AgentsView = ({}: any) => {
           setShowAgentModal(false);
         }}
       >
+        {agent && (
+          <GroupChatFlowSpecView
+            flowSpec={localAgent as IGroupChatFlowSpec || agent as IGroupChatFlowSpec}
+            setFlowSpec={setLocalAgent}
+            flowSpecs={agents || []}
+          />
+        )}
         {agent && (
           <AgentFlowSpecView
             title=""
@@ -276,7 +284,7 @@ const AgentsView = ({}: any) => {
           <div className="flex mt-2 pb-2 mb-2 border-b">
             <div className="flex-1 font-semibold mb-2 ">
               {" "}
-              Agents ({agentRows.length}){" "}
+              Groups ({agentRows.length}){" "}
             </div>
             <LaunchButton
               className="text-sm p-2 px-3"
@@ -286,13 +294,13 @@ const AgentsView = ({}: any) => {
             >
               {" "}
               <PlusIcon className="w-5 h-5 inline-block mr-1" />
-              New Agent
+              New Group
             </LaunchButton>
           </div>
 
           <div className="text-xs mb-2 pb-1  ">
             {" "}
-            Configure an agent that can reused in your agent workflow{" "}
+            Configure a group that can reused in your workflow{" "}
             {selectedAgent?.config.name}
           </div>
           {agents && agents.length > 0 && (
@@ -305,7 +313,7 @@ const AgentsView = ({}: any) => {
           {agents && agents.length === 0 && !loading && (
             <div className="text-sm border mt-4 rounded text-secondary p-2">
               <InformationCircleIcon className="h-4 w-4 inline mr-1" />
-              No agents found. Please create a new agent.
+              No groups found. Please create a new group.
             </div>
           )}
 

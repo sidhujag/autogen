@@ -300,9 +300,9 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
   };
 
   const groupChatAssistantConfig = Object.assign({}, assistantConfig);
-  groupChatAssistantConfig.name = "groupchat_assistant";
+  groupChatAssistantConfig.name = "group_chat_manager";
   groupChatAssistantConfig.system_message =
-    "You are a helpful assistant skilled at cordinating a group of other assistants to solve a task. ";
+    "You are a helpful manager skilled at cordinating a group of other assistants to solve a task. ";
 
   const groupChatFlowSpec: IGroupChatFlowSpec = {
     type: "groupchat",
@@ -310,7 +310,7 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
     config: groupChatAssistantConfig,
     groupchat_config: {
       agents: [assistantFlowSpec, assistantFlowSpec],
-      admin_name: "groupchat_assistant",
+      admin_name: "group_chat_manager",
       messages: [],
       max_round: 10,
       speaker_selection_method: "auto",
