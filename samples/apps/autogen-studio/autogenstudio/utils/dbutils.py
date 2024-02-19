@@ -12,7 +12,7 @@ else:
 from chromadb.api.types import QueryResult
 import chromadb.utils.embedding_functions as ef
 from typing import Any, List, Dict, Optional, Tuple
-from ..datamodel import AgentFlowSpec, AgentWorkFlowConfig, GroupChatFlowSpec, Gallery, Message, Model, Session, Skill
+from ..datamodel import AgentFlowSpec, AgentWorkFlowConfig, Gallery, Message, Model, Session, Skill
 from ..version import __version__ as __db_version__
 
 
@@ -84,24 +84,10 @@ AGENTS_TABLE_SQL = """
                 user_id TEXT NOT NULL,
                 timestamp DATETIME NOT NULL,
                 config TEXT,
-                type TEXT,
-                init_code TEXT,
-                skills TEXT,
-                description TEXT,
-                UNIQUE (id, user_id)
-            )
-            """
-
-GROUPS_TABLE_SQL = """
-            CREATE TABLE IF NOT EXISTS groups (
-
-                id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                timestamp DATETIME NOT NULL,
-                config TEXT,
                 groupchat_config TEXT,
                 type TEXT,
                 init_code TEXT,
+                skills TEXT,
                 description TEXT,
                 UNIQUE (id, user_id)
             )
@@ -223,9 +209,6 @@ class DBManager:
 
         # Create a agents table
         self.cursor.execute(AGENTS_TABLE_SQL)
-
-        # Create a groups table
-        self.cursor.execute(GROUPS_TABLE_SQL)
         
         # Create a workflows table
         self.cursor.execute(WORKFLOWS_TABLE_SQL)
@@ -239,7 +222,6 @@ class DBManager:
             data = json.load(json_file)
             skills = data["skills"]
             agents = data["agents"]
-            groups = data["groups"]
             models = data["models"]
             for model in models:
                 model = Model(**model)
@@ -267,34 +249,26 @@ class DBManager:
                 )
             for agent in agents:
                 agent = AgentFlowSpec(**agent)
+                # Ensure groupchat_config is initialized properly
+                if not hasattr(agent, 'groupchat_config') or agent.groupchat_config is None:
+                    agent.groupchat_config = {}
+
+                # When building updated_data, check if groupchat_config can call .dict()
+                groupchat_config_data = agent.groupchat_config.dict() if hasattr(agent.groupchat_config, 'dict') else {}
+
                 agent.skills = [skill.dict() for skill in agent.skills] if agent.skills else None
                 self.cursor.execute(
-                    "INSERT INTO agents (id, user_id, timestamp, config, type, skills, description, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO agents (id, user_id, timestamp, config, groupchat_config, type, skills, description, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         agent.id,
                         "default",
                         agent.timestamp,
                         json.dumps(agent.config.dict()),
+                        json.dumps(groupchat_config_data),
                         agent.type,
                         json.dumps(agent.skills),
                         agent.description,
                         agent.init_code,
-                    ),
-                )
-
-            for group in groups:
-                group = GroupChatFlowSpec(**group)
-                self.cursor.execute(
-                    "INSERT INTO groups (id, user_id, timestamp, config, groupchat_config, type, description, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        group.id,
-                        "default",
-                        group.timestamp,
-                        json.dumps(group.config.dict()),
-                        json.dumps(group.groupchat_config.dict()),
-                        group.type,
-                        group.description,
-                        group.init_code,
                     ),
                 )
                 
@@ -799,6 +773,7 @@ def get_agents(user_id: str, dbmanager: DBManager) -> List[AgentFlowSpec]:
     agents = []
     for row in result:
         row["config"] = json.loads(row["config"])
+        row["groupchat_config"] = json.loads(row["groupchat_config"])
         row["skills"] = json.loads(row["skills"] or "[]")
         agent = AgentFlowSpec(**row)
         agents.append(agent)
@@ -816,6 +791,7 @@ def get_agent(id: str, dbmanager: DBManager) -> AgentFlowSpec:
     existing_agent = get_item_by_field("agents", "id", id, dbmanager)
     if existing_agent:
         existing_agent["config"] = json.loads(existing_agent["config"])
+        existing_agent["groupchat_config"] = json.loads(existing_agent["groupchat_config"])
         existing_agent["skills"] = json.loads(existing_agent["skills"] or "[]")
         agent = AgentFlowSpec(**existing_agent)
         return agent
@@ -834,12 +810,19 @@ def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[A
     """
 
     existing_agent = get_item_by_field("agents", "id", agent_flow_spec.id, dbmanager)
+    # Ensure groupchat_config is initialized properly
+    if not hasattr(agent_flow_spec, 'groupchat_config') or agent_flow_spec.groupchat_config is None:
+        agent_flow_spec.groupchat_config = {}
+
+    # When building updated_data, check if groupchat_config can call .dict()
+    groupchat_config_data = agent_flow_spec.groupchat_config.dict() if hasattr(agent_flow_spec.groupchat_config, 'dict') else {}
 
     if existing_agent:
         updated_data = {
             "user_id": agent_flow_spec.user_id,
             "timestamp": agent_flow_spec.timestamp,
             "config": json.dumps(agent_flow_spec.config.dict()),
+            "groupchat_config": json.dumps(groupchat_config_data),
             "type": agent_flow_spec.type,
             "description": agent_flow_spec.description,
             "init_code": agent_flow_spec.init_code,
@@ -847,13 +830,14 @@ def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[A
         }
         update_item("agents", agent_flow_spec.id, updated_data, dbmanager)
     else:
-        query = "INSERT INTO agents (id, user_id, timestamp, config, type, description, skills, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        query = "INSERT INTO agents (id, user_id, timestamp, config, groupchat_config, type, description, skills, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         config_json = json.dumps(agent_flow_spec.config.dict())
         args = (
             agent_flow_spec.id,
             agent_flow_spec.user_id,
             agent_flow_spec.timestamp,
             config_json,
+            json.dumps(groupchat_config_data),
             agent_flow_spec.type,
             agent_flow_spec.description,
             json.dumps([x.dict() for x in agent_flow_spec.skills] if agent_flow_spec.skills else []),
@@ -880,107 +864,6 @@ def delete_agent(agent: AgentFlowSpec, dbmanager: DBManager) -> List[AgentFlowSp
     dbmanager.query(query=query, args=args)
 
     return get_agents(user_id=agent.user_id, dbmanager=dbmanager)
-
-
-def get_groups(user_id: str, dbmanager: DBManager) -> List[GroupChatFlowSpec]:
-    """
-    Load groups from the database, sorted by timestamp. Load groups where id = user_id or user_id = default.
-
-    :param user_id: The ID of the user whose groups are to be loaded
-    :param dbmanager: The DBManager instance to interact with the database
-    :return: A list of GroupChatFlowSpec objects
-    """
-
-    query = "SELECT * FROM groups WHERE user_id = ? OR user_id = ?"
-    args = (user_id, "default")
-    result = dbmanager.query(query=query, args=args, return_json=True)
-    # Sort by timestamp ascending
-    result = sorted(result, key=lambda k: k["timestamp"], reverse=True)
-    agents = []
-    for row in result:
-        row["config"] = json.loads(row["config"])
-        row["groupchat_config"] = json.loads(row["groupchat_config"])
-        agent = GroupChatFlowSpec(**row)
-        agents.append(agent)
-    return agents
-
-def get_group(id: str, dbmanager: DBManager) -> GroupChatFlowSpec:
-    """
-    Find group by id
-
-    :param id: The ID of the group
-    :param dbmanager: The DBManager instance to interact with the database
-    :return: A GroupChatFlowSpec object
-    """
-
-    existing_group = get_item_by_field("groups", "id", id, dbmanager)
-    if existing_group:
-        existing_group["config"] = json.loads(existing_group["config"])
-        existing_group["groupchat_config"] = json.loads(existing_group["groupchat_config"])
-        group = GroupChatFlowSpec(**existing_group)
-        return group
-    return None
-
-def upsert_group(group_flow_spec: GroupChatFlowSpec, dbmanager: DBManager) -> List[GroupChatFlowSpec]:
-    """
-    Insert or update an group for a specific user in the database.
-
-    If the group with the given ID already exists, it will be updated with the new data.
-    Otherwise, a new group will be created.
-
-    :param agent_flow_spec: The AgentFlowSpec object containing group configuration
-    :param dbmanager: The DBManager instance to interact with the database
-    :return: A list of dictionaries, each representing an group after insertion or update
-    """
-
-    existing_group = get_item_by_field("groups", "id", group_flow_spec.id, dbmanager)
-
-    if existing_group:
-        updated_data = {
-            "user_id": group_flow_spec.user_id,
-            "timestamp": group_flow_spec.timestamp,
-            "config": json.dumps(group_flow_spec.config.dict()),
-            "groupchat_config": json.dumps(group_flow_spec.groupchat_config.dict()),
-            "type": group_flow_spec.type,
-            "description": group_flow_spec.description,
-            "init_code": group_flow_spec.init_code,
-        }
-        update_item("groups", group_flow_spec.id, updated_data, dbmanager)
-    else:
-        query = "INSERT INTO groups (id, user_id, timestamp, config, groupchat_config, type, description, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        config_json = json.dumps(group_flow_spec.config.dict())
-        groupchat_config_json = json.dumps(group_flow_spec.groupchat_config.dict())
-        args = (
-            group_flow_spec.id,
-            group_flow_spec.user_id,
-            group_flow_spec.timestamp,
-            config_json,
-            groupchat_config_json,
-            group_flow_spec.type,
-            group_flow_spec.description,
-            group_flow_spec.init_code,
-        )
-        dbmanager.query(query=query, args=args)
-
-    groups = get_groups(user_id=group_flow_spec.user_id, dbmanager=dbmanager)
-    return groups
-
-
-def delete_group(group: GroupChatFlowSpec, dbmanager: DBManager) -> List[GroupChatFlowSpec]:
-    """
-    Delete an group for a specific user from the database.
-
-    :param group: The AgentFlowSpec object containing group configuration
-    :param dbmanager: The DBManager instance to interact with the database
-    :return: A list of dictionaries, each representing an group after deletion
-    """
-
-    # delete based on group.id and group.user_id
-    query = "DELETE FROM groups WHERE id = ? AND user_id = ?"
-    args = (group.id, group.user_id)
-    dbmanager.query(query=query, args=args)
-
-    return get_groups(user_id=group.user_id, dbmanager=dbmanager)
 
 def get_item_by_field(table: str, field: str, value: Any, dbmanager: DBManager) -> Optional[Dict[str, Any]]:
     query = f"SELECT * FROM {table} WHERE {field} = ?"

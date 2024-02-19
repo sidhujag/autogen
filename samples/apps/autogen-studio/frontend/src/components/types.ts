@@ -47,6 +47,7 @@ export interface IAgentFlowSpec {
   type: "agent" | "groupchat";
   init_code: string;
   config: IAgentConfig;
+  groupchat_config?: IGroupChatConfig;
   timestamp?: string;
   id?: string;
   skills?: Array<ISkill>;
@@ -63,22 +64,12 @@ export interface IGroupChatConfig {
   allow_repeat_speaker: boolean | Array<IAgentConfig>;
 }
 
-export interface IGroupChatFlowSpec {
-  type: "groupchat";
-  init_code: string;
-  config: IAgentConfig;
-  groupchat_config: IGroupChatConfig;
-  id?: string;
-  timestamp?: string;
-  user_id?: string;
-  description?: string;
-}
 
 export interface IFlowConfig {
   name: string;
   description: string;
   sender: IAgentFlowSpec;
-  receiver: IAgentFlowSpec | IGroupChatFlowSpec;
+  receiver: IAgentFlowSpec;
   type: "twoagents" | "groupchat";
   timestamp?: string;
   summary_method?: "none" | "last" | "llm";

@@ -122,35 +122,10 @@ class AgentConfig:
 
 
 @dataclass
-class AgentFlowSpec:
-    """Data model to help flow load agents from config"""
-    type: Literal["agent"]
-    init_code: str
-    config: AgentConfig
-    id: Optional[str] = None
-    timestamp: Optional[str] = None
-    user_id: Optional[str] = None
-    skills: Optional[Union[None, List[Skill]]] = None
-    description: Optional[str] = None
-
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now().isoformat()
-        if self.id is None:
-            self.id = str(uuid.uuid4())
-        if self.user_id is None:
-            self.user_id = "default"
-
-    def dict(self):
-        result = asdict(self)
-        return result
-
-
-@dataclass
 class GroupChatConfig:
     """Data model for GroupChat Config for AutoGen"""
 
-    agents: List[AgentFlowSpec] = field(default_factory=list)
+    agents: List[Any] = field(default_factory=list)
     admin_name: str = "Admin"
     messages: List[Dict] = field(default_factory=list)
     max_round: Optional[int] = 10
@@ -161,23 +136,21 @@ class GroupChatConfig:
 
     def dict(self):
         result = asdict(self)
-        result["agents"] = [a.dict() for a in self.agents]
         return result
 
-
 @dataclass
-class GroupChatFlowSpec:
+class AgentFlowSpec:
     """Data model to help flow load agents from config"""
-
-    type: Literal["groupchat"]
+    
+    type: Literal["agent", "groupchat"]
     init_code: str
-    config: AgentConfig = field(default_factory=AgentConfig)
-    groupchat_config: Optional[GroupChatConfig] = field(default_factory=GroupChatConfig)
+    config: AgentConfig
+    groupchat_config: Optional[GroupChatConfig] = None
     id: Optional[str] = None
     timestamp: Optional[str] = None
     user_id: Optional[str] = None
-    description: Optional[str] = None
     skills: Optional[Union[None, List[Skill]]] = None
+    description: Optional[str] = None
 
     def __post_init__(self):
         if self.timestamp is None:
@@ -189,10 +162,7 @@ class GroupChatFlowSpec:
 
     def dict(self):
         result = asdict(self)
-        # result["config"] = self.config.dict()
-        # result["groupchat_config"] = self.groupchat_config.dict()
         return result
-
 
 @dataclass
 class AgentWorkFlowConfig:
@@ -201,7 +171,7 @@ class AgentWorkFlowConfig:
     name: str
     description: str
     sender: AgentFlowSpec
-    receiver: Union[AgentFlowSpec, GroupChatFlowSpec]
+    receiver: AgentFlowSpec
     type: Literal["twoagents", "groupchat"] = "twoagents"
     id: Optional[str] = None
     user_id: Optional[str] = None
@@ -214,10 +184,7 @@ class AgentWorkFlowConfig:
         """initialize the agent spec"""
         if not isinstance(spec, dict):
             spec = spec.dict()
-        if spec["type"] == "groupchat":
-            return GroupChatFlowSpec(**spec)
-        else:
-            return AgentFlowSpec(**spec)
+        return AgentFlowSpec(**spec)
 
     def __post_init__(self):
         if self.id is None:
@@ -234,7 +201,6 @@ class AgentWorkFlowConfig:
         result["sender"] = self.sender.dict()
         result["receiver"] = self.receiver.dict()
         return result
-
 
 @dataclass
 class Session(object):
@@ -294,7 +260,6 @@ class DeleteMessageWebRequestModel(object):
     msg_id: str
     session_id: Optional[str] = None
 
-
 @dataclass
 class DBWebRequestModel(object):
     user_id: str
@@ -303,7 +268,6 @@ class DBWebRequestModel(object):
     skill: Optional[Skill] = None
     tags: Optional[List[str]] = None
     agent: Optional[AgentFlowSpec] = None
-    group: Optional[GroupChatFlowSpec] = None
     workflow: Optional[AgentWorkFlowConfig] = None
     model: Optional[Model] = None
 

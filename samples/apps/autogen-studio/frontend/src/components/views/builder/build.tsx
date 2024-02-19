@@ -1,7 +1,6 @@
 import * as React from "react";
 import SkillsView from "./skills";
 import AgentsView from "./agents";
-import GroupsView from "./groups";
 import WorkflowView from "./workflow";
 import { Tabs } from "antd";
 import {
@@ -9,7 +8,6 @@ import {
   CpuChipIcon,
   Square2StackIcon,
   Square3Stack3DIcon,
-  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import ModelsView from "./models";
 
@@ -64,21 +62,11 @@ const BuildView = () => {
             {
               label: (
                 <>
-                  <UserGroupIcon className="h-4 w-4 inline-block mr-1" />
-                  Groups
-                </>
-              ),
-              key: "4",
-              children: <GroupsView />,
-            },
-            {
-              label: (
-                <>
                   <Square3Stack3DIcon className="h-4 w-4 inline-block mr-1" />
                   Workflows
                 </>
               ),
-              key: "5",
+              key: "4",
               children: <WorkflowView />,
             },
           ]}

@@ -2,8 +2,10 @@ import {
   InformationCircleIcon,
   PlusIcon,
   TrashIcon,
+  UserGroupIcon,
+  UserIcon
 } from "@heroicons/react/24/outline";
-import { Modal, message } from "antd";
+import { Modal, message, Dropdown, MenuProps } from "antd";
 import * as React from "react";
 import { IAgentFlowSpec, IStatus } from "../../types";
 import { appContext } from "../../../hooks/provider";
@@ -13,7 +15,6 @@ import {
   BounceLoader,
   Card,
   LaunchButton,
-  LoadBox,
   LoadingOverlay,
 } from "../../atoms";
 
@@ -194,12 +195,14 @@ const AgentsView = ({}: any) => {
 
   const AgentModal = ({
     agent,
+    agents,
     setAgent,
     showAgentModal,
     setShowAgentModal,
     handler,
   }: {
     agent: IAgentFlowSpec | null;
+    agents: IAgentFlowSpec[];
     setAgent: (agent: IAgentFlowSpec | null) => void;
     showAgentModal: boolean;
     setShowAgentModal: (show: boolean) => void;
@@ -237,6 +240,7 @@ const AgentsView = ({}: any) => {
           <AgentFlowSpecView
             title=""
             flowSpec={localAgent || agent}
+            flowSpecs={agents}
             setFlowSpec={setLocalAgent}
           />
         )}
@@ -245,10 +249,38 @@ const AgentsView = ({}: any) => {
     );
   };
 
+  const agentTypes: MenuProps["items"] = [
+    {
+      key: "twoagents",
+      label: (
+        <div>
+          {" "}
+          <UserIcon className="w-5 h-5 inline-block mr-2" />
+          Agent
+        </div>
+      ),
+    },
+    {
+      key: "groupchat",
+      label: (
+        <div>
+          <UserGroupIcon className="w-5 h-5 inline-block mr-2" />
+          Group
+        </div>
+      ),
+    },
+  ];
+
+  const agentTypesOnClick: MenuProps["onClick"] = ({ key }) => {
+    const newConfig = sampleWorkflowConfig(key);
+    setNewAgent(newConfig.receiver);
+    setShowNewAgentModal(true);
+  };
   return (
     <div className="text-primary  ">
       <AgentModal
         agent={selectedAgent}
+        agents={agents || []}
         setAgent={setSelectedAgent}
         setShowAgentModal={setShowAgentModal}
         showAgentModal={showAgentModal}
@@ -261,6 +293,7 @@ const AgentsView = ({}: any) => {
 
       <AgentModal
         agent={newAgent || sampleAgent}
+        agents={agents || []}
         setAgent={setNewAgent}
         setShowAgentModal={setShowNewAgentModal}
         showAgentModal={showNewAgentModal}
@@ -273,21 +306,32 @@ const AgentsView = ({}: any) => {
 
       <div className="mb-2   relative">
         <div className="     rounded  ">
-          <div className="flex mt-2 pb-2 mb-2 border-b">
-            <div className="flex-1 font-semibold mb-2 ">
+        <div className="flex mt-2 pb-2 mb-2 border-b">
+            <div className="flex-1 font-semibold  mb-2 ">
               {" "}
               Agents ({agentRows.length}){" "}
             </div>
-            <LaunchButton
-              className="text-sm p-2 px-3"
-              onClick={() => {
-                setShowNewAgentModal(true);
-              }}
-            >
-              {" "}
-              <PlusIcon className="w-5 h-5 inline-block mr-1" />
-              New Agent
-            </LaunchButton>
+            <div className=" ">
+              <Dropdown
+                menu={{ items: agentTypes, onClick: agentTypesOnClick }}
+                placement="bottomRight"
+                trigger={["click"]}
+              >
+                <div
+                  className="inline-flex    rounded   hover:border-accent duration-300 hover:text-accent"
+                  role="button"
+                  onClick={(e) => {
+                    // add agent to flowSpec?.groupchat_config.agents
+                  }}
+                >
+                  <LaunchButton className=" text-sm p-2 px-3">
+                    {" "}
+                    <PlusIcon className="w-5 h-5 inline-block mr-1" />
+                    New Agent
+                  </LaunchButton>
+                </div>
+              </Dropdown>
+            </div>
           </div>
 
           <div className="text-xs mb-2 pb-1  ">

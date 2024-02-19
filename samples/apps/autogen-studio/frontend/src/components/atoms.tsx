@@ -37,7 +37,6 @@ import { fetchJSON, getServerUrl, obscureString, truncateText } from "./utils";
 import {
   IAgentFlowSpec,
   IFlowConfig,
-  IGroupChatFlowSpec,
   ILLMConfig,
   IModelConfig,
   ISkill,
@@ -1070,10 +1069,12 @@ export const PdfViewer = ({ url }: { url: string }) => {
 export const AgentFlowSpecView = ({
   title = "Agent Specification",
   flowSpec,
+  flowSpecs,
   setFlowSpec,
 }: {
   title: string;
   flowSpec: IAgentFlowSpec;
+  flowSpecs: IAgentFlowSpec[];
   setFlowSpec: (newFlowSpec: IAgentFlowSpec) => void;
   editMode?: boolean;
 }) => {
@@ -1081,7 +1082,7 @@ export const AgentFlowSpecView = ({
   const [localFlowSpec, setLocalFlowSpec] =
     React.useState<IAgentFlowSpec>(flowSpec);
 
-  // Required to monitor localAgent updates that occur in GroupChatFlowSpecView and reflect updates.
+  // Required to monitor localAgent updates that occur and reflect updates.
   useEffect(() => {
     setLocalFlowSpec(flowSpec);
   }, [flowSpec]);
@@ -1115,6 +1116,13 @@ export const AgentFlowSpecView = ({
         title=<div className="px-2">{flowSpec.config.name}</div>
         className="mb-4 bg-primary  "
       >
+        {flowSpec.type === "groupchat" && (
+          <GroupChatFlowSpecView
+            flowSpec={flowSpec}
+            setFlowSpec={setFlowSpec}
+            flowSpecs={flowSpecs}
+          />
+        )}
         <ControlRowView
           title="Agent Name"
           className="mt-4"
@@ -1545,22 +1553,20 @@ export const SkillLoader = ({
   );
 };
 
-export const GroupChatFlowSpecView = ({
+const GroupChatFlowSpecView = ({
   flowSpec,
   setFlowSpec,
   flowSpecs,
-  groupflowSpecs,
 }: {
-  flowSpec: IGroupChatFlowSpec | null;
-  setFlowSpec: (flowSpec: IGroupChatFlowSpec | null) => void;
+  flowSpec: IAgentFlowSpec | null;
+  setFlowSpec: (flowSpec: IAgentFlowSpec) => void;
   flowSpecs: IAgentFlowSpec[];
-  groupflowSpecs: IGroupChatFlowSpec[];
 }) => {
   const [showAgentModal, setShowAgentModal] = React.useState(false);
   const [selectedAgent, setSelectedAgent] = React.useState<number | null>(null);
 
   const handleRemoveAgent = (index: number) => {
-    const updatedAgents = flowSpec?.groupchat_config.agents.filter(
+    const updatedAgents = flowSpec?.groupchat_config?.agents.filter(
       (_, i) => i !== index
     );
     if (flowSpec?.groupchat_config && updatedAgents) {
@@ -1589,23 +1595,9 @@ export const GroupChatFlowSpecView = ({
     }
   };
 
-  const handleAddGroup = (group: IGroupChatFlowSpec) => {
-    if (flowSpec?.groupchat_config && flowSpec?.groupchat_config.agents) {
-      const updatedAgents = [...flowSpec?.groupchat_config.agents, group];
-      if (flowSpec?.groupchat_config) {
-        setFlowSpec({
-          ...flowSpec,
-          groupchat_config: {
-            ...flowSpec?.groupchat_config,
-            agents: updatedAgents,
-          },
-        });
-      }
-    }
-  };
 
   const handleAgentUpdate = (updatedAgent: IAgentFlowSpec, index: number) => {
-    const updatedAgents = flowSpec?.groupchat_config.agents.map((agent, i) => {
+    const updatedAgents = flowSpec?.groupchat_config?.agents.map((agent, i) => {
       if (i === index) {
         return updatedAgent;
       }
@@ -1653,38 +1645,7 @@ export const GroupChatFlowSpecView = ({
     );
   };
 
-  const groupItems: MenuProps["items"] = groupflowSpecs.map(
-    (groupflowSpec: IGroupChatFlowSpec, index: number) => ({
-      key: index,
-      label: groupflowSpec.config.name,
-      value: index,
-    })
-  );
-
-  const groupOnClick: MenuProps["onClick"] = ({ key }) => {
-    const selectedIndex = parseInt(key.toString());
-    const selectedGroup = groupflowSpecs[selectedIndex];
-    handleAddGroup(selectedGroup);
-  };
-
-  const GroupDropDown = () => {
-    return (
-      <Dropdown
-        menu={{ items: groupItems, onClick: groupOnClick }}
-        placement="bottomRight"
-        trigger={["click"]}
-      >
-        <div
-          className="inline-flex mr-1 mb-1 p-1 px-2 rounded border hover:border-accent duration-300 hover:text-accent"
-          role="button"
-        >
-          add group<PlusIcon className="w-4 h-4 inline-block mt-1" />
-        </div>
-      </Dropdown>
-    );
-  };
-
-  const agentsView = flowSpec?.groupchat_config.agents.map(
+  const agentsView = flowSpec?.groupchat_config?.agents.map(
     (flowSpec: IAgentFlowSpec, index: number) => {
       const tooltipText = `Agent: ${flowSpec?.config.name}`;
       return (
@@ -1746,7 +1707,6 @@ export const GroupChatFlowSpecView = ({
         <div className="flex flex-wrap mt-3">
           {agentsView}
           <AgentDropDown />
-          <GroupDropDown />
         </div>
       </GroupView>
 
@@ -1801,17 +1761,10 @@ const AgentModal = ({
     agent
   );
   const [selectedFlowSpec, setSelectedFlowSpec] = useState<number | null>(0);
-  const [selectedGroupFlowSpec, setSelectedGroupFlowSpec] = useState<number | null>(0);
 
   const serverUrl = getServerUrl();
   const { user } = React.useContext(appContext);
   const listAgentsUrl = `${serverUrl}/agents?user_id=${user?.email}`;
-  const listGroupsUrl = `${serverUrl}/groups?user_id=${user?.email}`;
-
-  const [groupflowSpecs, setGroupFlowSpecs] = useState<IGroupChatFlowSpec[]>([]);
-  useEffect(() => {
-    fetchGroups();
-  }, []);
 
   const [flowSpecs, setFlowSpecs] = useState<IAgentFlowSpec[]>([]);
   useEffect(() => {
@@ -1841,33 +1794,12 @@ const AgentModal = ({
     fetchJSON(listAgentsUrl, payLoad, onSuccess, onError);
   };
 
-  const fetchGroups = () => {
-    const onSuccess = (data: any) => {
-      if (data && data.status) {
-        setGroupFlowSpecs(data.data);
-      }
-    };
-    const onError = (err: any) => {
-      console.error(err);
-    };
-    const payLoad = {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    };
-    fetchJSON(listGroupsUrl, payLoad, onSuccess, onError);
-  };
-
   const handleAgentChange = (value: any) => {
     setSelectedFlowSpec(value);
     setLocalAgent(flowSpecs[value]);
   };
 
-  const handleGroupChange = (value: any) => {
-    setSelectedGroupFlowSpec(value);
-    setLocalAgent(groupflowSpecs[value]);
-  };
+
   return (
     <Modal
       title={
@@ -1898,27 +1830,18 @@ const AgentModal = ({
           <div className="text-sm text-secondary mt-2">
             Modify current agent{" "}
           </div>
-          {localAgent && localAgent.type === "groupchat" && (
-            <div>
-              <GroupChatFlowSpecView
-                flowSpec={localAgent as IGroupChatFlowSpec}
-                setFlowSpec={setLocalAgent}
-                flowSpecs={flowSpecs}
-                groupflowSpecs={groupflowSpecs}
-              />
-            </div>
-          )}
           {localAgent && (
             <AgentFlowSpecView
               title=""
               flowSpec={localAgent}
+              flowSpecs={flowSpecs}
               setFlowSpec={setLocalAgent}
             />
           )}
         </>
       )}
 
-      {agent && agent.type !== "groupchat" && (
+      {agent && (
         <div>
           {" "}
           <div>
@@ -1932,26 +1855,6 @@ const AgentModal = ({
             value={selectedFlowSpec}
             onChange={handleAgentChange}
             options={flowSpecs.map((spec, index) => ({
-              label: spec.config.name,
-              value: index,
-            }))}
-          />
-        </div>
-      )}
-      {agent && agent.type === "groupchat" && (
-        <div>
-          {" "}
-          <div>
-            <div className="text-sm text-secondary mt-2">
-              Or replace with an existing group{" "}
-            </div>
-          </div>
-          <Select
-            className="mt-2 w-full"
-            defaultValue={selectedGroupFlowSpec}
-            value={selectedGroupFlowSpec}
-            onChange={handleGroupChange}
-            options={groupflowSpecs.map((spec, index) => ({
               label: spec.config.name,
               value: index,
             }))}

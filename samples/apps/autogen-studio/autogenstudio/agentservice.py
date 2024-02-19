@@ -2,7 +2,7 @@ from typing import Optional, List, Dict, Any
 import os
 import json
 import requests
-from .datamodel import AgentConfig, AgentFlowSpec, LLMConfig, Skill, Message, GroupChatConfig, GroupChatFlowSpec, AgentWorkFlowConfig, Session
+from .datamodel import AgentConfig, AgentFlowSpec, LLMConfig, Skill, Message, GroupChatConfig, AgentWorkFlowConfig, Session
 
 class AgentService:
     @staticmethod
@@ -49,6 +49,7 @@ class AgentService:
                 print(f"Skill {skill_id} not found or error occurred. Skipping.")
         return skills
 
+
     @staticmethod
     def sanitize_discover_services_output(service_type: str, response_data):
         sanitized_data = {}
@@ -58,6 +59,7 @@ class AgentService:
                 sanitized_data[query] = sanitized_skills
         elif service_type == "agents":
             for query, agents in response_data.items():
+                # sanitize group vs agent depending on type
                 sanitized_agents = [AgentService.sanitize_agent_output(AgentFlowSpec(**agent)) for agent in agents]
                 sanitized_data[query] = sanitized_agents
         elif service_type == "workflows":
@@ -160,15 +162,6 @@ class AgentService:
         return sanitized_workflow
 
     @staticmethod
-    def sanitize_group_chat_flow_spec(group_chat_flow_spec: GroupChatFlowSpec):
-        sanitized_group_chat_flow_spec = {
-            "type": "groupchat",
-            "workflow_id": group_chat_flow_spec.id,
-            "description": group_chat_flow_spec.description,
-        }
-        return sanitized_group_chat_flow_spec
-
-    @staticmethod
     def find_matching_agent(agents: Dict[str, Any], id: str) -> Optional[AgentFlowSpec]:
         for agent in agents:
             if agent["id"] == id:
@@ -195,7 +188,7 @@ class AgentService:
         return None
     
     @staticmethod
-    def create_or_update_skill(
+    def upsert_skill(
         id: Optional[str],
         title: Optional[str],
         content: Optional[str],
@@ -252,8 +245,9 @@ class AgentService:
         return json.dumps(response)
 
     @staticmethod
-    def create_or_update_agent(
+    def upsert_agent(
         id: Optional[str],
+        group_agents: Optional[List[str]],
         init_code: Optional[str],
         name: Optional[str],
         msg: Optional[str],
@@ -274,6 +268,8 @@ class AgentService:
                 assistant.config.name = name
             if init_code:
                 assistant.init_code = init_code
+            if group_agents and assistant.type == "groupchat":
+                assistant.groupchat_config.agents = group_agents
         else:
             # Create new assistant if it does not exist
             llm_config = LLMConfig(config_list=[{"model": "gpt-4-turbo-preview"}], temperature=0)
@@ -282,14 +278,18 @@ class AgentService:
                 config=AgentConfig(name=name, init_code=init_code, system_message=msg, llm_config=llm_config),
                 description=description
             )
+            if group_agents:
+                assistant.type = "groupchat"
+                assistant.groupchat_config=GroupChatConfig(agents=[], admin_name=name)
         # Construct payload for API request
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+
         url = f"{server_url}/agents"
         payload = {
             "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),  # Dynamically fetch user email
             "agent": assistant.dict()
         }
-        
+
         # Send request to create or update agent
         response = AgentService.fetch_json(url, payload, method="POST")
         if 'data' in response:
@@ -310,7 +310,7 @@ class AgentService:
             id (str): agent ID
 
         Returns:
-            List[Dict[str, Any]]: A list of skill details.
+            List[Dict[str, Any]]: A list of agent details.
         """
         if not id:
             return None
