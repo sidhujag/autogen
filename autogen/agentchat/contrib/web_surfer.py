@@ -1,17 +1,16 @@
-import json
 import copy
 import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union, Callable, Literal, Tuple
 from typing_extensions import Annotated
-from ... import Agent, ConversableAgent, AssistantAgent, UserProxyAgent, GroupChatManager, GroupChat, OpenAIWrapper
+from ... import Agent, ConversableAgent, AssistantAgent, UserProxyAgent, OpenAIWrapper
 from ...browser_utils import SimpleTextBrowser
 from ...code_utils import content_str
 from datetime import datetime
 from ...token_count_utils import count_token, get_max_token_limit
 from ...oai.openai_utils import filter_config
-
+from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
@@ -19,11 +18,14 @@ class WebSurferAgent(ConversableAgent):
     """(In preview) An agent that acts as a basic web surfer that can search the web and visit web pages."""
 
     DEFAULT_PROMPT = (
-        "You are a helpful AI assistant with access to a web browser (via the provided functions). In fact, YOU ARE THE ONLY MEMBER OF YOUR PARTY WITH ACCESS TO A WEB BROWSER, so please help out where you can by performing web searches, navigating pages, and reporting what you find. Two search engines are available at your disposal, google is good for quick real-time info but both are good general search engines. Default engine is bing because its fast and cheaper per query. For real-time related queries you can double both search engines. Today's date is "
+        "You are a helpful AI assistant with access to inner assistants running a web browser which can perform web searches, open/navigate pages, and reporting what they find. Once on a desired page, they can read pages, generate summaries, find specific words or phrases on the page (ctrl+f), or even just scroll up or down in the viewport. Two search engines are available, google for real-time info and bind for general search. Google can be done with categoriess: 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events'. Today's date is "
         + datetime.now().date().isoformat()
     )
-
-    DEFAULT_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, navigate to Wikipedia, answer questions from pages, and or generate summaries."
+    INNER_DEFAULT_PROMPT = (
+        "You are a helpful AI assistant with access to a web browser (via the provided functions). In fact, YOU ARE THE ONLY MEMBER OF YOUR PARTY WITH ACCESS TO A WEB BROWSER, so please help out where you can by performing web searches, open/navigating pages, and reporting what you find. Once on a desired page, you may be able to answer questions by reading the page, generate summaries, find specific words or phrases on the page (ctrl+f), or even just scroll up or down in the viewport. Two search engines are available at your disposal, google is good for quick real-time info but both are good general search engines. Default engine is bing because its fast and cheaper per query. For real-time related queries you can double both search engines. Google search has the ability to search via categories: 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events'. You have special renderers for downloading files, PDF viewing, HTML pages, plain text/wikipedia, and Youtube metadata+transcripts. Today's date is "
+        + datetime.now().date().isoformat()
+    )
+    DEFAULT_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, navigate to Wikipedia, etc. Once on a desired page, ask them to answer questions by reading the page, generate summaries, find specific words or phrases on the page (ctrl+f), or even just scroll up or down in the viewport."
 
     def __init__(
         self,
@@ -39,6 +41,9 @@ class WebSurferAgent(ConversableAgent):
         summarizer_llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
         browser_config: Optional[Union[Dict, None]] = None,
+        path_to_oai_dir: Optional[Path] = None,
+        inner_system_message: Optional[str] = INNER_DEFAULT_PROMPT,
+        **kwargs
     ):
         super().__init__(
             name=name,
@@ -51,19 +56,21 @@ class WebSurferAgent(ConversableAgent):
             code_execution_config=code_execution_config,
             llm_config=llm_config,
             default_auto_reply=default_auto_reply,
+            path_to_oai_dir=path_to_oai_dir,
+            **kwargs
         )
 
         self._create_summarizer_client(summarizer_llm_config, llm_config)
 
         # Create the browser
-        self.browser = SimpleTextBrowser(**(browser_config if browser_config else {}))
+        self.browser = SimpleTextBrowser(**(browser_config if browser_config else {}), path_to_oai_dir=path_to_oai_dir)
 
         inner_llm_config = copy.deepcopy(llm_config)
 
         # Set up the inner monologue
         self._assistant = AssistantAgent(
             self.name + "_inner_assistant",
-            system_message=system_message,  # type: ignore[arg-type]
+            system_message=inner_system_message,  # type: ignore[arg-type]
             llm_config=inner_llm_config,
             is_termination_msg=lambda m: False,
         )
@@ -132,8 +139,10 @@ class WebSurferAgent(ConversableAgent):
             name="informational_web_search",
             description="Perform an INFORMATIONAL web search query then return the search results.",
         )
-        def _informational_search(query: Annotated[str, "The informational web search query to perform."]) -> str:
-            self.browser.visit_page(f"bing: {query}")
+        def _informational_search(query: Annotated[str, "The informational web search query to perform."],
+                                search_engine: Annotated[Optional[str], "[Optional] The search engine to use. Options include 'google', 'bing'. (Defaults to 'bing')"] = 'bing',
+                                category: Annotated[Optional[str], "[Optional] The category to filter the search. Options include 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events', 'search'. Usually use with google. (Defaults to 'search')"] = 'search') -> str:
+            self.browser.visit_page(f"{search_engine}: {query}", category)
             header, content = _browser_state()
             return header.strip() + "\n=======================\n" + content
 
@@ -142,8 +151,10 @@ class WebSurferAgent(ConversableAgent):
             name="navigational_web_search",
             description="Perform a NAVIGATIONAL web search query then immediately navigate to the top result. Useful, for example, to navigate to a particular Wikipedia article or other known destination. Equivalent to Google's \"I'm Feeling Lucky\" button.",
         )
-        def _navigational_search(query: Annotated[str, "The navigational web search query to perform."]) -> str:
-            self.browser.visit_page(f"bing: {query}")
+        def _navigational_search(query: Annotated[str, "The navigational web search query to perform."],
+                                search_engine: Annotated[Optional[str], "[Optional] The search engine to use.Options include 'google', 'bing'. (Defaults to 'bing')"] = 'bing',
+                                category: Annotated[Optional[str], "[Optional] The category to filter the search. Options include 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events', 'search'. Usually use with google. (Defaults to 'search')"] = 'search') -> str:
+            self.browser.visit_page(f"{search_engine}: {query}", category)
 
             # Extract the first link
             m = re.search(r"\[.*?\]\((http.*?)\)", self.browser.page_content)
@@ -182,6 +193,43 @@ class WebSurferAgent(ConversableAgent):
             self.browser.page_down()
             header, content = _browser_state()
             return header.strip() + "\n=======================\n" + content
+
+        @self._user_proxy.register_for_execution()
+        @self._assistant.register_for_llm(
+            name="find_on_page_ctrl_f",
+            description="Scroll the viewport to the first occurrence of the search string. This is equivalent to Ctrl+F.",
+        )
+        def _find_on_page_ctrl_f(
+            search_string: Annotated[
+                str, "The string to search for on the page. This search string supports wildcards like '*'"
+            ]
+        ) -> str:
+            find_result = self.browser.find_on_page(search_string)
+            header, content = _browser_state()
+
+            if find_result is None:
+                return (
+                    header.strip()
+                    + "\n=======================\nThe search string '"
+                    + search_string
+                    + "' was not found on this page."
+                )
+            else:
+                return header.strip() + "\n=======================\n" + content
+
+        @self._user_proxy.register_for_execution()
+        @self._assistant.register_for_llm(
+            name="find_next",
+            description="Scroll the viewport to next occurrence of the search string.",
+        )
+        def _find_next() -> str:
+            find_result = self.browser.find_next()
+            header, content = _browser_state()
+
+            if find_result is None:
+                return header.strip() + "\n=======================\nThe search string was not found on this page."
+            else:
+                return header.strip() + "\n=======================\n" + content
 
         if self.summarization_client is not None:
 
@@ -261,16 +309,16 @@ class WebSurferAgent(ConversableAgent):
     ) -> Tuple[bool, Optional[Union[str, Dict[str, str]]]]:
         """Generate a reply using autogen.oai."""
         if messages is None:
-            messages = self._oai_messages[sender]
+            messages = self._oai_messages[sender.name]
 
         self._user_proxy.reset()  # type: ignore[no-untyped-call]
         self._assistant.reset()  # type: ignore[no-untyped-call]
 
         # Clone the messages to give context
-        self._assistant.chat_messages[self._user_proxy] = list()
+        self._assistant.chat_messages[self._user_proxy.name] = list()
         history = messages[0 : len(messages) - 1]
         for message in history:
-            self._assistant.chat_messages[self._user_proxy].append(message)
+            self._assistant.chat_messages[self._user_proxy.name].append(message)
 
         # Remind the agent where it is
         self._user_proxy.send(
@@ -279,12 +327,11 @@ class WebSurferAgent(ConversableAgent):
             request_reply=False,
             silent=True,
         )
-
         self._user_proxy.send(messages[-1]["content"], self._assistant, request_reply=True, silent=True)
-        agent_reply = self._user_proxy.chat_messages[self._assistant][-1]
+        agent_reply = self._user_proxy.chat_messages[self._assistant.name][-1]
         # print("Agent Reply: " + str(agent_reply))
         proxy_reply = self._user_proxy.generate_reply(
-            messages=self._user_proxy.chat_messages[self._assistant], sender=self._assistant
+            messages=self._user_proxy.chat_messages[self._assistant.name], sender=self._assistant
         )
         # print("Proxy Reply: " + str(proxy_reply))
 

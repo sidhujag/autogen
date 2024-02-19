@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict
 import autogen
-from .datamodel import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig
+from .datamodel import AgentFlowSpec, AgentWorkFlowConfig
 from .utils import get_skills_from_prompt, clear_folder, sanitize_model
 from datetime import datetime
 from pathlib import Path
@@ -87,16 +87,6 @@ class AutoGenWorkFlowManager:
             code_execution_config["executor"] = "commandline-local"
             code_execution_config["commandline-local"] = {"work_dir": self.work_dir}
             agent_spec.config.code_execution_config = code_execution_config
-        if agent_spec.skills:
-            # get skill prompt, also write skills to a file named skills.py
-            skills_prompt = ""
-            time = "Use current date/time to carefully assess real-time information. Today's date is " + datetime.now().date().isoformat()
-            skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
-            if agent_spec.config.system_message:
-                agent_spec.config.system_message = time + "\n\n" + agent_spec.config.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
-            else:
-                agent_spec.config.system_message = time + "\n\nYou are a helpful AI Assistant.\n\n" + skills_prompt + "\n\nYour session_id:" + session_id
-
         return agent_spec
 
     def setup_context(self, agent_spec: AgentFlowSpec, session_id: str):
@@ -143,6 +133,7 @@ class AutoGenWorkFlowManager:
             'bytearray': bytearray,
             'memoryview': memoryview,
             'complex': complex,
+            '__import__': __import__,
         }
         # Define the context for exec to limit the accessible variables and functions
         context = {
@@ -189,7 +180,19 @@ class AutoGenWorkFlowManager:
 
         if agent is None:
             raise ValueError("Initialization code did not correctly create an agent.")
-
+        if agent_spec.skills:
+            # get skill prompt, also write skills to a file named skills.py
+            skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
+            if agent.system_message:
+                agent.update_system_message(agent.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id)
+            else:
+                agent.update_system_message("You are a helpful assistant.\n\n" + skills_prompt + "\n\nYour session_id:" + session_id)
+        else:
+            if agent.system_message:
+                agent.update_system_message(agent.system_message + "\n\nYour session_id:" + session_id)
+            else:
+                agent.update_system_message("You are a helpful assistant.\n\nYour session_id:" + session_id)
+                       
         # Assuming the agent is correctly instantiated, register hooks or perform additional setup
         agent.register_hook(hookable_method="receive_message", hook=self.receive_message)
 

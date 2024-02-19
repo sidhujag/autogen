@@ -22,6 +22,30 @@
   "agents": [
     {
       "type": "agent",
+      "description": "A helpful assistant that can perform web surfing actions such as informational and navigational searches, visit specific pages, scroll up or down on the current page, answer questions from page content, and summarize web pages.",
+      "init_code": "import os\nfrom autogen.agentchat.contrib.web_surfer import WebSurferAgent\nbing_api_key = os.getenv('BING_API_KEY')\ndownloads_folder = os.getenv('SCRATCH_DIR')\nbrowser_config={'viewport_size': 4096, 'bing_api_key': bing_api_key, 'downloads_folder': downloads_folder}\nagent = WebSurferAgent(path_to_oai_dir=oai_dir, browser_config=browser_config, **agent_spec.config.dict())",
+      "config": {
+        "name": "websurferagent",
+        "llm_config": {
+          "config_list": [
+            {
+              "model": "gpt-4-turbo-preview"
+            },
+            {
+              "model": "gpt-3.5-turbo-16k"
+            }
+          ],
+          "temperature": 0.1,
+          "timeout": 600,
+          "cache_seed": null
+        },
+        "human_input_mode": "NEVER",
+        "max_consecutive_auto_reply": 8,
+        "system_message": "A helpful assistant with access to a web browser. You ARE unable to provide real-time and the most current updates because you have access to the internet. You have internal agents that can execute commands related to web surfing. Ask them to perform web searches, open pages, navigate to Wikipedia, etc. Once on a desired page, ask them to answer questions by reading the page, generate summaries, find specific words or phrases on the page (ctrl+f), or even just scroll up or down in the viewport. Two search engines are available at your disposal, google is good for quick real-time info but both are good general search engines. Default engine is bing because its fast and cheaper per query. For real-time related queries you can double both search engines. Google search has the ability to search via categories: 'news', 'places', 'images', 'search', 'videos', 'shopping', 'sports', 'events'. You have special renderers for downloading files, PDF viewing, HTML pages, plain text/wikipedia, and Youtube metadata+transcripts."
+      }
+    },
+    {
+      "type": "agent",
       "description": "A user proxy agent that executes code.",
       "init_code": "agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
       "config": {
@@ -268,6 +292,7 @@
     {
       "name": "General Agent Workflow",
       "description": "This workflow is used for general purpose tasks.",
+      "summary_method": "llm",
       "sender": {
         "type": "agent",
         "description": "A user proxy agent that executes code.",

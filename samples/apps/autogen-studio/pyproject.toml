@@ -30,7 +30,8 @@ dependencies = [
     "beautifulsoup4", 
     "markdownify", 
     "pdfminer.six", 
-    "pathvalidate"
+    "pathvalidate",
+    "youtube_transcript_api"
 ]
 optional-dependencies = {web = ["fastapi", "uvicorn"]}
 
