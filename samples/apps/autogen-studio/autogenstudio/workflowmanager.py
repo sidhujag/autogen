@@ -191,7 +191,7 @@ class AutoGenWorkFlowManager:
             raise ValueError("Initialization code did not correctly create an agent.")
 
         # Assuming the agent is correctly instantiated, register hooks or perform additional setup
-        agent.register_hook(hookable_method=agent.receive_message, hook=self.receive_message)
+        agent.register_hook(hookable_method="receive_message", hook=self.receive_message)
 
         return agent
 
