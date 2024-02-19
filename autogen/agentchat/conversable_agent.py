@@ -2362,7 +2362,7 @@ class ConversableAgent(LLMAgent):
         """
         Calls any registered capability hooks to process received messages
         """
-        hook_list = self.hook_lists[self.receive_message]
+        hook_list = self.hook_lists["receive_message"]
         # If no hooks are registered, or if there are no messages to process, return the original message list.
         if len(hook_list) > 0 and message is not None:
             message = self._message_to_dict(message)
