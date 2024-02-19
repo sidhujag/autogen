@@ -31,7 +31,7 @@ const AgentsView = ({}: any) => {
   const saveAgentsUrl = `${serverUrl}/groups`;
   const deleteAgentUrl = `${serverUrl}/groups/delete`;
 
-  const [agents, setAgents] = React.useState<IAgentFlowSpec[] | null>([]);
+  const [agents, setAgents] = React.useState<IGroupChatFlowSpec[] | null>([]);
   const [selectedAgent, setSelectedAgent] =
     React.useState<IAgentFlowSpec | null>(null);
 
@@ -40,7 +40,7 @@ const AgentsView = ({}: any) => {
   const [showAgentModal, setShowAgentModal] = React.useState(false);
 
   const sampleFlow = sampleWorkflowConfig("groupchat")
-  const sampleAgent = sampleFlow.receiver as IAgentFlowSpec
+  const sampleAgent = sampleFlow.receiver as IGroupChatFlowSpec
   const [newAgent, setNewAgent] = React.useState<IAgentFlowSpec | null>(
     sampleAgent
   );
@@ -56,7 +56,7 @@ const AgentsView = ({}: any) => {
       },
       body: JSON.stringify({
         user_id: user?.email,
-        agent: agent,
+        group: agent,
       }),
     };
 
@@ -110,7 +110,7 @@ const AgentsView = ({}: any) => {
     setError(null);
     setLoading(true);
     // const fetch;
-
+    
     const payLoad = {
       method: "POST",
       headers: {
@@ -119,7 +119,7 @@ const AgentsView = ({}: any) => {
       },
       body: JSON.stringify({
         user_id: user?.email,
-        agent: agent,
+        group: agent as IGroupChatFlowSpec,
       }),
     };
 
@@ -149,7 +149,7 @@ const AgentsView = ({}: any) => {
     }
   }, []);
 
-  const agentRows = (agents || []).map((agent: IAgentFlowSpec, i: number) => {
+  const agentRows = (agents || []).map((agent: IGroupChatFlowSpec, i: number) => {
     return (
       <div key={"agentrow" + i} className=" " style={{ width: "200px" }}>
         <div className="">

@@ -75,6 +75,7 @@
       }
     }
   ],
+  "groups": [],
   "skills": [
     {
       "title": "fetch_profile",

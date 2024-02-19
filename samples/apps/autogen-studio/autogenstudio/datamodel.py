@@ -303,6 +303,7 @@ class DBWebRequestModel(object):
     skill: Optional[Skill] = None
     tags: Optional[List[str]] = None
     agent: Optional[AgentFlowSpec] = None
+    group: Optional[GroupChatFlowSpec] = None
     workflow: Optional[AgentWorkFlowConfig] = None
     model: Optional[Model] = None
 
