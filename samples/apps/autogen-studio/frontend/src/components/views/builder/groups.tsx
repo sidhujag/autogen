@@ -27,11 +27,13 @@ const AgentsView = ({}: any) => {
 
   const { user } = React.useContext(appContext);
   const serverUrl = getServerUrl();
-  const listAgentsUrl = `${serverUrl}/groups?user_id=${user?.email}`;
+  const listAgentsUrl = `${serverUrl}/agents?user_id=${user?.email}`;
+  const listGroupsUrl = `${serverUrl}/groups?user_id=${user?.email}`;
   const saveAgentsUrl = `${serverUrl}/groups`;
   const deleteAgentUrl = `${serverUrl}/groups/delete`;
 
-  const [agents, setAgents] = React.useState<IGroupChatFlowSpec[] | null>([]);
+  const [agents, setAgents] = React.useState<IAgentFlowSpec[] | null>([]);
+  const [groups, setGroups] = React.useState<IGroupChatFlowSpec[] | null>([]);
   const [selectedAgent, setSelectedAgent] =
     React.useState<IAgentFlowSpec | null>(null);
 
@@ -63,8 +65,7 @@ const AgentsView = ({}: any) => {
     const onSuccess = (data: any) => {
       if (data && data.status) {
         message.success(data.message);
-        console.log("agents", data.data);
-        setAgents(data.data);
+        setGroups(data.data);
       } else {
         message.error(data.message);
       }
@@ -90,8 +91,6 @@ const AgentsView = ({}: any) => {
 
     const onSuccess = (data: any) => {
       if (data && data.status) {
-        // message.success(data.message);
-
         setAgents(data.data);
       } else {
         message.error(data.message);
@@ -106,6 +105,31 @@ const AgentsView = ({}: any) => {
     fetchJSON(listAgentsUrl, payLoad, onSuccess, onError);
   };
 
+  const fetchGroups = () => {
+    setError(null);
+    setLoading(true);
+    const payLoad = {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    };
+
+    const onSuccess = (data: any) => {
+      if (data && data.status) {
+        setGroups(data.data);
+      } else {
+        message.error(data.message);
+      }
+      setLoading(false);
+    };
+    const onError = (err: any) => {
+      setError(err);
+      message.error(err.message);
+      setLoading(false);
+    };
+    fetchJSON(listGroupsUrl, payLoad, onSuccess, onError);
+  };
   const saveAgent = (agent: IAgentFlowSpec) => {
     setError(null);
     setLoading(true);
@@ -126,8 +150,7 @@ const AgentsView = ({}: any) => {
     const onSuccess = (data: any) => {
       if (data && data.status) {
         message.success(data.message);
-        // console.log("agents", data.data);
-        setAgents(data.data);
+        setGroups(data.data);
       } else {
         message.error(data.message);
       }
@@ -144,12 +167,12 @@ const AgentsView = ({}: any) => {
 
   React.useEffect(() => {
     if (user) {
-      // console.log("fetching messages", messages);
       fetchAgents();
+      fetchGroups();
     }
   }, []);
 
-  const agentRows = (agents || []).map((agent: IGroupChatFlowSpec, i: number) => {
+  const agentRows = (groups || []).map((agent: IGroupChatFlowSpec, i: number) => {
     return (
       <div key={"agentrow" + i} className=" " style={{ width: "200px" }}>
         <div className="">
@@ -239,6 +262,7 @@ const AgentsView = ({}: any) => {
             flowSpec={localAgent as IGroupChatFlowSpec || agent as IGroupChatFlowSpec}
             setFlowSpec={setLocalAgent}
             flowSpecs={agents || []}
+            groupflowSpecs={groups || []}
           />
         )}
         {agent && (

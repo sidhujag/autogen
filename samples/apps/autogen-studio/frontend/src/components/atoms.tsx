@@ -1549,10 +1549,12 @@ export const GroupChatFlowSpecView = ({
   flowSpec,
   setFlowSpec,
   flowSpecs,
+  groupflowSpecs,
 }: {
   flowSpec: IGroupChatFlowSpec | null;
   setFlowSpec: (flowSpec: IGroupChatFlowSpec | null) => void;
   flowSpecs: IAgentFlowSpec[];
+  groupflowSpecs: IGroupChatFlowSpec[];
 }) => {
   const [showAgentModal, setShowAgentModal] = React.useState(false);
   const [selectedAgent, setSelectedAgent] = React.useState<number | null>(null);
@@ -1575,6 +1577,21 @@ export const GroupChatFlowSpecView = ({
   const handleAddAgent = (agent: IAgentFlowSpec) => {
     if (flowSpec?.groupchat_config && flowSpec?.groupchat_config.agents) {
       const updatedAgents = [...flowSpec?.groupchat_config.agents, agent];
+      if (flowSpec?.groupchat_config) {
+        setFlowSpec({
+          ...flowSpec,
+          groupchat_config: {
+            ...flowSpec?.groupchat_config,
+            agents: updatedAgents,
+          },
+        });
+      }
+    }
+  };
+
+  const handleAddGroup = (group: IGroupChatFlowSpec) => {
+    if (flowSpec?.groupchat_config && flowSpec?.groupchat_config.agents) {
+      const updatedAgents = [...flowSpec?.groupchat_config.agents, group];
       if (flowSpec?.groupchat_config) {
         setFlowSpec({
           ...flowSpec,
@@ -1630,7 +1647,38 @@ export const GroupChatFlowSpecView = ({
           className="inline-flex mr-1 mb-1 p-1 px-2 rounded border hover:border-accent duration-300 hover:text-accent"
           role="button"
         >
-          add <PlusIcon className="w-4 h-4 inline-block mt-1" />
+          add agent<PlusIcon className="w-4 h-4 inline-block mt-1" />
+        </div>
+      </Dropdown>
+    );
+  };
+
+  const groupItems: MenuProps["items"] = groupflowSpecs.map(
+    (groupflowSpec: IGroupChatFlowSpec, index: number) => ({
+      key: index,
+      label: groupflowSpec.config.name,
+      value: index,
+    })
+  );
+
+  const groupOnClick: MenuProps["onClick"] = ({ key }) => {
+    const selectedIndex = parseInt(key.toString());
+    const selectedGroup = groupflowSpecs[selectedIndex];
+    handleAddGroup(selectedGroup);
+  };
+
+  const GroupDropDown = () => {
+    return (
+      <Dropdown
+        menu={{ items: groupItems, onClick: groupOnClick }}
+        placement="bottomRight"
+        trigger={["click"]}
+      >
+        <div
+          className="inline-flex mr-1 mb-1 p-1 px-2 rounded border hover:border-accent duration-300 hover:text-accent"
+          role="button"
+        >
+          add group<PlusIcon className="w-4 h-4 inline-block mt-1" />
         </div>
       </Dropdown>
     );
@@ -1698,6 +1746,7 @@ export const GroupChatFlowSpecView = ({
         <div className="flex flex-wrap mt-3">
           {agentsView}
           <AgentDropDown />
+          <GroupDropDown />
         </div>
       </GroupView>
 
@@ -1855,6 +1904,7 @@ const AgentModal = ({
                 flowSpec={localAgent as IGroupChatFlowSpec}
                 setFlowSpec={setLocalAgent}
                 flowSpecs={flowSpecs}
+                groupflowSpecs={groupflowSpecs}
               />
             </div>
           )}
