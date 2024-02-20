@@ -305,7 +305,7 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
 
   const groupChatFlowSpec: IAgentFlowSpec = {
     type: "groupchat",
-    init_code: "agents = [self.load(self.sanitize_agent_spec(agent_spec_internal, session_id), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents]\ngroup_chat_config = agent_spec.groupchat_config.dict()\ngroup_chat_config['agents'] = agents\ngroupchat = autogen.GroupChat(**group_chat_config)\nagent = autogen.GroupChatManager(groupchat=groupchat, path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
+    init_code: "agents = [self.load(self.sanitize_agent_spec(agent_spec_internal), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents]\ngroup_chat_config = agent_spec.groupchat_config.dict()\ngroup_chat_config['agents'] = agents\ngroupchat = autogen.GroupChat(**group_chat_config)\nagent = autogen.GroupChatManager(groupchat=groupchat, path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
     config: groupChatAssistantConfig,
     groupchat_config: {
       agents: [assistantFlowSpec, assistantFlowSpec],

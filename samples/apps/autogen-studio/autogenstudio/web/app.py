@@ -61,7 +61,7 @@ chatmanager = AutoGenChatManager()  # manage calls to autogen
 @api.post("/messages")
 async def add_message(req: ChatWebRequestModel):
     message = Message(**req.message.dict())
-
+    user_history = dbutils.get_messages(user_id=message.user_id, session_id=req.message.session_id, dbmanager=dbmanager)
     # save incoming message to db
     dbutils.create_message(message=message, dbmanager=dbmanager)
     user_dir = os.path.join(folders["files_static_root"], "user", md5_hash(message.user_id))
@@ -70,6 +70,7 @@ async def add_message(req: ChatWebRequestModel):
     try:
         response_message: Message = chatmanager.chat(
             message=message,
+            history=user_history,
             work_dir=user_dir,
             flow_config=req.flow_config,
         )

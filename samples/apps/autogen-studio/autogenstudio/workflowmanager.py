@@ -50,7 +50,7 @@ class AutoGenWorkFlowManager:
         }
         self.agent_history.append(iteration)
 
-    def sanitize_agent_spec(self, agent_spec: AgentFlowSpec, session_id: str) -> AgentFlowSpec:
+    def sanitize_agent_spec(self, agent_spec: AgentFlowSpec) -> AgentFlowSpec:
         """
         Sanitizes the agent spec by setting loading defaults
 
@@ -61,7 +61,9 @@ class AutoGenWorkFlowManager:
         Returns:
             The sanitized agent configuration.
         """
-
+        if isinstance(agent_spec, dict):
+            agent_spec = AgentFlowSpec(**agent_spec)
+        
         agent_spec.config.is_termination_msg = agent_spec.config.is_termination_msg or (
             lambda x: "TERMINATE" in x.get("content", "").rstrip()[-20:]
         )
@@ -160,7 +162,7 @@ class AutoGenWorkFlowManager:
         Returns:
             An instance of the loaded agent.
         """
-        agent_spec = self.sanitize_agent_spec(agent_spec, session_id)
+        agent_spec = self.sanitize_agent_spec(agent_spec)
         context = self.setup_context(agent_spec, session_id)
         # Your init_code should end with assigning the newly created agent to 'agent'
         # For example, init_code could be:
