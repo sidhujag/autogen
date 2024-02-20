@@ -36,7 +36,6 @@ class UserProxyAgent(ConversableAgent):
         llm_config: Optional[Union[Dict, Literal[False]]] = False,
         system_message: Optional[Union[str, List]] = "",
         description: Optional[str] = None,
-        **kwargs,
     ):
         """
         Args:
@@ -94,7 +93,6 @@ class UserProxyAgent(ConversableAgent):
             description=description
             if description is not None
             else self.DEFAULT_USER_PROXY_AGENT_DESCRIPTIONS[human_input_mode],
-            **kwargs
         )
 
         if logging_enabled():
