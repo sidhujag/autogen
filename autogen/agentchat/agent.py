@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional, Protocol, Union, runtime_checkable
-
+from pathlib import Path
 
 @runtime_checkable
 class Agent(Protocol):
@@ -8,7 +8,10 @@ class Agent(Protocol):
     An agent can communicate with other agents and perform actions.
     Different agents can differ in what actions they perform in the `receive` method.
     """
-    def save_oai_messages(self):
+    def load_state(self, path_to_data_dir: Path):
+        ...
+
+    def save_state(self):
         ...
 
     @property

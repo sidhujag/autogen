@@ -341,7 +341,7 @@ def get_default_agent_config(work_dir: str) -> AgentWorkFlowConfig:
 
     userproxy_spec = AgentFlowSpec(
         type="agent",
-        init_code="agent = autogen.UserProxyAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
+        init_code="agent = autogen.UserProxyAgent(**agent_spec.config.dict())",
         config=AgentConfig(
             name="user_proxy",
             human_input_mode="NEVER",
@@ -360,7 +360,7 @@ def get_default_agent_config(work_dir: str) -> AgentWorkFlowConfig:
 
     assistant_spec = AgentFlowSpec(
         type="agent",
-        init_code="agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())",
+        init_code="agent = autogen.AssistantAgent(**agent_spec.config.dict())",
         config=AgentConfig(
             name="primary_assistant",
             system_message=autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE,

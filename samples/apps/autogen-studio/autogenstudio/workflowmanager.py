@@ -92,7 +92,7 @@ class AutoGenWorkFlowManager:
         return agent_spec
 
     def setup_context(self, agent_spec: AgentFlowSpec, session_id: str):
-        oai_dir = Path(self.work_dir) / session_id / agent_spec.config.name
+        path_to_data_dir = Path(self.work_dir) / session_id / agent_spec.config.name
         safe_builtins = {
             'True': True,
             'False': False,
@@ -140,7 +140,7 @@ class AutoGenWorkFlowManager:
         # Define the context for exec to limit the accessible variables and functions
         context = {
             'autogen': autogen,
-            'oai_dir': oai_dir,
+            'path_to_data_dir': path_to_data_dir,
             'agent_spec': agent_spec,
             'self': self,
             'session_id': session_id,
@@ -167,7 +167,7 @@ class AutoGenWorkFlowManager:
         # Your init_code should end with assigning the newly created agent to 'agent'
         # For example, init_code could be:
         # """
-        # agent = autogen.AssistantAgent(path_to_oai_dir=oai_dir, **agent_spec.config.dict())
+        # agent = autogen.AssistantAgent(**agent_spec.config.dict())
         # """
         # Ensure your init_code string assigns the instantiated object to 'agent'
 
@@ -197,7 +197,7 @@ class AutoGenWorkFlowManager:
                        
         # Assuming the agent is correctly instantiated, register hooks or perform additional setup
         agent.register_hook(hookable_method="receive_message", hook=self.receive_message)
-
+        agent.load_state(context['path_to_data_dir'])
         return agent
 
     def run(self, message: str, clear_history: bool = False) -> None:
@@ -214,6 +214,6 @@ class AutoGenWorkFlowManager:
             message=message,
             clear_history=clear_history,
         )
-        self.sender.save_oai_messages()
-        self.receiver.save_oai_messages()
+        self.sender.save_state()
+        self.receiver.save_state()
         # pass

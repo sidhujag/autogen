@@ -59,7 +59,6 @@ class AgentService:
                 sanitized_data[query] = sanitized_skills
         elif service_type == "agents":
             for query, agents in response_data.items():
-                # sanitize group vs agent depending on type
                 sanitized_agents = [AgentService.sanitize_agent_output(AgentFlowSpec(**agent)) for agent in agents]
                 sanitized_data[query] = sanitized_agents
         elif service_type == "workflows":
@@ -148,6 +147,20 @@ class AgentService:
             "skills": sanitized_skills,
             "description": agent.description
         }
+        if agent.type == "groupchat":
+            sanitized_group_agents = [
+                AgentService.sanitize_agent_output(group_agent)
+                for group_agent in agent.groupchat_config.agents
+            ] if agent.groupchat_config.agents else []
+
+            sanitized_group = {
+                "agents": sanitized_group_agents,
+                "admin_name": agent.groupchat_config.admin_name,
+                "max_round": agent.groupchat_config.max_round,
+                "speaker_selection_method": agent.groupchat_config.speaker_selection_method,
+            }
+            sanitized_agent["groupchat_config"] = sanitized_group
+     
         return sanitized_agent
     
     @staticmethod
@@ -247,7 +260,8 @@ class AgentService:
     @staticmethod
     def upsert_agent(
         id: Optional[str],
-        group_agents: Optional[List[str]],
+        add_group_agent_ids: Optional[List[str]],
+        remove_group_agent_ids: Optional[List[str]],
         init_code: Optional[str],
         name: Optional[str],
         msg: Optional[str],
@@ -268,8 +282,19 @@ class AgentService:
                 assistant.config.name = name
             if init_code:
                 assistant.init_code = init_code
-            if group_agents and assistant.type == "groupchat":
-                assistant.groupchat_config.agents = group_agents
+            if add_group_agent_ids and assistant.type == "groupchat":
+                existing_agent_ids = [agent.id for agent in assistant.groupchat_config.agents]  # List of existing agent IDs
+                for group_agent_id in add_group_agent_ids:
+                    if group_agent_id not in existing_agent_ids:  # Add only if the ID doesn't exist
+                        group_agent = AgentService.fetch_agent(group_agent_id)
+                        if group_agent:
+                            assistant.groupchat_config.agents.append(group_agent)
+                        else:
+                            return json.dumps({"error": f"Cannot add group agent with id ({group_agent_id}): Agent not found!"})
+            if remove_group_agent_ids and assistant.type == "groupchat":
+                # Filter out agents whose IDs are in remove_group_agent_ids
+                assistant.groupchat_config.agents = [agent for agent in assistant.groupchat_config.agents if agent.id not in remove_group_agent_ids]
+
         else:
             # Create new assistant if it does not exist
             llm_config = LLMConfig(config_list=[{"model": "gpt-4-turbo-preview"}], temperature=0)
@@ -278,9 +303,16 @@ class AgentService:
                 config=AgentConfig(name=name, init_code=init_code, system_message=msg, llm_config=llm_config),
                 description=description
             )
-            if group_agents:
+            if add_group_agent_ids:
+                agents = []
+                for group_agent_id in add_group_agent_ids:
+                    group_agent = AgentService.fetch_agent(group_agent_id)
+                    if group_agent:
+                        agents.append(group_agent)
+                    else:
+                        return json.dumps({"error": f"Cannot add group agent with id ({group_agent_id}): Agent not found!"})
                 assistant.type = "groupchat"
-                assistant.groupchat_config=GroupChatConfig(agents=[], admin_name=name)
+                assistant.groupchat_config=GroupChatConfig(agents=agents, admin_name=name)
         # Construct payload for API request
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
 

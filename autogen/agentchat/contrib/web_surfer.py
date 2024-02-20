@@ -41,9 +41,7 @@ class WebSurferAgent(ConversableAgent):
         summarizer_llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
         browser_config: Optional[Union[Dict, None]] = None,
-        path_to_oai_dir: Optional[Path] = None,
-        inner_system_message: Optional[str] = INNER_DEFAULT_PROMPT,
-        **kwargs
+        inner_system_message: Optional[str] = INNER_DEFAULT_PROMPT
     ):
         super().__init__(
             name=name,
@@ -55,15 +53,13 @@ class WebSurferAgent(ConversableAgent):
             function_map=function_map,
             code_execution_config=code_execution_config,
             llm_config=llm_config,
-            default_auto_reply=default_auto_reply,
-            path_to_oai_dir=path_to_oai_dir,
-            **kwargs
+            default_auto_reply=default_auto_reply
         )
 
         self._create_summarizer_client(summarizer_llm_config, llm_config)
 
         # Create the browser
-        self.browser = SimpleTextBrowser(**(browser_config if browser_config else {}), path_to_oai_dir=path_to_oai_dir)
+        self.browser = SimpleTextBrowser(**(browser_config if browser_config else {}))
 
         inner_llm_config = copy.deepcopy(llm_config)
 
@@ -91,6 +87,15 @@ class WebSurferAgent(ConversableAgent):
         self.register_reply([Agent, None], ConversableAgent.generate_code_execution_reply)
         self.register_reply([Agent, None], ConversableAgent.generate_function_call_reply)
         self.register_reply([Agent, None], ConversableAgent.check_termination_and_human_reply)
+
+
+    def load_state(self, path_to_data_dir: Path):
+        super().load_state(path_to_data_dir)
+        self.browser.load_state(path_to_data_dir)
+        
+    def save_state(self):
+        super().save_state()
+        self.browser.save_state()
 
     def _create_summarizer_client(self, summarizer_llm_config: Dict[str, Any], llm_config: Dict[str, Any]) -> None:
         # If the summarizer_llm_config is None, we copy it from the llm_config

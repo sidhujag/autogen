@@ -84,7 +84,6 @@ class ConversableAgent(LLMAgent):
         llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Union[str, Dict] = "",
         description: Optional[str] = None,
-        path_to_oai_dir: Optional[Path] = None,
     ):
         """
         Args:
@@ -132,13 +131,6 @@ class ConversableAgent(LLMAgent):
         self._name = name
         # a dictionary of conversations, default value is list
         self._oai_messages = defaultdict(list)
-        self._path_to_oai_file = None
-        if path_to_oai_dir:
-            self._path_to_oai_file = path_to_oai_dir / "oai_messages.pkl"
-            if self._path_to_oai_file.exists():
-                with open(self._path_to_oai_file, "rb") as f:
-                    self._oai_messages = pickle.load(f)
-
         self._oai_system_message = [{"content": system_message, "role": "system"}]
         self._description = description if description is not None else system_message
         self._is_termination_msg = (
@@ -235,11 +227,16 @@ class ConversableAgent(LLMAgent):
         # New hookable methods should be added to this list as required to support new agent capabilities.
         self.hook_lists = {"process_last_message": [], "process_all_messages": [], "receive_message": []}
 
-    def save_oai_messages(self):
-        """Saves self._oai_messages to disk."""
-        if self._path_to_oai_file:
-            self._path_to_oai_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self._path_to_oai_file, "wb") as file:
+    def load_state(self, path_to_data_dir: Path):
+        self._path_to_data_file = path_to_data_dir / "oai_messages.pkl"
+        if self._path_to_data_file.exists():
+            with open(self._path_to_data_file, "rb") as f:
+                self._oai_messages = pickle.load(f)
+
+    def save_state(self):
+        if self._path_to_data_file:
+            self._path_to_data_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._path_to_data_file, "wb") as file:
                 pickle.dump(self._oai_messages, file)
     
     @property

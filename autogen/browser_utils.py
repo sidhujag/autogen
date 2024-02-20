@@ -354,7 +354,7 @@ class FallbackErrorRenderer(PageTextRenderer):
 
 class SimpleTextBrowser:
     """(In preview) An extremely simple text-based web browser comparable to Lynx. Suitable for Agentic use."""
-    state_file: str = None
+    _path_to_data_file: str = None
     def __init__(
         self,
         start_page: Optional[str] = None,
@@ -362,7 +362,6 @@ class SimpleTextBrowser:
         downloads_folder: Optional[Union[str, None]] = None,
         bing_api_key: Optional[Union[str, None]] = None,
         request_kwargs: Optional[Union[Dict[str, Any], None]] = None,
-        path_to_oai_dir: Optional[Path] = None
     ):
         self.start_page: str = start_page if start_page else "about:blank"
         self.viewport_size = viewport_size  # Applies only to the standard uri types
@@ -397,30 +396,27 @@ class SimpleTextBrowser:
         # Register renderers for error conditions
         self.register_error_renderer(FallbackErrorRenderer())
         self._page_content = ""
-        self.state_file = path_to_oai_dir / "simple_text_browser_session.pkl"
-        self._load_state()
-        
-            
-    
-    def _load_state(self):
-        if self.state_file:
-            try:
-                if self.state_file.exists():
-                    with open(self.state_file, 'r') as f:
-                        state = json.load(f)
-                        self.history = state['history']
-                        self.page_title = state['page_title']
-                        self.viewport_current_page = state['viewport_current_page']
-                        self.viewport_pages = state['viewport_pages']
-                        self._page_content = state['page_content']
-                        self.find_on_page_query = state['find_on_page_query']
-                        self.find_on_page_viewport = state['find_on_page_viewport']
-            except (FileNotFoundError, json.JSONDecodeError):
-                print(f'Could not deserialize from file {self.state_file}, might not exist yet...')
 
-    def _save_state(self):
-        if self.state_file:
-            self.state_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    def load_state(self, path_to_data_dir: Path):
+        self._path_to_data_file = path_to_data_dir / "simple_text_browser_session.pkl"
+        try:
+            if self._path_to_data_file.exists():
+                with open(self._path_to_data_file, 'r') as f:
+                    state = json.load(f)
+                    self.history = state['history']
+                    self.page_title = state['page_title']
+                    self.viewport_current_page = state['viewport_current_page']
+                    self.viewport_pages = state['viewport_pages']
+                    self._page_content = state['page_content']
+                    self.find_on_page_query = state['find_on_page_query']
+                    self.find_on_page_viewport = state['find_on_page_viewport']
+        except (FileNotFoundError, json.JSONDecodeError):
+            print(f'Could not deserialize from file {self._path_to_data_file}, might not exist yet...')
+
+    def save_state(self):
+        if self._path_to_data_file:
+            self._path_to_data_file.parent.mkdir(parents=True, exist_ok=True)
             state = {
                 'history': self.history,
                 'page_title': self.page_title,
@@ -430,11 +426,11 @@ class SimpleTextBrowser:
                 'find_on_page_query': self.find_on_page_query,
                 'find_on_page_viewport': self.find_on_page_viewport,
             }
-            with open(self.state_file, 'w') as f:
+            with open(self._path_to_data_file, 'w') as f:
                 try:
                     json.dump(state, f)
                 except Exception as e:
-                    print(f'Could not serialize file {self.state_file}, Exception: {str(e)}')
+                    print(f'Could not serialize file {self._path_to_data_file}, Exception: {str(e)}')
 
     @property
     def address(self) -> str:
@@ -460,7 +456,7 @@ class SimpleTextBrowser:
         self.viewport_current_page = 0
         self.find_on_page_query = None
         self.find_on_page_viewport = None
-        self._save_state()
+        self.save_state()
 
     @property
     def viewport(self) -> str:
@@ -483,11 +479,11 @@ class SimpleTextBrowser:
 
     def page_down(self) -> None:
         self.viewport_current_page = min(self.viewport_current_page + 1, len(self.viewport_pages) - 1)
-        self._save_state()
+        self.save_state()
 
     def page_up(self) -> None:
         self.viewport_current_page = max(self.viewport_current_page - 1, 0)
-        self._save_state()
+        self.save_state()
 
     def find_on_page(self, query: str) -> Union[str, None]:
         """Searches for the query from the current viewport forward, looping back to the start if necessary."""

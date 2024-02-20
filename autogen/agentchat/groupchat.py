@@ -4,7 +4,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union, Tuple
-
+from pathlib import Path
 
 from ..code_utils import content_str
 from ..exception_utils import AgentNameConflict
@@ -502,9 +502,15 @@ class GroupChatManager(ConversableAgent):
             ignore_async_in_sync_chat=True,
         )
 
-    def save_oai_messages(self):
+    def load_state(self, path_to_data_dir: Path):
+        super().load_state(path_to_data_dir)
         for agent in self._groupchat.agents:
-            agent.save_oai_messages()
+            agent.load_state(path_to_data_dir)
+    
+    def save_state(self):
+        super().save_state()
+        for agent in self._groupchat.agents:
+            agent.save_state()
 
     @property
     def groupchat(self) -> GroupChat:

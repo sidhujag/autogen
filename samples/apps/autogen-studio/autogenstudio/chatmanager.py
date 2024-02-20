@@ -40,7 +40,7 @@ class AutoGenChatManager:
             prompt = (
             "You have been given the history between the SENDER (user) and RECEIVER (assistant) as well as an internal workflow history within the RECEIVER (the JSON messages between RECEIVER and other agents). "
             "The last message from SENDER to the receiver needs to be answered given your understanding using the workflow history as immediate context. The answer needs to be addressed to the SENDER. "
-            "If the last message (not counting single TERMINATE messages) in the internal workflow history already answers the SENDER to the best of your knowledge then just return nothing to save cost.")
+            "If the last message (not counting single TERMINATE messages) in the internal workflow history already provides a well-structured all-encompassing answer to the SENDER then just return nothing. Disregard TERMINATE messages from your answers, they are there to end the conversation flow only and return to the SENDER.")
             msg_list: list = flow.sender.chat_messages_for_summary(flow.receiver)
             flow_msg_list = build_flow_msg_list(flow.agent_history)
             msg_list.extend(flow_msg_list)
