@@ -3,13 +3,13 @@
   --color-bg-secondary: #1e293b;
   --color-bg-light: #27354c;
   --color-bg-tertiary: #374151;
-  --color-bg-accent: #22c55e;
+  --color-bg-accent: #4F9DFF; /* Bright blue for accent */
   --color-text-primary: #f7fafc;
-  --color-text-secondary: #e2e8f0;
-  --color-text-accent: #22c55e;
+  --color-text-secondary: #C1CCFC; /* Soft blue for secondary text */
+  --color-text-accent: #4F9DFF; /* Bright blue for accent text */
   --color-border-primary: #f7fafc;
-  --color-border-secondary: #e2e8f045;
-  --color-border-accent: #22c55e;
+  --color-border-secondary: #C1CCFC;
+  --color-border-accent: #4F9DFF; /* Bright blue for borders */
 }
 
 .light {
@@ -17,14 +17,15 @@
   --color-bg-secondary: #edf2f7;
   --color-bg-light: #f9fafb;
   --color-bg-tertiary: #ffffff;
-  --color-bg-accent: #16a34a;
+  --color-bg-accent: #5F8AFA; /* blue for accent */
   --color-text-primary: #334155;
   --color-text-secondary: #64748b;
-  --color-text-accent: #16a34a;
+  --color-text-accent: #5F8AFA; /* blue for accent text */
   --color-border-primary: #2d3748c1;
   --color-border-secondary: #edf2f7;
-  --color-border-accent: #16a34a;
+  --color-border-accent: #5F8AFA; /* blue for borders */
 }
+
 
 @tailwind base;
 @tailwind components;

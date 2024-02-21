@@ -67,9 +67,9 @@ def ui(
 @app.command()
 def version():
     """
-    Print the version of the AutoGen Studio UI CLI.
+    Print the version of the SuperDapp Studio UI CLI.
     """
-    typer.echo(f"AutoGen Studio CLI version: {VERSION}")
+    typer.echo(f"SuperDapp Studio CLI version: {VERSION}")
 
 def run():
     app()

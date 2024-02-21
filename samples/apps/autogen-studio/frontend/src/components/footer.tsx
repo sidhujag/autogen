@@ -19,7 +19,7 @@ const Footer = () => {
   return (
     <div className=" mt-4 text-primary p-3  border-t border-secondary flex ">
       <div className="text-xs flex-1">
-        Maintained by the AutoGen{" "}
+        Maintained by the Microsoft AutoGen{" "}
         <a
           target={"_blank"}
           rel={"noopener noreferrer"}
@@ -27,7 +27,15 @@ const Footer = () => {
           href="https://microsoft.github.io/autogen/"
         >
           {" "}
-          Team.
+          Team</a> + the SuperDapp{" "}
+        <a
+          target={"_blank"}
+          rel={"noopener noreferrer"}
+          className="underlipne inline-block border-accent border-b hover:text-accent"
+          href="https://superdapp.ai/"
+        >
+          {" "}
+          Team
         </a>
       </div>
       {version && (
