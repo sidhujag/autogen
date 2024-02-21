@@ -97,6 +97,99 @@
         "max_consecutive_auto_reply": 8,
         "system_message": "You are a helpful AI assistant. Solve tasks using your coding and language skills. In the following cases, suggest python code (in a python coding block) or shell script (in a sh coding block) for the user to execute. 1. When you need to collect info, use the code to output the info you need, for example, browse or search the web, download/read a file, print the content of a webpage or a file, get the current date/time, check the operating system. After sufficient info is printed and the task is ready to be solved based on your language skill, you can solve the task by yourself. 2. When you need to perform some task with code, use the code to perform the task and output the result. Finish the task smartly. Solve the task step by step if you need to. If a plan is not provided, explain your plan first. Be clear which step uses code, and which step uses your language skill. When using code, you must indicate the script type in the code block. The user cannot provide any other feedback or perform any other action beyond executing the code you suggest. The user can't modify your code. So do not suggest incomplete code which requires users to modify. Don't use a code block if it's not intended to be executed by the user. If you want the user to save the code in a file before executing it, put # filename: <filename> inside the code block as the first line. Don't include multiple code blocks in one response. Do not ask users to copy and paste the result. Instead, use 'print' function for the output when relevant. Check the execution result returned by the user. If the result indicates there is an error, fix the error and output the code again. Suggest the full code instead of partial code or code changes. If the error can't be fixed or if the task is not solved even after the code is executed successfully, analyze the problem, revisit your assumption, collect additional info you need, and think of a different approach to try. When you find an answer, verify the answer carefully. Include verifiable evidence in your response if possible. Reply 'TERMINATE' in the end when everything is done."
       }
+    },
+    {
+      "type": "groupchat",
+      "description": "Discover and manage agents, discover and manage skills.",
+      "init_code": "agents = [self.load(self.sanitize_agent_spec(agent_spec_internal), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents]\ngroup_chat_config = agent_spec.groupchat_config.dict()\ngroup_chat_config['agents'] = agents\ngroupchat = autogen.GroupChat(**group_chat_config)\nagent = autogen.GroupChatManager(groupchat=groupchat, **agent_spec.config.dict())",
+      "config": {
+        "name": "agent_service_group",
+        "llm_config": {
+          "config_list": [
+            {
+              "model": "gpt-4-turbo-preview"
+            }
+          ],
+          "temperature": 0.1,
+          "timeout": 600,
+          "cache_seed": 42
+        },
+        "human_input_mode": "NEVER",
+        "system_message": "You are a helpful manager skilled at coordinating a group of other assistants to solve a task.  You have a worker, userproxy and a work checker agent in the group to be able to manage agents (create/modify/discover skills, create/modify/discover agents). The worker has a skill to be able to do this, the userproxy executes code and returns the response the worker creates through the use of the skill and the checker ensures the worker is working properly."
+      },
+      "groupchat_config": {
+        "admin_name": "Admin",
+        "max_round": 10,
+        "speaker_selection_method": "auto",
+        "agents": [
+          {
+            "type": "agent",
+            "description": "Worker within the agent_service_group with a skill to create/update/discover agents, create/update/discover skills",
+            "init_code": "agent = autogen.AssistantAgent(**agent_spec.config.dict())",
+            "config": {
+              "name": "agent_service_worker",
+              "llm_config": {
+                "config_list": [
+                  {
+                    "model": "gpt-4-turbo-preview"
+                  }
+                ],
+                "temperature": 0.1,
+                "timeout": 600,
+                "cache_seed": 42
+              },
+              "human_input_mode": "NEVER",
+              "max_consecutive_auto_reply": 8,
+              "system_message": "You are a helpful AI assistant. You are in a group with a userproxy and a work checker. Solve tasks using your coding and language skills. In the following cases, suggest python code (in a python coding block) or shell script (in a sh coding block) for the userproxy agent in your group to execute. 1. When you need to collect info, use the code to output the info you need, for example, browse or search the web, download/read a file, print the content of a webpage or a file, get the current date/time, check the operating system. After sufficient info is printed and the task is ready to be solved based on your language skill, you can solve the task by yourself. 2. When you need to perform some task with code, use the code to perform the task and output the result. Finish the task smartly. Solve the task step by step if you need to. If a plan is not provided, explain your plan first. Be clear which step uses code, and which step uses your language skill. When using code, you must indicate the script type in the code block. The userproxy can't modify your code. So do not suggest incomplete code which requires others to modify. Don't use a code block if it's not intended to be executed by the userproxy. If you want the userproxy to save the code in a file before executing it, put # filename: <filename> inside the code block as the first line. Don't include multiple code blocks in one response. Do not ask others to copy and paste the result. Instead, use 'print' function for the output when relevant. Check the execution result returned by the userproxy. If the result indicates there is an error, fix the error and output the code again. Suggest the full code instead of partial code or code changes. If the error can't be fixed or if the task is not solved even after the code is executed successfully, analyze the problem, revisit your assumption, collect additional info you need, and think of a different approach to try. When you find an answer, verify the answer carefully. Include verifiable evidence in your response if possible. Reply 'TERMINATE' in the end when everything is done. Use the agent_service to solve your agent related tasks. Use the agent services like lego blocks. Skill is the smallest building block, then agents and within agents group chats if necessary which allow you to add other agents. Before creating a skill try to discover one to see if an ideal skill for your task already exists. When creating a skill, test the code first by getting the userproxy to run the code and then create the skill. Prior to creating an agent do the same thing, discover first then create. When in creation mode, you should discover/create skills before discover/create agents and finally modify the new or existing agents based on the task. YOU ARE THE ONLY ONE in the group with access to the agent_service skill. The work checker in your group will double-check your work to make sure you are on the right path and the userproxy will execute code and return the response to the group.",
+              "default_auto_reply": "This is the agent service worker, please assign me an agent related task so I can use my agent_service skill to work on or discover skills, agents and groups."
+            }
+          },
+          {
+            "type": "agent",
+            "description": "A user proxy agent that executes code.",
+            "init_code": "agent = autogen.UserProxyAgent(**agent_spec.config.dict())",
+            "config": {
+              "name": "userproxy",
+              "llm_config": {
+                "config_list": [
+                  {
+                    "model": "gpt-4-turbo-preview"
+                  }
+                ],
+                "temperature": 0.1,
+                "timeout": 600,
+                "cache_seed": 42
+              },
+              "human_input_mode": "NEVER",
+              "max_consecutive_auto_reply": 8,
+              "system_message": "You are a helpful assistant. You can execute code others write. You are in the agent_service_group which is tasked with creating/managing agents in an agent framework. Take a look at the message posed to the group by the user and ensure you work diligently to solve the problem by executing tasks and returning results. If the group has reached a natural conclusion and should terminate, just reply with TERMINATE",
+              "default_auto_reply": "This is user proxy agent, send some code my way so I can execute it as needed."
+            }
+          },
+          {
+            "type": "agent",
+            "description": "Checks the work of agent_service_worker to ensure quality and correctness",
+            "init_code": "agent = autogen.AssistantAgent(**agent_spec.config.dict())",
+            "config": {
+              "name": "agent_service_work_checker",
+              "llm_config": {
+                "config_list": [
+                  {
+                    "model": "gpt-4-turbo-preview"
+                  }
+                ],
+                "temperature": 0.1,
+                "timeout": 600,
+                "cache_seed": 42
+              },
+              "human_input_mode": "NEVER",
+              "max_consecutive_auto_reply": 8,
+              "system_message": "You are a helpful AI assistant. Your job is to check the work of agent_service_worker and make sure based on the task the group is working on is efficiently solved. You can review the process and use common sense to solve the task or direct the worker to create code and the userproxy agent in your group will execute and report the responses back to the group. Make sure the task is fully solved before you agree that group has reached a natural conclusion. If its not solvable you can also explain why and try to steer the group towards closure. The worker is the only agent in the group which has access to the skill which guides the agent to create code to create/manage/discover agents/skills/groups. Think of the agent services as lego blocks. Groups may depend on agents inside (group is just a type of agent), agents may depend on skills which get added to them and skills are just python routines the worker can create for the userproxy to execute.",
+              "default_auto_reply": "This is the agent_service_work_checker, I check the work of agent_service_worker and suggest corrective actions as needed."
+            }
+          }
+        ]
+      }
     }
   ],
   "skills": [
@@ -123,45 +216,17 @@
     },          
     {
       "title": "fetch_json",
-      "description": "Simplifies HTTP GET or POST requests for JSON data retrieval or submission, utilizing AgentService for execution. Ideal for interactions with RESTful APIs.",
-      "content": "from autogenstudio.agentservice import AgentService\n\n\ndef fetch_json(url, payload=None, method='GET'):\n    \"\"\"\n    Simplifies fetching or submitting JSON data via HTTP GET or POST, leveraging AgentService. Supports versatile applications in data retrieval or API interactions.\n\n    Args:\n        url (str): Target URL for the JSON data.\n        payload (dict, optional): Payload for POST requests.\n        method (str): 'GET' or 'POST' HTTP method.\n\n    Returns:\n        dict: JSON response as a dictionary.\n\n    Example:\n        # GET data\n        >>> from skills import fetch_json\n        >>> response = fetch_json('https://api.example.com/data')\n        >>> print(response)\n        # POST data\n        >>> from skills import fetch_json\n        >>> response = fetch_json('https://api.example.com/submit', payload={'key': 'value'}, method='POST')\n        >>> print(response)\n    \"\"\"\n    return AgentService.fetch_json(url, payload, method)\n",
+      "description": "Simplifies HTTP GET or POST requests for JSON data retrieval or submission, utilizing AgentHelperService for execution. Ideal for interactions with RESTful APIs.",
+      "content": "from autogenstudio.agentservice import AgentHelperService\n\n\ndef fetch_json(url, payload=None, method='GET'):\n    \"\"\"\n    Simplifies fetching or submitting JSON data via HTTP GET or POST, leveraging AgentService. Supports versatile applications in data retrieval or API interactions.\n\n    Args:\n        url (str): Target URL for the JSON data.\n        payload (dict, optional): Payload for POST requests.\n        method (str): 'GET' or 'POST' HTTP method.\n\n    Returns:\n        dict: JSON response as a dictionary.\n\n    Example:\n        # GET data\n        >>> from skills import fetch_json\n        >>> response = fetch_json('https://api.example.com/data')\n        >>> print(response)\n        # POST data\n        >>> from skills import fetch_json\n        >>> response = fetch_json('https://api.example.com/submit', payload={'key': 'value'}, method='POST')\n        >>> print(response)\n    \"\"\"\n    return AgentHelperService.fetch_json(url, payload, method)\n",
       "examples": "from skills import fetch_json\n\n# GET data\nresponse = fetch_json('https://api.example.com/data')\nprint(response)\n\n# POST data\nresponse = fetch_json('https://api.example.com/submit', payload={'key': 'value'}, method='POST')\nprint(response)\n",
       "file_name": "fetch_json.py"
     },
     {
-      "title": "upsert_skill",
-      "description": "This skill facilitates creating or updating a skill within the system. It allows for the specification or modification of a skill's title, content, and file name. The operation updates details of existing skills or initializes new skills based on the provided parameters.",
-      "content": "from typing import Optional\nfrom autogenstudio.agentservice import AgentService\n\n\ndef upsert_skill(\n    id: Optional[str] = None,\n    title: Optional[str] = None,\n    content: Optional[str] = None,\n    examples: Optional[str] = None\n    file_name: Optional[str] = None\n) -> str:\n    \"\"\"\n    Creates or updates a skill configuration. If an ID is provided, the skill with that ID is updated; otherwise, a new skill is created.\n\n    Args:\n        id (Optional[str]): The unique identifier for the skill to be updated. For a new skill, this should be None.\n        title (Optional[str]): The title of the skill.\n        content (Optional[str]): The detailed code or instructions that comprise the skill.\n        examples (Optional[str]): Python code examples using the skill. To use the skill doesn't require re-defining it by consuming agent, it needs to be imported from skills ie: 'from skills import read_file'.\n        file_name (Optional[str]): The name of the file associated with the skill.\n        description (Optional[str]): The description of the skill. Used to discover via semantic search, so describe the skill fully.\n\n    Returns:\n        str: A JSON-formatted string indicating the success or failure of the operation. It contains either the details of the updated skill or an error message.\n    \"\"\"\n    return AgentService.upsert_skill(id, title, content, examples, file_name, description)\n",
-      "examples": "from skills import upsert_skill\n\nresponse = upsert_skill(\nid=None,\ntitle='JSON Parser',\ncontent='import json\\n\\ndef parse_json(data):\\n    return json.loads(data)',\nfile_name='json_parser.py',\ndescription='A skill for parsing JSON data.',\nexamples='from skills import parse_json\\n\\njson_data = \\'{\\\"key\\\": \\\"value\\\"}\\'\\nresult = parse_json(json_data)\\nprint(result)'\n)\nprint(response)\n# Success\n{'status': 'true', 'message': 'Skill upserted successfully', 'data': {'id': 'skill_id', 'title': 'JSON Parser', 'file_name': 'json_parser.py', 'description': 'A skill for parsing JSON data.'}}\n# Error\n{'status': 'false', 'message': 'Error occurred while upserting skill: <Error Detail>', 'data': ''}",
-      "file_name": "upsert_skill.py"
-    },
-    {
-      "title": "manage_agent_skills",
-      "description": "Updates an agent's skills by adding or removing them based on specified actions and skill IDs, ensuring the agent's capabilities are accurately maintained. You can discover skills to find which ones to add.",
-      "content": "from typing import List\nfrom autogenstudio.agentservice import AgentService\n\ndef manage_agent_skills(agent_id: str, skill_ids: List[str], action: str) -> str:\n    \"\"\"\n    Updates an agent's skill set by adding or removing skills. This function facilitates dynamic skill management for an agent.\n\n    Args:\n        agent_id (str): Identifier of the agent.\n        skill_ids (List[str]): UUIDs of the skills to modify.\n        action (str): 'add' to include or 'remove' to exclude skills.\n\n    Returns:\n        str: JSON string indicating operation success or failure, with agent details or error message.\n    \"\"\"\n    return AgentService.manage_agent_skills(agent_id, skill_ids, action)\n",
-      "examples": "from skills import manage_agent_skills\n\n# Add skill\nresponse = manage_agent_skills('123e4567-e89b-12d3-a456-426614174000', ['456e567f-e89c-12d3-a457-426614174000'], 'add')\nprint(response)\n# Success\n{'status': 'true','message': 'Agent upserted successfully','data': [{'type': 'agent_type','config': {'name': 'Agent Name'},'id': 'agent_id_1', 'skills': [{'title': 'Skill Title','id': 'skill_id', 'description': 'Skill Description','file_name': 'skill_file.py'}],'description': 'Agent description'}]}\nprint(response)\n# Remove skill\nresponse = manage_agent_skills('123e4567-e89b-12d3-a456-426614174000', ['789f6780-e89d-12d3-a458-426614174000'], 'remove')\n# Success\n{'status': 'true','message': 'Agent upserted successfully','data': [{'type': 'agent_type','config': {'name': 'Agent Name'},'id': 'agent_id_1', 'skills': [{'title': 'Skill Title','id': 'skill_id', 'description': 'Skill Description','file_name': 'skill_file.py'}],'description': 'Agent description'}]}\n# Error\n{'status': 'false','message': 'Error occurred while upserting agent: <Error Detail>','data': ''}\n",
-      "file_name": "manage_agent_skills.py"
-    }, 
-    {
-      "title": "upsert_agent",
-      "description": "Enables creation or update of an agent, including its name, system message, and description. Suitable for managing agent details and capabilities within the system.",
-      "content": "from typing import Optional, List\nfrom autogenstudio.agentservice import AgentService\n\n\ndef upsert_agent(\n    id: Optional[str] = None,\n    add_group_agent_ids: Optional[List[str]] = None,\n    remove_group_agent_ids: Optional[List[str]] = None,\n    init_code: Optional[str] = None,\n    name: Optional[str] = None,\n    msg: Optional[str] = None,\n    description: Optional[str] = None\n) -> str:\n    \"\"\"\n    Manages an agent's configuration by creating a new agent or updating an existing one based on provided identifiers and information.\n\n    Args:\n        id (Optional[str]): Unique ID for the agent (None for new agents).\n        add_group_agent_ids (Optional[List[str]]): List of agent ID to add to a 'groupchat' type of agent. Will allow the agent to perform in a group setting with other agents. Only works with agents of type 'groupchat'. To create a new 'groupchat' agent you must specify this field so it will set the type to 'groupchat'.\n        remove_group_agent_ids (Optional[List[str]]): Remove agent(s) from a group.\n        init_code (Optional[str]): Python initialization code to create the agent object, exec()'d by the platform. Allows for dynamic agent creation by using custom objects and creation code. MUST EXIST and be valid when creating a new agent.\n        name (Optional[str]): Agent's name.\n        msg (Optional[str]): System message for the agent.\n        description (Optional[str]): Agent's purpose and functionality.\n\n    Returns:\n        JSON string with operation outcome, including updated agent details or an error message.\n    \"\"\"\n    return AgentService.upsert_agent(id, add_group_agent_ids, remove_group_agent_ids, init_code, name, msg, description)\n",
-      "examples": "from skills import upsert_agent\n\n# Create an assistant agent from autogen, passing in config\ninit_code = 'agent = autogen.AssistantAgent(**agent_spec.config.dict())'\nresponse = upsert_agent(id=None, init_code=init_code, name='Task Assistant', msg='Assist with various tasks.', description='An assistant designed to help with a variety of tasks.')\nprint(response)\n# Success\n{'status': 'true','message': 'Agent upserted successfully','data': [{'type': 'agent_type','config': {'name': 'Agent Name'},'id': 'agent_id_1', 'skills': [{'title': 'Skill Title','id': 'skill_id', 'description': 'Skill Description','file_name': 'skill_file.py'}],'description': 'Agent description'}]}\n\n# Upsert new group agent, set the type to 'groupchat'\nadd_group_agent_ids = ['group_agent_id_1', 'group_agent_id_2']\ninit_code = \"agents = [self.load(self.sanitize_agent_spec(agent_spec_internal), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents];group_chat_config = agent_spec.groupchat_config.dict();group_chat_config['agents'] = agents;groupchat = autogen.GroupChat(**group_chat_config);agent = autogen.GroupChatManager(groupchat=groupchat, **agent_spec.config.dict())\"\nresponse = upsert_agent(id='agent_id_1', add_group_agent_ids=add_group_agent_ids, init_code=init_code, name='machine_learning_group_chat', msg='A group chat manager that has other agents specialized in machine learning which you can use to solve your task.', description='An group chat with multiple agents ready to complete your task')\nprint(response)\n\n# Add another agent to the group\nresponse = upsert_agent(id='agent_id_1', add_group_agent_ids=['group_agent_id_3'])\nprint(response)\n\n# Remove an agent from the group\nresponse = upsert_agent(id='agent_id_1', remove_group_agent_ids=['group_agent_id_1'])\nprint(response)\n",
-      "file_name": "upsert_agent.py"
-    },   
-    {
-      "title": "discover_entities",
-      "description": "Enables dynamic discovery of skills, agents, and workflows using natural language queries. Utilizes semantic search technology to find the most relevant entities across different domains, facilitating enhanced integration and utilization of capabilities.",
-      "content": "from typing import Dict, List, Optional\nfrom autogenstudio.agentservice import AgentService\n\nclass DiscoverEntities:\n    def __init__(self):\n        \"\"\"Initializes the DiscoverEntities for discovering skills, agents, and workflows.\"\"\"\n        pass\n\n    def discover_skills(self, queries: List[str]) -> Dict[str, List[str]]:\n        return AgentService.discover_services('skills', queries)\n\n    def discover_agents(self, queries: List[str]) -> Dict[str, List[str]]:\n        return AgentService.discover_services('agents', queries)\n\n    def discover_workflows(self, queries: List[str]) -> Dict[str, List[str]]:\n        return AgentService.discover_services('workflows', queries)\n",
-      "examples": "from skills import DiscoverEntities\n\ndiscover_entities = DiscoverEntities()\n\n# Discover entities\nskills_result = discover_entities.discover_skills(['how to parse JSON', 'image processing with Python'])\nprint('Skills:', skills_result)\n\n# Discover agents\nagents_result = discover_entities.discover_agents(['task automation', 'data analysis'])\nprint('Agents:', agents_result)\n\n# Discover workflows\nworkflows_result = discover_entities.discover_workflows(['gaming information', 'travel advising services'])\nprint('Workflows:', workflows_result)\n",
-      "file_name": "discover_entities.py"
-    },
-    {
-      "title": "session_management",
-      "description": "Facilitates managing sessions for workflows, enabling tasks delegation and information exchange across sessions. Supports obtaining target sessions and messaging between sessions.",
-      "content": "from typing import Optional\nfrom autogenstudio.agentservice import AgentService\n\nclass SessionManagementSkill:\n    def __init__(self, current_session_id: str):\n        \"\"\"Initializes the SessionManagementSkill with the current session ID for managing session-related actions. Sessions instantiate workflows running agents through LLM inference, retaining scope across workflow inferences within a session. Each session is independent.\"\"\"\n        self.current_session_id = current_session_id\n\n    def get_target_session(self, workflow_id: str, new_session: Optional[bool] = None) -> str:\n        \"\"\"Obtains a target session ID for a specified workflow, potentially creating a new session based on the provided parameters.\n\n        Args:\n            workflow_id (str): The unique identifier of the workflow for which a target session is desired.\n            new_session (Optional[bool]): Determines whether a new session should be created for this workflow. If True, a new session is created; if False or omitted, an existing session is reused if available.\n\n        Returns:\n            str: JSON response containing the target session ID or an error message.\"\"\"\n        return AgentService.get_target_session(workflow_id, self.current_session_id, new_session)\n\n    def send_message_to_target_session(self, target_session_id: str, message_content: str) -> str:\n        \"\"\"Sends a message from the current session to a target session, facilitating communication and task delegation across sessions.\n\n        Args:\n            target_session_id (str): The session ID of the target session to which the message is to be sent.\n            message_content (str): The content of the message to be sent.\n\n        Returns:\n            str: JSON response from the target session or an error message.\"\"\"\n        return AgentService.send_message_to_target_session(self.current_session_id, target_session_id, message_content)\n",
-      "examples": "from skills import SessionManagementSkill\n\n# Initialize the session management skill with the current session ID\nsession_management_skill = SessionManagementSkill(current_session_id='your-session-id-here')\n\n# Get a target session ID for workflow delegation\ntarget_session_response = session_management_skill.get_target_session('workflow_id_here', new_session=True)\nprint('Target Session Response:', target_session_response)\n\n# Send a message to the target session for communication\nmessage_response = session_management_skill.send_message_to_target_session('target_session_id_here', 'Message content here.')\nprint('Message Response:', message_response)\n",
-      "file_name": "session_management.py"
+      "title": "agent_service",
+      "description": "Agent service. Create/update skills. Create/update agents (single or group type). Discover skills/agents. Add/remove skills in agents. Add/remove agents to groups.",
+      "content": "from typing import Optional, List\nfrom autogenstudio.agenthelperservice import AgentHelperService\nclass AgentService:\n    @staticmethod\n    def new_skill(title: str, content: str, examples: str, file_name: str, description: str) -> str:\n        \"\"\"\n        Creates a new skill to expand functionality as a reusable component.\n\n        Args:\n            title: The title of the skill.\n            content: The detailed code or instructions that comprise the skill.\n            examples: Python code examples using the skill.\n            file_name: The name of the file associated with the skill.\n            description: The description of the skill.\n\n        Returns:\n            str: A JSON-formatted string indicating the success or failure of the operation.\n        \"\"\"\n        return AgentHelperService.new_skill(title, content, examples, file_name, description)\n\n    @staticmethod\n    def update_skill(agent_id: str, title: Optional[str] = None, content: Optional[str] = None, examples: Optional[str] = None, file_name: Optional[str] = None, description: Optional[str] = None) -> str:\n        \"\"\"\n        Updates a skill with a specific skill ID. The optional values will be overwritten if specified, so make sure to be inclusive of previous values (for title, content, examples, description) for any changes.\n        NOTE: Updated skill will not be reflected in any agent's that use the skill, they will need to be removed and added again to reflect new changes.\n\n        Args:\n            agent_id: The unique identifier for the skill to be updated.\n            title (Optional): The title of the skill.\n            content (Optional): The detailed code or instructions that comprise the skill.\n            examples (Optional): Python code examples using the skill.\n            file_name (Optional): The name of the file associated with the skill.\n            description (Optional): The description of the skill.\n\n        Returns:\n            str: A JSON-formatted string indicating the success or failure of the operation.\n        \"\"\"\n        return AgentHelperService.update_skill(agent_id, title, content, examples, file_name, description)\n\n    @staticmethod\n    def manage_agent_skills(agent_id: str, skill_ids: List[str], action: str) -> str:\n        \"\"\"\n        Updates an agent's skill set by adding or removing skills. This function facilitates dynamic skill management for an agent.\n        NOTE: Updated agents will not be reflected in existing groupchat's, they will need to be removed and added again to reflect new changes.\n\n        Args:\n            agent_id: Identifier of the agent.\n            skill_ids: UUIDs of the skills to modify.\n            action: 'add' to include or 'remove' to exclude skills.\n\n        Returns:\n            str: JSON string indicating operation success or failure, with agent details or error message.\n        \"\"\"\n        return AgentHelperService.manage_agent_skills(agent_id, skill_ids, action)\n\n    @staticmethod\n    def manage_agent_groupchat(agent_id: str, agent_ids: List[str], action: str) -> str:\n        \"\"\"\n        Manages a group chat agent by adding or removing agents to/from it.\n        NOTE: Updated agent will not be reflected in any other groupchat's that use include agent, they will need to be removed and added again to reflect new changes.\n\n        Args:\n            agent_id: The ID of the group chat agent to be managed.\n            agent_ids: The IDs of agents to add or remove.\n            action: 'add' to include agents or 'remove' to exclude them from the group chat.\n\n        Returns:\n            str: JSON string indicating the success or failure of the operation, with updated group chat details or an error message.\n        \"\"\"\n        return AgentHelperService.manage_agent_groupchat(agent_id, agent_ids, action)\n\n    @staticmethod\n    def new_agent(type: str, init_code: str, name: str, system_message: str, description: str) -> str:\n        \"\"\"\n        Creates a new agent. Does not add skills on creation. For 'groupchat' creates an empty group on creation. Fill it in through managing agent after creation.\n\n        Args:\n            type: The type of agent ('groupchat' or 'agent').\n            init_code: Python initialization code for the agent. Enables custom agent classes and agent instantiation.\n            name: Agent's name.\n            system_message: System message for the agent. Clear, concise instructions to steer behavior. Should include any skills and communication mechanism in the environment the agent is put in.\n            description: Agent's purpose and functionality.\n\n        Returns:\n            str: JSON string with operation outcome, including new agent details or an error message.\n        \"\"\"\n        return AgentHelperService.new_agent(type, init_code, name, system_message, description)\n\n    @staticmethod\n    def update_agent(agent_id: str, init_code: Optional[str] = None, name: Optional[str] = None, system_message: Optional[str] = None, description: Optional[str] = None) -> str:\n        \"\"\"\n        Update an existing agent. The optional values will be overwritten if specified, so make sure to be inclusive of previous values (for init_code, system_message, description) for any changes.\n        NOTE: Updated agents will not be reflected in existing groupchat's, they will need to be removed and added again to reflect new changes.\n\n        Args:\n            agent_id: Unique ID for the agent.\n            init_code (Optional): Python initialization code for the agent. Enables custom agent classes and agent instatiation.\n            name (Optional): Agent's name.\n            system_message (Optional): System message for the agent.\n            description (Optional): Agent's purpose and functionality.\n\n        Returns:\n            str: JSON string with operation outcome, including updated agent details or an error message.\n        \"\"\"\n        return AgentHelperService.update_agent(agent_id, init_code, name, system_message, description)\n\n    @staticmethod\n    def discover_services(service_type: str, queries: List[str]) -> str:\n        \"\"\"\n        Discovers services (skills or agents) based on natural language queries.\n\n        Args:\n            service_type: Type of service to discover ('skills' or 'agents').\n            queries: List of queries for discovering services.\n\n        Returns:\n            str: JSON string with discovery results including the unique skill or agent IDs.\n        \"\"\"\n        return AgentHelperService.discover_services(service_type, queries)",
+      "examples": "from skills import AgentService\n\n# Create a new NLP skill for task interpretation and assignment\nresponse = AgentService.new_skill(\n    title=\"NLP Task Assignment\",\n    content=\"\"\"\nfrom nlp_module import interpret_task\n\ndef assign_task(description):\n    task_details = interpret_task(description)\n    # Logic to assign task based on interpretation\n    return task_details\n\"\"\",\n    examples=\"\"\"\n# Using the NLP Task Assignment skill\nfrom skills import assign_task\n\ndescription = 'Schedule a meeting with the client next week'\ntask_details = assign_task(description)\nprint(task_details)\n\"\"\",\n    file_name=\"nlp_task_assignment.py\",\n    description=\"Interprets natural language task descriptions and assigns tasks accordingly.\"\n)\n\nprint(response)\n\n# Update the NLP Task Assignment skill with a default priority tagging\nresponse = AgentService.update_skill(\n    id=\"nlp_task_assignment_skill_id\",\n    content=\"\"\"\nfrom nlp_module import interpret_task\n\ndef assign_task(description):\n    task_details = interpret_task(description)\n    # Adding a default priority tag\n    task_details['priority'] = 'Normal'\n    return task_details\n\"\"\",\n    examples=\"\"\"\n# Using the updated NLP Task Assignment skill with default priority\nfrom skills import assign_task\n\ndescription = 'Email the quarterly financial reports to stakeholders'\ntask_details = assign_task(description)\nprint(f'Task: {task_details['task']}, Priority: {task_details['priority']}')\n\"\"\",\n    description=\"Interprets natural language task descriptions and assigns tasks accordingly (with default priority).\"\n)\n\nprint(response)\n\n# Create an assistant agent\ninit_code = 'agent = autogen.AssistantAgent(**agent_spec.config.dict())'\nresponse = AgentService.new_agent(init_code=init_code, name='Task Assistant', system_message='Assist with various tasks.', description='An assistant designed to help with a variety of tasks.')\nprint(response)\n\n# Update agent\ninit_code = \"agents = [self.load(self.sanitize_agent_spec(agent_spec_internal), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents];group_chat_config = agent_spec.groupchat_config.dict();group_chat_config['agents'] = agents;groupchat = autogen.GroupChat(**group_chat_config);agent = autogen.GroupChatManager(groupchat=groupchat, **agent_spec.config.dict())\"\nresponse = AgentService.update_agent(id='agent_id_1', description='New description')\nprint(response)\n\n# Create a groupchat agent (will have no agents in group to start)\ninit_code = \"agents = [self.load(self.sanitize_agent_spec(agent_spec_internal), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents];group_chat_config = agent_spec.groupchat_config.dict();group_chat_config['agents'] = agents;groupchat = autogen.GroupChat(**group_chat_config);agent = autogen.GroupChatManager(groupchat=groupchat, **agent_spec.config.dict())\"\nresponse = AgentService.new_agent(id='agent_id_1', init_code=init_code, name='machine_learning_group_chat', msg='A group chat manager that has other agents specialized in machine learning which you can use to solve your task.', description='An group chat with multiple agents ready to complete your task')\nprint(response)\n\n# Discover skills\nresponse = AgentService.discover_services(service_type='skills', queries=['how to parse JSON', 'image processing with Python'])\n# get skill ID\nprint(response)\n\n# add discovered skill(s) to an agent\nresponse = AgentService.manage_agent_skills(id='agent_id_1', skill_ids=['discovered_skill_id_1'])\nprint(response)\n\n# Discover agents\nresponse = AgentService.discover_services(service_type='agents', queries=['task automation', 'data analysis'])\n# get agent ID\nprint(response)\n\n# add discovered agent(s) to a groupchat\nresponse = AgentService.manage_agent_groupchat(agent_id='group_agent_id_1', agent_ids=['discovered_agent_id_1'])\nprint(response)",
+      "file_name": "agent_service.py"
     },
     {
       "title": "zapier_integration",
@@ -340,6 +405,120 @@
         }
       },
       "type": "twoagents"
+    },
+    {
+      "name": "Agent Service workflow",
+      "description": "Create/manage/discover agents and skills",
+      "summary_method": "llm",
+      "type": "groupchat",
+      "sender": {
+        "type": "agent",
+        "init_code": "agent = autogen.UserProxyAgent(**agent_spec.config.dict())",
+        "config": {
+          "name": "userproxy",
+          "human_input_mode": "NEVER",
+          "max_consecutive_auto_reply": 5,
+          "default_auto_reply": "TERMINATE",
+          "code_execution_config": {
+            "work_dir": null,
+            "use_docker": false,
+            "executor": "commandline-local"
+          }
+        }
+      },
+      "receiver": {
+        "type": "groupchat",
+        "description": "Discover and manage agents, discover and manage skills.",
+        "init_code": "agents = [self.load(self.sanitize_agent_spec(agent_spec_internal), session_id) for agent_spec_internal in agent_spec.groupchat_config.agents]\ngroup_chat_config = agent_spec.groupchat_config.dict()\ngroup_chat_config['agents'] = agents\ngroupchat = autogen.GroupChat(**group_chat_config)\nagent = autogen.GroupChatManager(groupchat=groupchat, **agent_spec.config.dict())",
+        "config": {
+          "name": "agent_service_group",
+          "llm_config": {
+            "config_list": [
+              {
+                "model": "gpt-4-turbo-preview"
+              }
+            ],
+            "temperature": 0.1,
+            "timeout": 600,
+            "cache_seed": 42
+          },
+          "human_input_mode": "NEVER",
+          "system_message": "You are a helpful manager skilled at coordinating a group of other assistants to solve a task.  You have a worker, userproxy and a work checker agent in the group to be able to manage agents (create/modify/discover skills, create/modify/discover agents). The worker has a skill to be able to do this, the userproxy executes code and returns the response the worker creates through the use of the skill and the checker ensures the worker is working properly."
+        },
+        "groupchat_config": {
+          "admin_name": "Admin",
+          "max_round": 10,
+          "speaker_selection_method": "auto",
+          "agents": [
+            {
+              "type": "agent",
+              "description": "Worker within the agent_service_group with a skill to create/update/discover agents, create/update/discover skills",
+              "init_code": "agent = autogen.AssistantAgent(**agent_spec.config.dict())",
+              "config": {
+                "name": "agent_service_worker",
+                "llm_config": {
+                  "config_list": [
+                    {
+                      "model": "gpt-4-turbo-preview"
+                    }
+                  ],
+                  "temperature": 0.1,
+                  "timeout": 600,
+                  "cache_seed": 42
+                },
+                "human_input_mode": "NEVER",
+                "max_consecutive_auto_reply": 8,
+                "system_message": "You are a helpful AI assistant. You are in a group with a userproxy and a work checker. Solve tasks using your coding and language skills. In the following cases, suggest python code (in a python coding block) or shell script (in a sh coding block) for the userproxy agent in your group to execute. 1. When you need to collect info, use the code to output the info you need, for example, browse or search the web, download/read a file, print the content of a webpage or a file, get the current date/time, check the operating system. After sufficient info is printed and the task is ready to be solved based on your language skill, you can solve the task by yourself. 2. When you need to perform some task with code, use the code to perform the task and output the result. Finish the task smartly. Solve the task step by step if you need to. If a plan is not provided, explain your plan first. Be clear which step uses code, and which step uses your language skill. When using code, you must indicate the script type in the code block. The userproxy can't modify your code. So do not suggest incomplete code which requires others to modify. Don't use a code block if it's not intended to be executed by the userproxy. If you want the userproxy to save the code in a file before executing it, put # filename: <filename> inside the code block as the first line. Don't include multiple code blocks in one response. Do not ask others to copy and paste the result. Instead, use 'print' function for the output when relevant. Check the execution result returned by the userproxy. If the result indicates there is an error, fix the error and output the code again. Suggest the full code instead of partial code or code changes. If the error can't be fixed or if the task is not solved even after the code is executed successfully, analyze the problem, revisit your assumption, collect additional info you need, and think of a different approach to try. When you find an answer, verify the answer carefully. Include verifiable evidence in your response if possible. Reply 'TERMINATE' in the end when everything is done. Use the agent_service to solve your agent related tasks. Use the agent services like lego blocks. Skill is the smallest building block, then agents and within agents group chats if necessary which allow you to add other agents. Before creating a skill try to discover one to see if an ideal skill for your task already exists. When creating a skill, test the code first by getting the userproxy to run the code and then create the skill. Prior to creating an agent do the same thing, discover first then create. When in creation mode, you should discover/create skills before discover/create agents and finally modify the new or existing agents based on the task. YOU ARE THE ONLY ONE in the group with access to the agent_service skill. The work checker in your group will double-check your work to make sure you are on the right path and the userproxy will execute code and return the response to the group.",
+                "default_auto_reply": "This is the agent service worker, please assign me an agent related task so I can use my agent_service skill to work on or discover skills, agents and groups."
+              }
+            },
+            {
+              "type": "agent",
+              "description": "A user proxy agent that executes code.",
+              "init_code": "agent = autogen.UserProxyAgent(**agent_spec.config.dict())",
+              "config": {
+                "name": "userproxy",
+                "llm_config": {
+                  "config_list": [
+                    {
+                      "model": "gpt-4-turbo-preview"
+                    }
+                  ],
+                  "temperature": 0.1,
+                  "timeout": 600,
+                  "cache_seed": 42
+                },
+                "human_input_mode": "NEVER",
+                "max_consecutive_auto_reply": 8,
+                "system_message": "You are a helpful assistant. You can execute code others write. You are in the agent_service_group which is tasked with creating/managing agents in an agent framework. Take a look at the message posed to the group by the user and ensure you work diligently to solve the problem by executing tasks and returning results. If the group has reached a natural conclusion and should terminate, just reply with TERMINATE",
+                "default_auto_reply": "This is user proxy agent, send some code my way so I can execute it as needed."
+              }
+            },
+            {
+              "type": "agent",
+              "description": "Checks the work of agent_service_worker to ensure quality and correctness",
+              "init_code": "agent = autogen.AssistantAgent(**agent_spec.config.dict())",
+              "config": {
+                "name": "agent_service_work_checker",
+                "llm_config": {
+                  "config_list": [
+                    {
+                      "model": "gpt-4-turbo-preview"
+                    }
+                  ],
+                  "temperature": 0.1,
+                  "timeout": 600,
+                  "cache_seed": 42
+                },
+                "human_input_mode": "NEVER",
+                "max_consecutive_auto_reply": 8,
+                "system_message": "You are a helpful AI assistant. Your job is to check the work of agent_service_worker and make sure based on the task the group is working on is efficiently solved. You can review the process and use common sense to solve the task or direct the worker to create code and the userproxy agent in your group will execute and report the responses back to the group. Make sure the task is fully solved before you agree that group has reached a natural conclusion. If its not solvable you can also explain why and try to steer the group towards closure. The worker is the only agent in the group which has access to the skill which guides the agent to create code to create/manage/discover agents/skills/groups. Think of the agent services as lego blocks. Groups may depend on agents inside (group is just a type of agent), agents may depend on skills which get added to them and skills are just python routines the worker can create for the userproxy to execute.",
+                "default_auto_reply": "This is the agent_service_work_checker, I check the work of agent_service_worker and suggest corrective actions as needed."
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }

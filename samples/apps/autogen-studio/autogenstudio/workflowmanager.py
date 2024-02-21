@@ -16,6 +16,7 @@ class AutoGenWorkFlowManager:
         config: AgentWorkFlowConfig,
         work_dir: str = None,
         clear_work_dir: bool = True,
+        session_id: str = ""
     ) -> None:
         """
         Initializes the AutoGenFlow with agents specified in the config and optional
@@ -31,8 +32,8 @@ class AutoGenWorkFlowManager:
             clear_folder(self.work_dir)
 
         # given the config, return an AutoGen agent object
-        self.sender = self.load(config.sender, config.session_id)
-        self.receiver = self.load(config.receiver, config.session_id)
+        self.sender = self.load(config.sender, session_id)
+        self.receiver = self.load(config.receiver, session_id)
 
         self.agent_history = []
 
@@ -142,8 +143,8 @@ class AutoGenWorkFlowManager:
             'autogen': autogen,
             'path_to_data_dir': path_to_data_dir,
             'agent_spec': agent_spec,
-            'self': self,
             'session_id': session_id,
+            'self': self,
             '__builtins__': safe_builtins
         }
         # Define a placeholder in the context for the agent to be created
@@ -186,14 +187,12 @@ class AutoGenWorkFlowManager:
             # get skill prompt, also write skills to a file named skills.py
             skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
             if agent.system_message:
-                agent.update_system_message(agent.system_message + "\n\n" + skills_prompt + "\n\nYour session_id:" + session_id)
+                agent.update_system_message(agent.system_message + "\n\n" + skills_prompt)
             else:
-                agent.update_system_message("You are a helpful assistant.\n\n" + skills_prompt + "\n\nYour session_id:" + session_id)
+                agent.update_system_message("You are a helpful assistant.\n\n" + skills_prompt)
         else:
-            if agent.system_message:
-                agent.update_system_message(agent.system_message + "\n\nYour session_id:" + session_id)
-            else:
-                agent.update_system_message("You are a helpful assistant.\n\nYour session_id:" + session_id)
+            if not agent.system_message:
+                agent.update_system_message("You are a helpful assistant.")
                        
         # Assuming the agent is correctly instantiated, register hooks or perform additional setup
         agent.register_hook(hookable_method="receive_message", hook=self.receive_message)

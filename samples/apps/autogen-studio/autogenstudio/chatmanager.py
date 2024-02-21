@@ -13,7 +13,7 @@ class AutoGenChatManager:
     def __init__(self) -> None:
         pass
 
-    def chat(self, message: Message, history: List, flow_config: AgentWorkFlowConfig = None, **kwargs) -> None:
+    def chat(self, message: Message, flow_config: AgentWorkFlowConfig = None, **kwargs) -> None:
         work_dir = kwargs.get("work_dir", None)
         scratch_dir = os.path.join(work_dir, "scratch")
         os.makedirs(scratch_dir, exist_ok=True)
@@ -22,8 +22,7 @@ class AutoGenChatManager:
         # if no flow config is provided, use the default
         if flow_config is None:
             flow_config = get_default_agent_config(scratch_dir)
-        flow_config.session_id = message.session_id
-        flow = AutoGenWorkFlowManager(config=flow_config, work_dir=scratch_dir, clear_work_dir=False)
+        flow = AutoGenWorkFlowManager(config=flow_config, session_id=message.session_id, work_dir=scratch_dir, clear_work_dir=False)
         message_text = message.content.strip()
 
         output = ""

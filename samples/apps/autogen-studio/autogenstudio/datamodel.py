@@ -176,7 +176,6 @@ class AgentWorkFlowConfig:
     id: Optional[str] = None
     user_id: Optional[str] = None
     timestamp: Optional[str] = None
-    session_id: Optional[str] = None
     # how the agent message summary is generated. last: only last message is used, none: no summary,  llm: use llm to generate summary
     summary_method: Optional[Literal["last", "none", "llm"]] = "last"
 
@@ -270,9 +269,3 @@ class DBWebRequestModel(object):
     agent: Optional[AgentFlowSpec] = None
     workflow: Optional[AgentWorkFlowConfig] = None
     model: Optional[Model] = None
-
-@dataclass
-class UpsertWorkflowSession(object):
-    target_session_id: str
-    current_session_id: str
-    workflow_id: str
