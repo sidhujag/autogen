@@ -31,7 +31,8 @@ dependencies = [
     "markdownify", 
     "pdfminer.six", 
     "pathvalidate",
-    "youtube_transcript_api"
+    "youtube_transcript_api",
+    "selenium"
 ]
 optional-dependencies = {web = ["fastapi", "uvicorn"]}
 
