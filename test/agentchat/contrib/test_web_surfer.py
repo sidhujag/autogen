@@ -2,8 +2,8 @@ import os
 import sys
 import re
 import pytest
-from autogen.agentchat import UserProxyAgent
-from autogen.oai.openai_utils import filter_config, config_list_from_json
+from autogen import UserProxyAgent, config_list_from_json
+from autogen.oai.openai_utils import filter_config
 from autogen.cache import Cache
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
@@ -22,10 +22,9 @@ BLOG_POST_FIND_ON_PAGE_MATCH = (
 BING_QUERY = "Microsoft"
 
 try:
-    from autogen.agentchat.contrib.web_surfer import WebSurferAgent, IS_SELENIUM_CAPABLE
+    from autogen.agentchat.contrib.web_surfer import WebSurferAgent
 except ImportError:
     skip_all = True
-    print("THERE WAS AN ERROR")
 else:
     skip_all = False
 
@@ -51,7 +50,7 @@ if not skip_oai:
     skip_all,
     reason="do not run if dependency is not installed",
 )
-def test_web_surfer(browser_type="text", web_driver=None) -> None:
+def test_web_surfer() -> None:
     with pytest.MonkeyPatch.context() as mp:
         # we mock the API key so we can register functions (llm_config must be present for this to work)
         mp.setenv("OPENAI_API_KEY", MOCK_OPEN_AI_API_KEY)
@@ -59,7 +58,7 @@ def test_web_surfer(browser_type="text", web_driver=None) -> None:
         web_surfer = WebSurferAgent(
             "web_surfer",
             llm_config={"model": "gpt-4", "config_list": []},
-            browser_config={"viewport_size": page_size, "type": browser_type, "web_driver": web_driver},
+            browser_config={"viewport_size": page_size},
         )
 
         # Sneak a peak at the function map, allowing us to call the functions for testing here
@@ -75,25 +74,21 @@ def test_web_surfer(browser_type="text", web_driver=None) -> None:
         total_pages = int(m.group(1))  # type: ignore[union-attr]
 
         response = function_map["page_down"]()
-        if browser_type == "text":
-            assert (
-                f"Viewport position: Showing page 2 of {total_pages}." in response
-            )  # Assumes the content is longer than one screen
+        assert (
+            f"Viewport position: Showing page 2 of {total_pages}." in response
+        )  # Assumes the content is longer than one screen
 
         response = function_map["page_up"]()
-        if browser_type == "text":
-            assert f"Viewport position: Showing page 1 of {total_pages}." in response
+        assert f"Viewport position: Showing page 1 of {total_pages}." in response
 
         # Try to scroll too far back up
         response = function_map["page_up"]()
-        if browser_type == "text":
-            assert f"Viewport position: Showing page 1 of {total_pages}." in response
+        assert f"Viewport position: Showing page 1 of {total_pages}." in response
 
         # Try to scroll too far down
         for i in range(0, total_pages + 1):
             response = function_map["page_down"]()
-        if browser_type == "text":
-            assert f"Viewport position: Showing page {total_pages} of {total_pages}." in response
+        assert f"Viewport position: Showing page {total_pages} of {total_pages}." in response
 
         # Try to scroll too far up
         for i in range(0, total_pages + 1):
@@ -118,8 +113,8 @@ def test_web_surfer(browser_type="text", web_driver=None) -> None:
         with pytest.raises(ValueError, match="Missing Bing API key."):
             response = function_map["informational_web_search"](BING_QUERY)
 
-            with pytest.raises(ValueError, match="Missing Bing API key."):
-                response = function_map["navigational_web_search"](BING_QUERY)
+        with pytest.raises(ValueError, match="Missing Bing API key."):
+            response = function_map["navigational_web_search"](BING_QUERY)
 
         # Test Q&A and summarization -- we don't have a key so we expect it to fail (but it means the code path is correct)
         with pytest.raises(IndexError):
@@ -133,19 +128,17 @@ def test_web_surfer(browser_type="text", web_driver=None) -> None:
     skip_oai,
     reason="do not run if oai is not installed",
 )
-def test_web_surfer_oai(browser_type="text", web_driver=None) -> None:
+def test_web_surfer_oai() -> None:
     llm_config = {"config_list": config_list, "timeout": 180, "cache_seed": 42}
 
     # adding Azure name variations to the model list
-    model = ["gpt-3.5-turbo", "gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-3.5-turbo-16k"]
+    model = ["gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-3.5-turbo-16k"]
     model += [m.replace(".", "") for m in model]
 
     summarizer_llm_config = {
         "config_list": filter_config(config_list, dict(model=model)),  # type: ignore[no-untyped-call]
         "timeout": 180,
     }
-    # import ipdb
-    # ipdb.set_trace()
 
     assert len(llm_config["config_list"]) > 0  # type: ignore[arg-type]
     assert len(summarizer_llm_config["config_list"]) > 0
@@ -155,7 +148,7 @@ def test_web_surfer_oai(browser_type="text", web_driver=None) -> None:
         "web_surfer",
         llm_config=llm_config,
         summarizer_llm_config=summarizer_llm_config,
-        browser_config={"viewport_size": page_size, "type": browser_type, "web_driver": web_driver},
+        browser_config={"viewport_size": page_size},
     )
 
     user_proxy = UserProxyAgent(
@@ -187,7 +180,7 @@ def test_web_surfer_oai(browser_type="text", web_driver=None) -> None:
     skip_bing,
     reason="do not run if bing api key is not available",
 )
-def test_web_surfer_bing(browser_type="text", web_driver=None) -> None:
+def test_web_surfer_bing() -> None:
     page_size = 4096
     web_surfer = WebSurferAgent(
         "web_surfer",
@@ -199,12 +192,7 @@ def test_web_surfer_bing(browser_type="text", web_driver=None) -> None:
                 }
             ]
         },
-        browser_config={
-            "viewport_size": page_size,
-            "bing_api_key": BING_API_KEY,
-            "type": browser_type,
-            "web_driver": web_driver,
-        },
+        browser_config={"viewport_size": page_size, "bing_api_key": BING_API_KEY},
     )
 
     # Sneak a peak at the function map, allowing us to call the functions for testing here
@@ -224,15 +212,6 @@ def test_web_surfer_bing(browser_type="text", web_driver=None) -> None:
 
 if __name__ == "__main__":
     """Runs this file's tests from the command line."""
-
     test_web_surfer()
     test_web_surfer_oai()
     test_web_surfer_bing()
-
-    if IS_SELENIUM_CAPABLE:  # Test the selenium browser if installed
-        # Todo: automatically determine which is available in order to avoid unnecessary errors
-        selected_driver = "edge"  # can be 'edge', 'firefox', or 'chrome'
-
-        test_web_surfer(browser_type="selenium", web_driver=selected_driver)
-        test_web_surfer_oai(browser_type="selenium", web_driver=selected_driver)
-        test_web_surfer_bing(browser_type="selenium", web_driver=selected_driver)
