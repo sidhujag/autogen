@@ -1,0 +1,8 @@
+'GLOBAL_PROXY' = ''
+'SERPER_API_KEY' = ''
+'BING_API_KEY' = ''
+'GH_USER' = ''
+'GH_PAT' = 'ghp_...'
+'ZAPIER_API_KEY' = 'sk-...'
+'OPENAI_API_KEY' = 'sk-...'
+'TOKENIZERS_PARALLELISM' = 'false'
