@@ -108,7 +108,7 @@ SuperDapp Studio proposes some high-level concepts.
 
 **Skills**: Skills are functions (e.g., Python functions) that describe how to solve a task. In general, a good skill has a descriptive name (e.g. `generate_images`), extensive docstrings and good defaults (e.g., writing out files to disk for persistence and reuse). You can add new skills SuperDapp Studio app via the provided UI. At inference time, these skills are made available to the assistant agent as they address your tasks.
 
-SuperDapp Studio comes with some example skills including `fetch_profile`, `find_papers`, `generate_images` and others. The default skills, agents and workflows are based on the [dbdefaults.json](autogentstudio/utils/dbdefaults.json) file which is used to initialize the database.
+SuperDapp Studio comes with some example skills including `fetch_profile`, `find_papers`, `generate_images` and others. The default skills, agents and workflows are based on the [dbdefaults.json](autogenstudio/utils/dbdefaults.json) file which is used to initialize the database.
 
 ## Example Usage
 
