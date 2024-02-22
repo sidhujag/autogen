@@ -124,28 +124,6 @@ async def get_gallery_items(gallery_id: str = None):
             "message": "Error occurred while retrieving messages: " + str(ex_error),
         }
 
-@api.get("/session")
-async def get_session(id: str):
-    try:
-        session = dbutils.get_session(id, dbmanager=dbmanager)
-        if session:
-            return {
-                "status": True,
-                "message": "Session retrieved successfully",
-                "data": session,
-            }
-        else:
-            return {
-                "status": False,
-                "message": "Session not found"
-            }
-    except Exception as ex_error:
-        print(ex_error)
-        return {
-            "status": False,
-            "message": "Error occurred while retrieving session: " + str(ex_error),
-        }
-
 @api.get("/sessions")
 async def get_user_sessions(user_id: str = None):
     """Return a list of all sessions for a user"""
