@@ -115,7 +115,7 @@ SuperDapp Studio comes with some example skills including `fetch_profile`, `find
 Consider the following query.
 
 ```
-Plot a chart of NVDA and TESLA stock price YTD. Save the result to a file named nvda_tesla.png
+Plot a chart of NVDA and TESLA stock price for 2023. Save the result to a file named nvda_tesla.png
 ```
 
 The agent workflow responds by _writing and executing code_ to create a python program to generate the chart with the stock prices.
@@ -126,7 +126,7 @@ The agent workflow responds by _writing and executing code_ to create a python p
 
 > Note: You can also view the debug console that generates useful information to see how the agents are interacting in the background.
 
-<!-- ![ARA](./docs/ara_console.png) -->
+![ARA](./docs/ara_console.png)
 
 ## Contribution Guide
 
