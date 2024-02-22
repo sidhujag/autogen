@@ -31,7 +31,10 @@ dependencies = [
     "markdownify", 
     "pdfminer.six", 
     "pathvalidate",
-    "youtube_transcript_api"
+    "youtube_transcript_api",
+    "networkx", 
+    "matplotlib",
+    "yfinance"
 ]
 optional-dependencies = {web = ["fastapi", "uvicorn"]}
 

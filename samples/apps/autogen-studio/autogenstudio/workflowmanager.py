@@ -82,8 +82,9 @@ class AutoGenWorkFlowManager:
                 sanitized_llm = sanitize_model(llm)
                 config_list.append(sanitized_llm)
             agent_spec.config.llm_config.config_list = config_list
+        agent_spec.config.code_execution_config = agent_spec.config.code_execution_config or False
         if agent_spec.config.code_execution_config is not False:
-            code_execution_config = agent_spec.config.code_execution_config or {}
+            code_execution_config = agent_spec.config.code_execution_config
             code_execution_config["work_dir"] = self.work_dir
             # tbd check if docker is installed
             code_execution_config["use_docker"] = False
