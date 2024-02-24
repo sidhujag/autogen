@@ -34,7 +34,8 @@ dependencies = [
     "youtube_transcript_api",
     "networkx", 
     "matplotlib",
-    "yfinance"
+    "yfinance",
+    "websockets"
 ]
 optional-dependencies = {web = ["fastapi", "uvicorn"]}
 

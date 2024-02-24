@@ -1,7 +1,10 @@
 import os
-from typing import List, Dict
+from typing import List, Optional, Union, Dict
+
+from requests import Session
+
 import autogen
-from .datamodel import AgentFlowSpec, AgentWorkFlowConfig
+from .datamodel import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig, Message, SocketMessage
 from .utils import get_skills_from_prompt, clear_folder, sanitize_model
 from datetime import datetime
 from pathlib import Path
@@ -16,21 +19,25 @@ class AutoGenWorkFlowManager:
         config: AgentWorkFlowConfig,
         work_dir: str = None,
         clear_work_dir: bool = True,
-        session_id: str = ""
+        session_id: str = "",
+        send_message_function: Optional[callable] = None,
+        connection_id: Optional[str] = None,
     ) -> None:
         """
         Initializes the AutoGenFlow with agents specified in the config and optional
-        message history.
+        message history. 
 
         Args:
             config: The configuration settings for the sender and receiver agents.
             history: An optional list of previous messages to populate the agents' history.
 
         """
+        self.send_message_function = send_message_function
+        self.connection_id = connection_id
         self.work_dir = work_dir or "work_dir"
         if clear_work_dir:
             clear_folder(self.work_dir)
-
+        self.config = config
         # given the config, return an AutoGen agent object
         self.sender = self.load(config.sender, session_id)
         self.receiver = self.load(config.receiver, session_id)
@@ -43,14 +50,20 @@ class AutoGenWorkFlowManager:
         if "name" in message:
             sender = message["name"]
         # if sender is group chat, get summary if summary is set because that means a convo has completed and is returning to you
-        iteration = {
+        message_payload = {
             "recipient": recipient,
             "sender": sender,
             "message": message,
             "timestamp": datetime.now().isoformat(),
+            "connection_id": self.connection_id,
+            "message_type": "agent_message"
         }
-        self.agent_history.append(iteration)
-
+        self.agent_history.append(message_payload)  # add to history
+        if self.send_message_function:  # send over the message queue
+            socket_msg = SocketMessage(
+                type="agent_message", data=message_payload, connection_id=self.connection_id)
+            self.send_message_function(socket_msg.dict())
+                
     def sanitize_agent_spec(self, agent_spec: AgentFlowSpec) -> AgentFlowSpec:
         """
         Sanitizes the agent spec by setting loading defaults
