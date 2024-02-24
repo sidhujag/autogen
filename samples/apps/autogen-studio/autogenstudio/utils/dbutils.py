@@ -247,7 +247,7 @@ class DBManager:
 
                 agent.skills = [skill.dict() for skill in agent.skills] if agent.skills else None
                 self.cursor.execute(
-                    "INSERT INTO agents (id, user_id, timestamp, config, groupchat_config, type, skills, description, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO agents (id, user_id, timestamp, config, groupchat_config, type, skills, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         agent.id,
                         "default",
@@ -256,7 +256,6 @@ class DBManager:
                         json.dumps(groupchat_config_data),
                         agent.type,
                         json.dumps(agent.skills),
-                        agent.description,
                         agent.init_code,
                     ),
                 )
@@ -622,7 +621,7 @@ def discover_services(service_type: str, user_id: str, queries: List[str], dbman
         objs = get_agents(user_id, dbmanager)
 
         documents = [
-            "name: " + (agent.config.name if agent.config.name is not None else "No Title") + "\n\ndescription: " + (agent.description if agent.description is not None else "No Description")
+            "name: " + (agent.config.name if agent.config.name is not None else "No Title") + "\n\ndescription: " + (agent.config.description if agent.config.description is not None else "No Description")
             for agent in objs
         ]
 
@@ -631,7 +630,7 @@ def discover_services(service_type: str, user_id: str, queries: List[str], dbman
         objs = get_skills(user_id, dbmanager)
 
         documents = [
-            "title: " + (skill.title if skill.title is not None else "No Title") + "\n\ncontent: " + (skill.content if skill.content is not None else "No Content")
+            "title: " + (skill.title if skill.title is not None else "No Title") + "\n\ncontent: "  + "\n\ndescription: " + (skill.description if skill.description is not None else "No Description")
             for skill in objs
         ]
         ids = [skill.id for skill in objs]
@@ -790,13 +789,12 @@ def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[A
             "config": json.dumps(agent_flow_spec.config.dict()),
             "groupchat_config": json.dumps(groupchat_config_data),
             "type": agent_flow_spec.type,
-            "description": agent_flow_spec.description,
             "init_code": agent_flow_spec.init_code,
             "skills": json.dumps([x.dict() for x in agent_flow_spec.skills] if agent_flow_spec.skills else []),
         }
         update_item("agents", agent_flow_spec.id, updated_data, dbmanager)
     else:
-        query = "INSERT INTO agents (id, user_id, timestamp, config, groupchat_config, type, description, skills, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        query = "INSERT INTO agents (id, user_id, timestamp, config, groupchat_config, type, skills, init_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         config_json = json.dumps(agent_flow_spec.config.dict())
         args = (
             agent_flow_spec.id,
@@ -805,7 +803,6 @@ def upsert_agent(agent_flow_spec: AgentFlowSpec, dbmanager: DBManager) -> List[A
             config_json,
             json.dumps(groupchat_config_data),
             agent_flow_spec.type,
-            agent_flow_spec.description,
             json.dumps([x.dict() for x in agent_flow_spec.skills] if agent_flow_spec.skills else []),
             agent_flow_spec.init_code,
         )

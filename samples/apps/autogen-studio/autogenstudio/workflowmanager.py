@@ -184,6 +184,28 @@ class AutoGenWorkFlowManager:
 
         if agent is None:
             raise ValueError("Initialization code did not correctly create an agent.")
+        
+        def welcome_msg(group: autogen.GroupChat, me: autogen.Agent, other_agents: List[autogen.Agent]) -> str:
+            """Return the system message for the group. This is always the *first* message in the group."""
+            me_desc = f"{me.name}: {me.description}".strip()
+            return f"""You are a skillfil autonomous agent in a group chat with other agents game. 
+    YOU ARE:
+        {me_desc}
+        
+    The following OTHER AGENTS are available (list of agent name: description):
+        {group._participant_roles(other_agents)}.
+
+    Read and understand the agents and their roles/skills. At the end of your response, you should delegate tasks by referencing like a chat (with @ before their name) so the group speaker selection will choose them to respond next. Like passing the torch."""
+
+
+        if agent_spec.type == "groupchat":
+            for group_agent in agent._groupchat.agents:
+                other_agents = [other_agent for other_agent in agent._groupchat.agents if other_agent != group_agent]
+                welcome_msg_content = welcome_msg(agent._groupchat, group_agent, other_agents)
+                if group_agent.system_message:
+                    group_agent.update_system_message(group_agent.system_message + "\n\n" + welcome_msg_content)
+                else:
+                    group_agent.update_system_message(welcome_msg_content)
         if agent_spec.skills:
             # get skill prompt, also write skills to a file named skills.py
             skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
@@ -194,7 +216,6 @@ class AutoGenWorkFlowManager:
         else:
             if not agent.system_message:
                 agent.update_system_message("You are a helpful assistant.")
-                       
         # Assuming the agent is correctly instantiated, register hooks or perform additional setup
         agent.register_hook(hookable_method="receive_message", hook=self.receive_message)
         agent.load_state(context['path_to_data_dir'])

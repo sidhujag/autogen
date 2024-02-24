@@ -227,7 +227,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
         """Return the floating system prompt selecting the next speaker. This is always the *last* message in the context."""
         if agents is None:
             agents = self.agents
-        return f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Only return the role."
+        return f"Read the above conversation. Then select the next role from {[agent.name for agent in agents]} to play. Only return the role. If in the last message another agent is requested using @ to speak he should always be selected."
 
     def manual_select_speaker(self, agents: Optional[List[Agent]] = None) -> Union[Agent, None]:
         """Manually select the next speaker."""

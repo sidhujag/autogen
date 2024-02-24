@@ -34,6 +34,7 @@ export interface ILLMConfig {
 
 export interface IAgentConfig {
   name: string;
+  description?: string;
   llm_config?: ILLMConfig | false;
   human_input_mode: string;
   max_consecutive_auto_reply: number;
@@ -51,7 +52,6 @@ export interface IAgentFlowSpec {
   timestamp?: string;
   id?: string;
   skills?: Array<ISkill>;
-  description?: string;
   user_id?: string;
 }
 

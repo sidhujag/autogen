@@ -300,6 +300,7 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
 
   const groupChatAssistantConfig = Object.assign({}, assistantConfig);
   groupChatAssistantConfig.name = "group_chat_manager";
+  groupChatAssistantConfig.description = "group chat skilled at managing a group of agents";
   groupChatAssistantConfig.system_message =
     "You are a helpful manager skilled at cordinating a group of other assistants to solve a task. ";
 
@@ -315,7 +316,6 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
       speaker_selection_method: "auto",
       allow_repeat_speaker: false,
     },
-    description: "Default Group Workflow",
   };
 
   const groupChatWorkFlowConfig: IFlowConfig = {

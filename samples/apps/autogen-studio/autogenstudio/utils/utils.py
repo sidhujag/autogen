@@ -363,6 +363,7 @@ def get_default_agent_config(work_dir: str) -> AgentWorkFlowConfig:
         init_code="agent = autogen.AssistantAgent(**agent_spec.config.dict())",
         config=AgentConfig(
             name="primary_assistant",
+            description=autogen.AssistantAgent.DEFAULT_DESCRIPTION,
             system_message=autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE,
             llm_config=llm_config,
         ),

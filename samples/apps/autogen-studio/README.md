@@ -32,11 +32,13 @@ Some of the capabilities supported by the app frontend include the following (so
 - [x] Ability to discover, create, manage agents and groupchats.
 - [x] Ability to discover, create, manage skills and attach to agents.
 - [x] LLM reflection for answering conversation in workflows
+- [x] Group agent awareness through welcome message
 - [ ] Improved user experience (e.g., streaming intermediate model output, etc).
 - [ ] LLM reflection for nested chats
 - [ ] Default workflows for coding assistance, query planning, story telling, dynamic group/agent selection to answer generic questions
 - [ ] Make hooks into SuperDapp API
 - [ ] Cloud support
+- [ ] Public/Private agents in groups (where private agents would require @ message like a DM)
 
 Project Structure:
 

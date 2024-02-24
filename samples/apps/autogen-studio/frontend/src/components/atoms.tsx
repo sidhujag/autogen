@@ -1144,19 +1144,14 @@ export const AgentFlowSpecView = ({
           title="Agent Description"
           className="mt-4"
           description="Description of the agent"
-          value={flowSpec.description || ""}
+          value={flowSpec.config.description || ""}
           control={
             <Input
               className="mt-2"
               placeholder="Agent Description"
-              value={flowSpec.description}
+              value={flowSpec.config.description}
               onChange={(e) => {
-                const updatedFlowSpec = {
-                  ...localFlowSpec,
-                  description: e.target.value,
-                };
-                setLocalFlowSpec(updatedFlowSpec);
-                setFlowSpec(updatedFlowSpec);
+                onControlChange(e.target.value, "description");
               }}
             />
           }
@@ -1892,7 +1887,7 @@ export const AgentSelector = ({
             {flowSpec.config.name}
             <div className="mt-2 text-secondary text-sm">
               {" "}
-              {flowSpec.description || flowSpec.config.name}
+              {flowSpec.config.description || flowSpec.config.name}
             </div>
             <div className="mt-2 text-secondary text-sm">
               {" "}

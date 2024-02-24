@@ -34,22 +34,51 @@ class AgentHelperService:
 
 
     @staticmethod
-    def fetch_skills(skill_ids: List[str]) -> List[Skill]:
+    def fetch_skill(skill_id: str) -> Skill:
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+        url = f"{server_url}/skill?id={skill_id}"
+        response = AgentHelperService.fetch_json(url, method="GET")
+        if response.get("status"):
+            return Skill(**response.get("data"))
+        elif response.get("message"):
+            msg = response.get("message")
+            print(f"Skill {skill_id} not found, error: {msg}. Skipping.")
+        else:
+            print(f"Skill {skill_id} not found or error occurred. Skipping.")
+        return None
+    
+    @staticmethod
+    def fetch_skills(skill_ids: List[str]) -> List[Skill]:
         skills: List[Skill] = []
         for skill_id in skill_ids:
-            url = f"{server_url}/skill?id={skill_id}"
-            response = AgentHelperService.fetch_json(url, method="GET")
-            if response.get("status"):
-                skills.append(Skill(**response.get("data")))
-            elif response.get("message"):
-                msg = response.get("message")
-                print(f"Skill {skill_id} not found, error: {msg}. Skipping.")
-            else:
-                print(f"Skill {skill_id} not found or error occurred. Skipping.")
+            skill = AgentHelperService.fetch_skill(skill_id)
+            if skill:
+                skills.append(skill)
         return skills
 
-
+    @staticmethod
+    def fetch_agent(agent_id: str) -> AgentFlowSpec:
+        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
+        url = f"{server_url}/agent?id={agent_id}"
+        response = AgentHelperService.fetch_json(url, method="GET")
+        if response.get("status"):
+            return AgentFlowSpec(**response.get("data"))
+        elif response.get("message"):
+            msg = response.get("message")
+            print(f"Agent {agent_id} not found, error: {msg}. Skipping.")
+        else:
+            print(f"Agent {agent_id} not found or error occurred. Skipping.")
+        return None
+    
+    @staticmethod
+    def fetch_agents(agent_ids: List[str]) -> List[AgentFlowSpec]:
+        agents: List[AgentFlowSpec] = []
+        for agent_id in agent_ids:
+            agent = AgentHelperService.fetch_agent(agent_id)
+            if agent:
+                agents.append(agent)
+        return agents
+    
     @staticmethod
     def sanitize_discover_services_output(service_type: str, response_data):
         sanitized_data = {}
@@ -86,42 +115,6 @@ class AgentHelperService:
             response["data"] = ""
         return json.dumps(response)
 
-    @staticmethod
-    def manage_agent_skills(agent_id: str, skill_ids: List[str], action: str) -> str:
-        fetched_skills = AgentHelperService.fetch_skills(skill_ids) if skill_ids else []
-        assistant = AgentHelperService.fetch_agent(agent_id)
-        if not assistant:
-            return json.dumps({"error": f"Agent not found with the id {agent_id}"})
-
-        if action == 'add':
-            existing_skill_ids = {skill.id for skill in assistant.skills}
-            # Add only new skills
-            new_skills = [skill for skill in fetched_skills if skill.id not in existing_skill_ids]
-            assistant.skills.extend(new_skills)
-        elif action == 'remove':
-            # Filter out skills to be removed
-            assistant.skills = [skill for skill in assistant.skills if skill.id not in skill_ids]
-        else:
-            return json.dumps({"error": "Invalid action specified"})
-        
-        # Construct payload for API request
-        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
-        url = f"{server_url}/agents"
-        payload = {
-            "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),
-            "agent": assistant.dict()
-        }
-        
-        # Send request to create or update agent
-        response = AgentHelperService.fetch_json(url, payload, method="POST")
-        if 'data' in response:
-            find_agent = AgentHelperService.find_matching_agent(response['data'], assistant.id)
-            response["data"] = ""
-            if find_agent:
-                response["data"] = AgentHelperService.sanitize_agent_output(find_agent)
-        else:
-            response["data"] = ""
-        return json.dumps(response)
 
     @staticmethod
     def sanitize_skill_output(skill: Skill):
@@ -139,9 +132,9 @@ class AgentHelperService:
             "config": {
                 "name": agent.config.name,
             },
-            "agent_id":agent.id,
+            "agent_id": agent.id,
             "skills": sanitized_skills,
-            "description": agent.description
+            "description": agent.config.description
         }
         if agent.type == "groupchat":
             sanitized_group_agents = [
@@ -174,42 +167,9 @@ class AgentHelperService:
                 return Skill(**skill)
         return None
     
+   
     @staticmethod
-    def new_skill(
-        title: str,
-        content: str,
-        examples: str,
-        file_name: str,
-        description: str,
-    ):
-        skill = Skill(
-            title=title,
-            file_name=file_name,
-            content=content,
-            examples=examples,
-            description=description,
-        )
-        # Construct payload for API request
-        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
-        url = f"{server_url}/skills"
-        payload = {
-            "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),  # Dynamically fetch user email
-            "skill": skill.dict()
-        }
-        
-        # Send request to create or update agent
-        response = AgentHelperService.fetch_json(url, payload, method="POST")
-        if 'data' in response:
-            find_agent = AgentHelperService.find_matching_skill(response['data'], skill.id)
-            response["data"] = ""
-            if find_agent:
-                response["data"] = AgentHelperService.sanitize_skill_output(find_agent)
-        else:
-            response["data"] = ""
-        return json.dumps(response)
-
-    @staticmethod
-    def update_skill(
+    def upsert_skill(
         agent_id: str,
         title: Optional[str],
         content: Optional[str],
@@ -218,21 +178,36 @@ class AgentHelperService:
         description: Optional[str],
     ):
         # Initialize or fetch existing skill
-        skill = AgentHelperService.fetch_skills([agent_id])
-        if not skill:
-            return json.dumps({"error": f"Skill with ID ({agent_id}) not found in the database"})
-        skill = skill[0]
-        if title:
-            skill.title = title
-        if file_name:
-            skill.file_name = file_name
-        if content:
-            skill.content = content
-        if examples:
-            skill.examples = examples
-        if description:
-            skill.description = description
-        
+        skill = AgentHelperService.fetch_skill(agent_id)
+        if skill:
+            if title:
+                skill.title = title
+            if file_name:
+                skill.file_name = file_name
+            if content:
+                skill.content = content
+            if examples:
+                skill.examples = examples
+            if description:
+                skill.description = description
+        else:
+            if not title:
+                return json.dumps({"error": "Missing title for new skill"})
+            if not file_name:
+                return json.dumps({"error": "Missing file_name for new skill"})
+            if not content:
+                return json.dumps({"error": "Missing content for new skill"})
+            if not examples:
+                return json.dumps({"error": "Missing examples for new skill"})
+            if not description:
+                return json.dumps({"error": "Missing description for new skill"})
+            skill = Skill(
+                title=title,
+                file_name=file_name,
+                content=content,
+                examples=examples,
+                description=description,
+            )
         # Construct payload for API request
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
         url = f"{server_url}/skills"
@@ -251,110 +226,81 @@ class AgentHelperService:
         else:
             response["data"] = ""
         return json.dumps(response)
-        
-    @staticmethod
-    def manage_agent_groupchat(agent_id: str, agent_ids: List[str], action: str) -> str:
-        assistant = AgentHelperService.fetch_agent(agent_id)
-        if not assistant:
-            return json.dumps({"error": f"Agent not found with the id {agent_id}"})
-        if assistant.type != "groupchat":
-            return json.dumps({"error": "Agent is not a groupchat, cannot add/remove agents"})
-        if action == 'add':
-            existing_agent_ids = [agent.id for agent in assistant.groupchat_config.agents]  # List of existing agent IDs
-            for group_agent_id in agent_ids:
-                if group_agent_id not in existing_agent_ids:  # Add only if the ID doesn't exist
-                    group_agent = AgentHelperService.fetch_agent(group_agent_id)
-                    if group_agent:
-                        assistant.groupchat_config.agents.append(group_agent)
-                    else:
-                        return json.dumps({"error": f"Cannot add group agent with id ({group_agent_id}): Agent not found!"})
-        elif action == 'remove':
-            # Filter out agents whose IDs are in agent_ids
-            assistant.groupchat_config.agents = [agent for agent in assistant.groupchat_config.agents if agent.id not in agent_ids]
-        else:
-            return json.dumps({"error": "Invalid action specified"})
-        
-        # Construct payload for API request
-        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
-        url = f"{server_url}/agents"
-        payload = {
-            "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),
-            "agent": assistant.dict()
-        }
-        
-        # Send request to create or update agent
-        response = AgentHelperService.fetch_json(url, payload, method="POST")
-        if 'data' in response:
-            find_agent = AgentHelperService.find_matching_agent(response['data'], assistant.id)
-            response["data"] = ""
-            if find_agent:
-                response["data"] = AgentHelperService.sanitize_agent_output(find_agent)
-        else:
-            response["data"] = ""
-        return json.dumps(response)
 
     @staticmethod
-    def new_agent(
-        type: str,
-        init_code: str,
-        name: str,
-        system_message: str,
-        description: str,
-    ) -> Dict[str, Any]:
-        if type != "groupchat" and type != "agent":
-            return json.dumps({"error": f"Invalid type ({type}) specified, must be one of 'groupchat' or 'agent'"})
-        # Create new assistant if it does not exist
-        llm_config = LLMConfig(config_list=[{"model": "gpt-4-turbo-preview"}], temperature=0)
-        assistant = AgentFlowSpec(
-            type=type,
-            init_code=init_code,
-            config=AgentConfig(name=name, system_message=system_message, llm_config=llm_config),
-            description=description
-        )
-        if type == "groupchat":
-            assistant.groupchat_config=GroupChatConfig(agents=[], admin_name=name)
-
-        # Construct payload for API request
-        server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
-
-        url = f"{server_url}/agents"
-        payload = {
-            "user_id": os.getenv("USER_EMAIL", "guestuser@gmail.com"),  # Dynamically fetch user email
-            "agent": assistant.dict()
-        }
-
-        # Send request to create or update agent
-        response = AgentHelperService.fetch_json(url, payload, method="POST")
-        if 'data' in response:
-            find_agent = AgentHelperService.find_matching_agent(response['data'], assistant.id)
-            response["data"] = ""
-            if find_agent:
-                response["data"] = AgentHelperService.sanitize_agent_output(find_agent)
-        else:
-            response["data"] = ""
-        return json.dumps(response)
-
-    @staticmethod
-    def update_agent(
+    def upsert_agent(
         agent_id: str,
+        new_agent_type: Optional[str],
         init_code: Optional[str],
         name: Optional[str],
         system_message: Optional[str],
         description: Optional[str],
+        skills: Optional[List[str]],
+        remove_skills: Optional[List[str]],
+        agents: Optional[List[str]],
+        remove_agents: Optional[List[str]],
     ) -> Dict[str, Any]:
         # Initialize or fetch existing assistant
         assistant = AgentHelperService.fetch_agent(agent_id)
-        if not assistant:
-            return json.dumps({"error": f"Agent with ID ({agent_id}) not found in the database"})
-        if system_message:
-            assistant.config.system_message = system_message
-        if description:
-            assistant.description = description
-        if name:
-            assistant.config.name = name
-        if init_code:
-            assistant.init_code = init_code
-
+        if assistant:
+            if system_message:
+                assistant.config.system_message = system_message
+            if description:
+                assistant.config.description = description
+            if name:
+                assistant.config.name = name
+            if init_code:
+                assistant.init_code = init_code
+            if skills:
+                existing_skill_ids = {skill.id for skill in assistant.skills}
+                # Add only new skills
+                new_skill_ids = [add_skill_id for add_skill_id in skills if add_skill_id not in existing_skill_ids]
+                fetched_new_skills = AgentHelperService.fetch_skills(new_skill_ids)
+                assistant.skills.extend(fetched_new_skills)
+            elif remove_skills:
+                # Filter out skills to be removed
+                assistant.skills = [skill for skill in assistant.skills if skill.id not in remove_skills]
+            if assistant.type == "groupchat":
+                if agents:
+                    existing_agent_ids = {agent.id for agent in assistant.groupchat_config.agents}
+                    # Add only new agents
+                    new_agent_ids = [add_group_agent_id for add_group_agent_id in agents if add_group_agent_id not in existing_agent_ids]
+                    fetched_new_agents = AgentHelperService.fetch_agents(new_agent_ids)
+                    assistant.groupchat_config.agents.extend(fetched_new_agents)
+                elif remove_agents:
+                    # Filter out agents to be removed
+                    assistant.groupchat_config.agents = [agent for agent in assistant.groupchat_config.agents if agent.id not in remove_agents]
+        else:
+            if not new_agent_type:
+                new_agent_type = "agent"
+            if not init_code:
+                return json.dumps({"error": "Missing init_code for new agent"})
+            if not name:
+                return json.dumps({"error": "Missing name for new agent"})
+            if not description:
+                return json.dumps({"error": "Missing description for new agent"})
+            if not system_message:
+                return json.dumps({"error": "Missing system_message for new agent"})
+            if new_agent_type != "groupchat" and new_agent_type != "agent":
+                return json.dumps({"error": f"Invalid type ({new_agent_type}) specified, must be one of 'groupchat' or 'agent'"})
+            fetched_skills = None
+            if skills:
+                fetched_skills = AgentHelperService.fetch_skills(skills)
+                if not fetched_skills:
+                    return json.dumps({"error": f"Could not fetch skills."})
+            # Create new assistant if it does not exist
+            llm_config = LLMConfig(config_list=[{"model": "gpt-4-turbo-preview"}], temperature=0)
+            assistant = AgentFlowSpec(
+                type=new_agent_type,
+                init_code=init_code,
+                skills=fetched_skills,
+                config=AgentConfig(name=name, description=description, system_message=system_message, llm_config=llm_config),
+            )
+            if new_agent_type == "groupchat":
+                fetched_agents = []
+                if agents:
+                    fetched_agents = AgentHelperService.fetch_agents(agents)
+                assistant.groupchat_config=GroupChatConfig(agents=fetched_agents, admin_name=name)
         # Construct payload for API request
         server_url = os.getenv('GATSBY_API_URL', 'http://127.0.0.1:8080/api')
 
