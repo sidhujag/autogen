@@ -1,19 +1,30 @@
 import {
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  DocumentDuplicateIcon,
   InformationCircleIcon,
   PlusIcon,
   TrashIcon,
   UserGroupIcon,
   UserIcon
 } from "@heroicons/react/24/outline";
-import { Modal, message, Dropdown, MenuProps } from "antd";
+import { Dropdown, MenuProps, Modal, message } from "antd";
 import * as React from "react";
 import { IAgentFlowSpec, IStatus } from "../../types";
 import { appContext } from "../../../hooks/provider";
-import { fetchJSON, getServerUrl, timeAgo, truncateText, sampleWorkflowConfig } from "../../utils";
+import {
+  fetchJSON,
+  getServerUrl,
+  sanitizeConfig,
+  timeAgo,
+  truncateText,
+  sampleWorkflowConfig
+} from "../../utils";
 import {
   AgentFlowSpecView,
   BounceLoader,
   Card,
+  CardHoverBar,
   LaunchButton,
   LoadingOverlay,
 } from "../../atoms";
@@ -150,6 +161,52 @@ const AgentsView = ({}: any) => {
   }, []);
 
   const agentRows = (agents || []).map((agent: IAgentFlowSpec, i: number) => {
+    const cardItems = [
+      {
+        title: "Download",
+        icon: ArrowDownTrayIcon,
+        onClick: (e: any) => {
+          e.stopPropagation();
+          // download workflow as workflow.name.json
+          const element = document.createElement("a");
+          const sanitizedAgent = sanitizeConfig(agent);
+          const file = new Blob([JSON.stringify(sanitizedAgent)], {
+            type: "application/json",
+          });
+          element.href = URL.createObjectURL(file);
+          element.download = `agent_${agent.config.name}.json`;
+          document.body.appendChild(element); // Required for this to work in FireFox
+          element.click();
+        },
+        hoverText: "Download",
+      },
+      {
+        title: "Make a Copy",
+        icon: DocumentDuplicateIcon,
+        onClick: (e: any) => {
+          e.stopPropagation();
+          let newAgent = { ...agent };
+          newAgent.config.name = `${agent.config.name}_copy`;
+          newAgent.user_id = user?.email;
+          newAgent.timestamp = new Date().toISOString();
+          if (newAgent.id) {
+            delete newAgent.id;
+          }
+          setNewAgent(agent);
+          setShowNewAgentModal(true);
+        },
+        hoverText: "Make a Copy",
+      },
+      {
+        title: "Delete",
+        icon: TrashIcon,
+        onClick: (e: any) => {
+          e.stopPropagation();
+          deleteAgent(agent);
+        },
+        hoverText: "Delete",
+      },
+    ];
     return (
       <div key={"agentrow" + i} className=" " style={{ width: "200px" }}>
         <div className="">
@@ -168,25 +225,7 @@ const AgentsView = ({}: any) => {
               {truncateText(agent.config.description || "", 70)}
             </div>
             <div className="text-xs">{timeAgo(agent.timestamp || "")}</div>
-            <div
-              onMouseEnter={(e) => {
-                e.stopPropagation();
-              }}
-              className=" mt-2 text-right opacity-0 group-hover:opacity-100 "
-            >
-              {" "}
-              <div
-                role="button"
-                className="text-accent text-xs inline-block hover:bg-primary p-2 rounded"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteAgent(agent);
-                }}
-              >
-                <TrashIcon className=" w-5, h-5 cursor-pointer inline-block" />
-                <span className="text-xs hidden"> delete</span>
-              </div>
-            </div>
+            <CardHoverBar items={cardItems} />
           </Card>
         </div>
       </div>
@@ -218,7 +257,7 @@ const AgentsView = ({}: any) => {
           <>
             Agent Specification{" "}
             <span className="text-accent font-normal">
-              {agent?.config.name}
+              {agent?.config?.name || ""}
             </span>{" "}
           </>
         }
@@ -249,17 +288,44 @@ const AgentsView = ({}: any) => {
     );
   };
 
-  const agentTypes: MenuProps["items"] = [
-    {
-      key: "twoagents",
-      label: (
-        <div>
-          {" "}
-          <UserIcon className="w-5 h-5 inline-block mr-2" />
-          Agent
-        </div>
-      ),
-    },
+  const agentTypesOnClick: MenuProps["onClick"] = ({ key }) => {
+    const newConfig = sampleWorkflowConfig(key);
+    setNewAgent(newConfig.receiver);
+    setShowNewAgentModal(true);
+  };
+  const uploadAgent = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const contents = e.target.result;
+        if (contents) {
+          try {
+            const agent = JSON.parse(contents);
+            // TBD validate that it is a valid agent
+            if (!agent.config) {
+              throw new Error(
+                "Invalid agent file. An agent must have a config"
+              );
+            }
+            setNewAgent(agent);
+            setShowNewAgentModal(true);
+          } catch (err) {
+            message.error(
+              "Invalid agent file. Please upload a valid agent file."
+            );
+          }
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  const agentsMenuItems: MenuProps["items"] = [
     {
       key: "groupchat",
       label: (
@@ -269,12 +335,30 @@ const AgentsView = ({}: any) => {
         </div>
       ),
     },
+    {
+       type: "divider",
+    },
+    {
+      key: "uploadagent",
+      label: (
+        <div>
+          <ArrowUpTrayIcon className="w-5 h-5 inline-block mr-2" />
+          Upload Agent
+        </div>
+      ),
+    },
   ];
 
-  const agentTypesOnClick: MenuProps["onClick"] = ({ key }) => {
-    const newConfig = sampleWorkflowConfig(key);
-    setNewAgent(newConfig.receiver);
-    setShowNewAgentModal(true);
+  const agentsMenuItemOnClick: MenuProps["onClick"] = ({ key }) => {
+    if (key === "uploadagent") {
+      uploadAgent();
+      return;
+    } else if (key === "groupchat") {
+      const newConfig = sampleWorkflowConfig("groupchat");
+      setNewAgent(newConfig.receiver);
+      setShowNewAgentModal(true);
+      return;
+    }
   };
   return (
     <div className="text-primary  ">
@@ -311,26 +395,24 @@ const AgentsView = ({}: any) => {
               {" "}
               Agents ({agentRows.length}){" "}
             </div>
-            <div className=" ">
-              <Dropdown
-                menu={{ items: agentTypes, onClick: agentTypesOnClick }}
+            <div>
+              <Dropdown.Button
+                type="primary"
+                menu={{
+                  items: agentsMenuItems,
+                  onClick: agentsMenuItemOnClick,
+                }}
                 placement="bottomRight"
                 trigger={["click"]}
+                onClick={() => {
+                  const newConfig = sampleWorkflowConfig("agent");
+                  setNewAgent(newConfig.receiver);
+                  setShowNewAgentModal(true);
+                }}
               >
-                <div
-                  className="inline-flex    rounded   hover:border-accent duration-300 hover:text-accent"
-                  role="button"
-                  onClick={(e) => {
-                    // add agent to flowSpec?.groupchat_config.agents
-                  }}
-                >
-                  <LaunchButton className=" text-sm p-2 px-3">
-                    {" "}
-                    <PlusIcon className="w-5 h-5 inline-block mr-1" />
-                    New Agent
-                  </LaunchButton>
-                </div>
-              </Dropdown>
+                <PlusIcon className="w-5 h-5 inline-block mr-1" />
+                New Agent
+              </Dropdown.Button>
             </div>
           </div>
 

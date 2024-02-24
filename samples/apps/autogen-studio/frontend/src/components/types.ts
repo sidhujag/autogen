@@ -86,6 +86,7 @@ export interface IModelConfig {
   user_id?: string;
   timestamp?: string;
   description?: string;
+  id?: string;
 }
 
 export interface IMetadataFile {

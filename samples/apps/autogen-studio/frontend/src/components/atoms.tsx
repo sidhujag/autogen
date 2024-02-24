@@ -33,7 +33,13 @@ import remarkGfm from "remark-gfm";
 import ReactMarkdown from "react-markdown";
 import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { fetchJSON, getServerUrl, obscureString, truncateText } from "./utils";
+import {
+  checkAndSanitizeInput,
+  fetchJSON,
+  getServerUrl,
+  obscureString,
+  truncateText,
+} from "./utils";
 import {
   IAgentFlowSpec,
   IFlowConfig,
@@ -241,7 +247,7 @@ export const LoadBox = ({
 export const LoadingBar = ({ children }: IProps) => {
   return (
     <>
-      <div className="rounded bg-secondary mt-4 p-3">
+      <div className="rounded bg-secondary  p-3">
         <span className="inline-block h-6 w-6 relative mr-2">
           <Cog8ToothIcon className="animate-ping text-accent absolute inline-flex h-full w-full rounded-ful  opacity-75" />
           <Cog8ToothIcon className="relative text-accent animate-spin  inline-flex rounded-full h-6 w-6" />
@@ -900,7 +906,7 @@ export const BounceLoader = ({
   title?: string;
 }) => {
   return (
-    <div>
+    <div className="inline-block">
       <div className="inline-flex gap-2">
         <span className="  rounded-full bg-accent h-2 w-2  inline-block"></span>
         <span className="animate-bounce rounded-full bg-accent h-3 w-3  inline-block"></span>
@@ -950,6 +956,7 @@ export const CsvLoader = ({
   const [data, setData] = useState<DataRow[]>([]);
   const [columns, setColumns] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -999,8 +1006,11 @@ export const CsvLoader = ({
         dataSource={data}
         columns={columns}
         loading={isLoading}
-        pagination={{ pageSize: 50 }}
+        pagination={{ pageSize: pageSize }}
         scroll={{ y: 450, x: scrollX }}
+        onChange={(pagination) => {
+          setPageSize(pagination.pageSize || 50);
+        }}
       />
     </div>
   );
@@ -1104,16 +1114,19 @@ export const AgentFlowSpecView = ({
     setFlowSpec(updatedFlowSpec);
   };
 
-  const llm_config: ILLMConfig = localFlowSpec.config.llm_config || {
+  const llm_config: ILLMConfig = localFlowSpec?.config?.llm_config || {
     config_list: [],
     temperature: 0.1,
   };
   const editorRef = React.useRef<any | null>(null);
+
+  const nameValidation = checkAndSanitizeInput(flowSpec?.config?.name);
+
   return (
     <>
       <div className="text-accent ">{title}</div>
       <GroupView
-        title=<div className="px-2">{flowSpec.config.name}</div>
+        title=<div className="px-2">{flowSpec?.config?.name}</div>
         className="mb-4 bg-primary  "
       >
         {flowSpec.type === "groupchat" && (
@@ -1127,16 +1140,23 @@ export const AgentFlowSpecView = ({
           title="Agent Name"
           className="mt-4"
           description="Name of the agent"
-          value={flowSpec.config.name}
+          value={flowSpec?.config?.name}
           control={
-            <Input
-              className="mt-2"
-              placeholder="Agent Name"
-              value={flowSpec.config.name}
-              onChange={(e) => {
-                onControlChange(e.target.value, "name");
-              }}
-            />
+            <>
+              <Input
+                className="mt-2"
+                placeholder="Agent Name"
+                value={flowSpec?.config?.name}
+                onChange={(e) => {
+                  onControlChange(e.target.value, "name");
+                }}
+              />
+              {!nameValidation.status && (
+                <div className="text-xs text-red-500 mt-2">
+                  {nameValidation.message}
+                </div>
+              )}
+            </>
           }
         />
 
@@ -1161,7 +1181,7 @@ export const AgentFlowSpecView = ({
           title="Max Consecutive Auto Reply"
           className="mt-4"
           description="Max consecutive auto reply messages before termination."
-          value={flowSpec.config.max_consecutive_auto_reply}
+          value={flowSpec.config?.max_consecutive_auto_reply}
           control={
             <Slider
               min={1}
@@ -1226,7 +1246,6 @@ export const AgentFlowSpecView = ({
                 value={flowSpec.config.system_message}
                 rows={3}
                 onChange={(e) => {
-                  // onDebouncedControlChange(e.target.value, "system_message");
                   onControlChange(e.target.value, "system_message");
                 }}
               />
@@ -2069,5 +2088,57 @@ export const MonacoEditor = ({
         }}
       />
     </div>
+  );
+};
+
+export const CardHoverBar = ({
+  items,
+}: {
+  items: {
+    title: string;
+    icon: any;
+    hoverText: string;
+    onClick: (e: any) => void;
+  }[];
+}) => {
+  const itemRows = items.map((item, i) => {
+    return (
+      <div
+        key={"cardhoverrow" + i}
+        role="button"
+        className="text-accent text-xs inline-block hover:bg-primary p-2 rounded"
+        onClick={item.onClick}
+      >
+        <Tooltip title={item.hoverText}>
+          <item.icon className=" w-5, h-5 cursor-pointer inline-block" />
+        </Tooltip>
+      </div>
+    );
+  });
+  return (
+    <div
+      onMouseEnter={(e) => {
+        e.stopPropagation();
+      }}
+      className=" mt-2 text-right opacity-0 group-hover:opacity-100 "
+    >
+      {itemRows}
+    </div>
+  );
+};
+
+export const AgentRow = ({ message }: { message: any }) => {
+  return (
+    <GroupView
+      title={
+        <div className="rounded p-1 px-2 inline-block text-xs bg-secondary">
+          <span className="font-semibold">{message.sender}</span> ( to{" "}
+          {message.recipient} )
+        </div>
+      }
+      className="m"
+    >
+      <MarkdownView data={message.message?.content} className="text-sm" />
+    </GroupView>
   );
 };
