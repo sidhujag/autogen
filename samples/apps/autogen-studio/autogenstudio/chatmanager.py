@@ -84,8 +84,7 @@ class AutoGenChatManager:
         print("Modified files: ", len(metadata["files"]))
         agent_history = flow.agent_history.copy()
         metadata["messages"] = agent_history
-        output, summary_method = self._generate_output(message_text, flow, agent_history, flow_config)
-        metadata["code"] = ""
+        output, summary_method = self._generate_output(flow, agent_history, flow_config)
         metadata["summary_method"] = summary_method
         output_message = Message(
             user_id=message.user_id,
@@ -109,7 +108,6 @@ class AutoGenChatManager:
         :param flow_config: An instance of `AgentWorkFlowConfig`.
         :return: The output response as a string.
         """
-        output = ""
         def build_flow_msg_list(flow_history):
             messages = []
             for flow_msg in flow_history:

@@ -4,6 +4,6 @@ from .datamodel import *
 from .codingassistanceservice import *
 from .websurferservice import *
 from .repositoryservice import *
-from .agentservice import *
+from .agenthelperservice import *
 from .zapierservice import *
 from .version import __version__

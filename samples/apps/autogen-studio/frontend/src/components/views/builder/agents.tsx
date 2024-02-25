@@ -288,11 +288,6 @@ const AgentsView = ({}: any) => {
     );
   };
 
-  const agentTypesOnClick: MenuProps["onClick"] = ({ key }) => {
-    const newConfig = sampleWorkflowConfig(key);
-    setNewAgent(newConfig.receiver);
-    setShowNewAgentModal(true);
-  };
   const uploadAgent = () => {
     const input = document.createElement("input");
     input.type = "file";
