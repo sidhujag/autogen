@@ -55,7 +55,6 @@ class AutoGenWorkFlowManager:
             "sender": sender,
             "message": message,
             "timestamp": datetime.now().isoformat(),
-            "connection_id": self.connection_id,
         }
         self.agent_history.append(message_payload)  # add to history
         if self.send_message_function:  # send over the message queue
