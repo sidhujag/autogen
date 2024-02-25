@@ -61,10 +61,9 @@ class AutoGenChatManager:
         # if no flow config is provided, use the default
         if flow_config is None:
             raise ValueError("flow_config must be specified")
-
         flow = AutoGenWorkFlowManager(
-            config=flow_config, work_dir=scratch_dir,
-            send_message_function=self.send, connection_id=connection_id, clear_work_dir=False
+            config=flow_config, work_dir=scratch_dir, clear_work_dir=False,
+            session_id=message.session_id, send_message_function=self.send, connection_id=connection_id, 
         )
 
         message_text = message.content.strip()
