@@ -1,9 +1,6 @@
-import asyncio
 from contextlib import asynccontextmanager
 import json
 import os
-import queue
-import threading
 import traceback
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -24,32 +21,16 @@ from ..chatmanager import AutoGenChatManager, WebSocketConnectionManager
 
 managers = {"chat": None}  # manage calls to autogen
 # Create thread-safe queue for messages between api thread and autogen threads
-message_queue = queue.Queue()
 active_connections = []
 websocket_manager = WebSocketConnectionManager(
     active_connections=active_connections)
 
 
-def message_handler():
-    while True:
-        message = message_queue.get()
-        for connection in active_connections:
-            socket_client_id = websocket_manager.socket_store[connection]
-            if message["connection_id"] == socket_client_id:
-                asyncio.run(websocket_manager.send_message(
-                    message, connection))
-        message_queue.task_done()
-
-
-message_handler_thread = threading.Thread(target=message_handler, daemon=True)
-message_handler_thread.start()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("***** App started *****")
-    managers["chat"] = AutoGenChatManager(message_queue=message_queue)
-
+    managers["chat"] = AutoGenChatManager(websocket_manager=websocket_manager)
+    
     yield
     # Close all active connections
     websocket_manager.disconnect_all()
@@ -57,7 +38,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
 
 # allow cross origin requests for testing on localhost:800* ports only
 app.add_middleware(
@@ -105,7 +85,7 @@ async def add_message(req: DBWebRequestModel):
     os.makedirs(user_dir, exist_ok=True)
 
     try:
-        response_message: Message = managers["chat"].chat(
+        response_message: Message = await managers["chat"].chat(
             message=message,
             work_dir=user_dir,
             flow_config=req.workflow,

@@ -1,5 +1,5 @@
 import json
-from queue import Queue
+import asyncio
 import time
 from typing import Any, List, Dict, Optional
 import warnings
@@ -12,31 +12,33 @@ from dotenv import load_dotenv, find_dotenv
 from openai import BadRequestError
 from fastapi import WebSocket, WebSocketDisconnect
 
-
 class AutoGenChatManager:
     """
     This class handles the automated generation and management of chat interactions
     using an automated workflow configuration and message queue.
     """
 
-    def __init__(self, message_queue: Queue) -> None:
+    def __init__(self, websocket_manager) -> None:
         """
         Initializes the AutoGenChatManager with a message queue.
 
-        :param message_queue: A queue to use for sending messages asynchronously.
+        :param websocket_manager: A websocket_manager to use for sending messages asynchronously.
         """
-        self.message_queue = message_queue
+        self.websocket_manager = websocket_manager
 
-    def send(self, message: str) -> None:
+    async def send(self, message: str) -> None:
         """
         Sends a message by putting it into the message queue.
 
         :param message: The message string to be sent.
         """
-        if self.message_queue is not None:
-            self.message_queue.put_nowait(message)
+        if self.websocket_manager is not None:
+            for connection in self.websocket_manager.active_connections:
+                socket_client_id = self.websocket_manager.socket_store[connection]
+                if message["connection_id"] == socket_client_id:
+                    await self.websocket_manager.send_message(message, connection)
 
-    def chat(self, message: Message,
+    async def chat(self, message: Message,
              flow_config: Optional[AgentWorkFlowConfig] = None,
              connection_id: Optional[str] = None, **kwargs) -> Message:
         """
@@ -69,7 +71,7 @@ class AutoGenChatManager:
         message_text = message.content.strip()
 
         start_time = time.time()
-        flow.run(message=f"{message_text}", clear_history=False)
+        await flow.run(message=f"{message_text}", clear_history=False)
         end_time = time.time()
 
         metadata = {

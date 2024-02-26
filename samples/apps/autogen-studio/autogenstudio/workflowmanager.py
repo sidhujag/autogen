@@ -1,4 +1,5 @@
 import os
+import asyncio
 from typing import List, Optional, Union, Dict
 
 from requests import Session
@@ -44,7 +45,7 @@ class AutoGenWorkFlowManager:
 
         self.agent_history = []
 
-    def receive_message(self, message: Dict, sender: autogen.Agent, recipient: autogen.Agent):
+    async def a_receive_message(self, message: Dict, sender: autogen.Agent, recipient: autogen.Agent):
         sender = sender.name
         recipient = recipient.name
         if "name" in message:
@@ -60,8 +61,8 @@ class AutoGenWorkFlowManager:
         if self.send_message_function:  # send over the message queue
             socket_msg = SocketMessage(
                 type="agent_message", data=message_payload, connection_id=self.connection_id)
-            self.send_message_function(socket_msg.dict())
-                
+            await self.send_message_function(socket_msg.dict())
+            
     def sanitize_agent_spec(self, agent_spec: AgentFlowSpec) -> AgentFlowSpec:
         """
         Sanitizes the agent spec by setting loading defaults
@@ -228,11 +229,11 @@ class AutoGenWorkFlowManager:
             if not agent.system_message:
                 agent.update_system_message("You are a helpful assistant.")
         # Assuming the agent is correctly instantiated, register hooks or perform additional setup
-        agent.register_hook(hookable_method="receive_message", hook=self.receive_message)
+        agent.register_hook(hookable_method="a_receive_message", hook=self.a_receive_message)
         agent.load_state(context['path_to_data_dir'])
         return agent
 
-    def run(self, message: str, clear_history: bool = False) -> None:
+    async def run(self, message: str, clear_history: bool = False) -> None:
         """
         Initiates a chat between the sender and receiver agents with an initial message
         and an option to clear the history.
@@ -241,7 +242,7 @@ class AutoGenWorkFlowManager:
             message: The initial message to start the chat.
             clear_history: If set to True, clears the chat history before initiating.
         """
-        self.sender.initiate_chat(
+        await self.sender.a_initiate_chat(
             self.receiver,
             message=message,
             clear_history=clear_history,

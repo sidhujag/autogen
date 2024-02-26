@@ -225,7 +225,7 @@ class ConversableAgent(LLMAgent):
 
         # Registered hooks are kept in lists, indexed by hookable method, to be called in their order of registration.
         # New hookable methods should be added to this list as required to support new agent capabilities.
-        self.hook_lists = {"process_last_message": [], "process_all_messages": [], "receive_message": []}
+        self.hook_lists = {"process_last_message": [], "process_all_messages": [], "receive_message": [], "a_receive_message": []}
 
     def load_state(self, path_to_data_dir: Path):
         self._path_to_data_file = path_to_data_dir / "oai_messages.pkl"
@@ -657,6 +657,18 @@ class ConversableAgent(LLMAgent):
             self.receive_message(message, "user", sender)
             self._print_received_message(message, sender)
 
+    async def _a_process_received_message(self, message: Union[Dict, str], sender: Agent, silent: bool):
+        # When the agent receives a message, the role of the message is "user". (If 'role' exists and is 'function', it will remain unchanged.)
+        valid = self._append_oai_message(message, "user", sender)
+        if not valid:
+            raise ValueError(
+                "Received message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
+            )
+        if not silent:
+            # Call the hookable method that gives registered hooks a chance to process the received message.
+            await self.a_receive_message(message, "user", sender)
+            self._print_received_message(message, sender)
+
     def receive(
         self,
         message: Union[Dict, str],
@@ -724,7 +736,7 @@ class ConversableAgent(LLMAgent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
-        self._process_received_message(message, sender, silent)
+        await self._a_process_received_message(message, sender, silent)
         if request_reply is False or request_reply is None and self.reply_at_receive[sender] is False:
             return
         reply = await self.a_generate_reply(sender=sender)
@@ -2377,6 +2389,20 @@ class ConversableAgent(LLMAgent):
             # Call each hook (in order of registration) to process the messages.
             for hook in hook_list:
                 hook(message, sender, self)
+    
+    async def a_receive_message(self, message: Union[Dict, str], role: str, sender: Agent):
+        """
+        Calls any registered capability hooks to process received messages asynchronously
+        """
+        hook_list = self.hook_lists["a_receive_message"]
+        # If no hooks are registered, or if there are no messages to process, return the original message list.
+        if len(hook_list) > 0 and message is not None:
+            message = self._message_to_dict(message)
+            if "role" not in message:
+                message["role"] = role
+            # Call each hook (in order of registration) to process the messages.
+            for hook in hook_list:
+                await hook(message, sender, self)
     
     def process_last_message(self, messages):
         """
