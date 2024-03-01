@@ -147,6 +147,7 @@ class AgentHelperService:
                 "admin_name": agent.groupchat_config.admin_name,
                 "max_round": agent.groupchat_config.max_round,
                 "speaker_selection_method": agent.groupchat_config.speaker_selection_method,
+                "send_introductions": agent.groupchat_config.send_introductions,
             }
             sanitized_agent["groupchat_config"] = sanitized_group
      

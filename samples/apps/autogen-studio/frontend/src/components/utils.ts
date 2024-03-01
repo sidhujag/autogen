@@ -316,6 +316,7 @@ export const sampleWorkflowConfig = (type = "twoagents") => {
       messages: [],
       max_round: 10,
       speaker_selection_method: "auto",
+      send_introductions: true,
       allow_repeat_speaker: false,
     },
   };

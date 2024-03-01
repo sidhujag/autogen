@@ -60,6 +60,7 @@ export interface IGroupChatConfig {
   admin_name: string;
   messages: Array<any>;
   max_round: number;
+  send_introductions?: boolean | true;
   speaker_selection_method: "auto" | "round_robin" | "random";
   allow_repeat_speaker: boolean | Array<IAgentConfig>;
 }

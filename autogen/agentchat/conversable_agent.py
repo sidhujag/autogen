@@ -230,8 +230,7 @@ class ConversableAgent(LLMAgent):
             "process_last_received_message": [],
             "process_all_messages_before_reply": [],
             "process_message_before_send": [],
-            "receive_message": [],
-            "a_receive_message": [],
+            "a_process_message_before_send": [],
         }
 
     def load_state(self, path_to_data_dir: Path):
@@ -571,6 +570,16 @@ class ConversableAgent(LLMAgent):
             message = hook(sender=self, message=message, recipient=recipient, silent=silent)
         return message
 
+    async def _a_process_message_before_send(
+        self, message: Union[Dict, str], recipient: Agent, silent: bool
+    ) -> Union[Dict, str]:
+        """Process the message before sending it to the recipient."""
+        hook_list = self.hook_lists["a_process_message_before_send"]
+        for hook in hook_list:
+            message = await hook(sender=self, message=message, recipient=recipient, silent=silent)
+        return message
+
+
     def send(
         self,
         message: Union[Dict, str],
@@ -666,7 +675,7 @@ class ConversableAgent(LLMAgent):
         Returns:
             ChatResult: an ChatResult object.
         """
-        message = self._process_message_before_send(message, recipient, silent)
+        message = await self._a_process_message_before_send(message, recipient, silent)
         # When the agent composes and sends the message, the role of the message is "assistant"
         # unless it's "function".
         valid = self._append_oai_message(message, "assistant", recipient)
@@ -746,19 +755,6 @@ class ConversableAgent(LLMAgent):
             )
         if not silent:
             # Call the hookable method that gives registered hooks a chance to process the received message.
-            self.receive_message(message, "user", sender)
-            self._print_received_message(message, sender)
-
-    async def _a_process_received_message(self, message: Union[Dict, str], sender: Agent, silent: bool):
-        # When the agent receives a message, the role of the message is "user". (If 'role' exists and is 'function', it will remain unchanged.)
-        valid = self._append_oai_message(message, "user", sender)
-        if not valid:
-            raise ValueError(
-                "Received message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
-            )
-        if not silent:
-            # Call the hookable method that gives registered hooks a chance to process the received message.
-            await self.a_receive_message(message, "user", sender)
             self._print_received_message(message, sender)
 
     def receive(
@@ -828,7 +824,7 @@ class ConversableAgent(LLMAgent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
-        await self._a_process_received_message(message, sender, silent)
+        self._process_received_message(message, sender, silent)
         if request_reply is False or request_reply is None and self.reply_at_receive[sender] is False:
             return
         reply = await self.a_generate_reply(sender=sender)
@@ -2470,34 +2466,6 @@ class ConversableAgent(LLMAgent):
         for hook in hook_list:
             processed_messages = hook(processed_messages)
         return processed_messages
-
-    def receive_message(self, message: Union[Dict, str], role: str, sender: Agent):
-        """
-        Calls any registered capability hooks to process received messages
-        """
-        hook_list = self.hook_lists["receive_message"]
-        # If no hooks are registered, or if there are no messages to process, return the original message list.
-        if len(hook_list) > 0 and message is not None:
-            message = self._message_to_dict(message)
-            if "role" not in message:
-                message["role"] = role
-            # Call each hook (in order of registration) to process the messages.
-            for hook in hook_list:
-                hook(message, sender, self)
-    
-    async def a_receive_message(self, message: Union[Dict, str], role: str, sender: Agent):
-        """
-        Calls any registered capability hooks to process received messages asynchronously
-        """
-        hook_list = self.hook_lists["a_receive_message"]
-        # If no hooks are registered, or if there are no messages to process, return the original message list.
-        if len(hook_list) > 0 and message is not None:
-            message = self._message_to_dict(message)
-            if "role" not in message:
-                message["role"] = role
-            # Call each hook (in order of registration) to process the messages.
-            for hook in hook_list:
-                await hook(message, sender, self)
     
     def process_last_received_message(self, messages):
         """

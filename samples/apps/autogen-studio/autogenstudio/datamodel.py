@@ -131,6 +131,7 @@ class GroupChatConfig:
     messages: List[Dict] = field(default_factory=list)
     max_round: Optional[int] = 10
     admin_name: Optional[str] = "Admin"
+    send_introductions: Optional[bool] = True
     speaker_selection_method: Optional[str] = "auto"
     # TODO: match the new group chat default and support transition spec
     allow_repeat_speaker: Optional[Union[bool, List[AgentConfig]]] = True

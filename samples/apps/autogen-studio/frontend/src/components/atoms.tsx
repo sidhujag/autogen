@@ -1725,6 +1725,32 @@ const GroupChatFlowSpecView = ({
       </GroupView>
 
       <ControlRowView
+      title="Announce Introductions"
+      description="Should an introduction be made so every agent knows which other agents are in the group (in the first message)."
+      value={`${flowSpec?.groupchat_config?.send_introductions ?? true}`} // Convert undefined to true, then to string
+      control={
+        <Select
+          className="mt-2 w-full"
+          defaultValue={flowSpec?.groupchat_config?.send_introductions ?? true} // Use true as a default for undefined
+          onChange={(value: boolean) => {
+            if (flowSpec?.groupchat_config) {
+              setFlowSpec({
+                ...flowSpec,
+                groupchat_config: {
+                  ...flowSpec?.groupchat_config,
+                  send_introductions: value,
+                },
+              });
+            }
+          }}
+          options={[
+            { label: "True", value: true },
+            { label: "False", value: false },
+          ]}
+        />
+      }
+      />
+      <ControlRowView
         title="Speaker Selection Method"
         description="How the next speaker is selected"
         className="mt-4"

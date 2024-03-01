@@ -1,5 +1,5 @@
 import os
-import asyncio
+import copy
 from typing import List, Optional, Union, Dict
 
 from requests import Session
@@ -45,16 +45,21 @@ class AutoGenWorkFlowManager:
 
         self.agent_history = []
 
-    async def a_receive_message(self, message: Dict, sender: autogen.Agent, recipient: autogen.Agent):
+    async def a_process_message_before_send(self, sender: autogen.ConversableAgent, message: Union[Dict, str], recipient: autogen.ConversableAgent, silent: bool):
+        if silent:
+            return message
+        message_internal = copy.deepcopy(sender._message_to_dict(message))
+        if "role" not in message_internal:
+            message_internal["role"] = "user"
         sender = sender.name
         recipient = recipient.name
-        if "name" in message:
-            sender = message["name"]
+        if "name" in message_internal:
+            sender = message_internal["name"]
         # if sender is group chat, get summary if summary is set because that means a convo has completed and is returning to you
         message_payload = {
             "recipient": recipient,
             "sender": sender,
-            "message": message,
+            "message": message_internal,
             "timestamp": datetime.now().isoformat(),
         }
         self.agent_history.append(message_payload)  # add to history
@@ -62,6 +67,7 @@ class AutoGenWorkFlowManager:
             socket_msg = SocketMessage(
                 type="agent_message", data=message_payload, connection_id=self.connection_id)
             await self.send_message_function(socket_msg.dict())
+        return message
             
     def sanitize_agent_spec(self, agent_spec: AgentFlowSpec) -> AgentFlowSpec:
         """
@@ -197,27 +203,9 @@ class AutoGenWorkFlowManager:
         if agent is None:
             raise ValueError("Initialization code did not correctly create an agent.")
         
-        def welcome_msg(group: autogen.GroupChat, me: autogen.Agent, other_agents: List[autogen.Agent]) -> str:
-            """Return the system message for the group. This is always the *first* message in the group."""
-            me_desc = f"{me.name}: {me.description}".strip()
-            return f"""You are a skillfil autonomous agent in a group chat with other agents game. 
-    YOU ARE:
-        {me_desc}
-        
-    The following OTHER AGENTS are available (list of agent name: description):
-        {group._participant_roles(other_agents)}.
 
-    Read and understand the agents and their roles/skills. At the end of your response, you should delegate tasks by referencing like a chat (with @ before their name) so the group speaker selection will choose them to respond next. Like passing the torch."""
-
-
-        if agent_spec.type == "groupchat":
-            for group_agent in agent._groupchat.agents:
-                other_agents = [other_agent for other_agent in agent._groupchat.agents if other_agent != group_agent]
-                welcome_msg_content = welcome_msg(agent._groupchat, group_agent, other_agents)
-                if group_agent.system_message:
-                    group_agent.update_system_message(group_agent.system_message + "\n\n" + welcome_msg_content)
-                else:
-                    group_agent.update_system_message(welcome_msg_content)
+        if agent_spec.type == "groupchat" and agent_spec.groupchat_config.send_introductions:
+            agent._groupchat.send_introductions = True
         if agent_spec.skills:
             # get skill prompt, also write skills to a file named skills.py
             skills_prompt = get_skills_from_prompt(agent_spec.skills, self.work_dir)
@@ -229,7 +217,7 @@ class AutoGenWorkFlowManager:
             if not agent.system_message:
                 agent.update_system_message("You are a helpful assistant.")
         # Assuming the agent is correctly instantiated, register hooks or perform additional setup
-        agent.register_hook(hookable_method="a_receive_message", hook=self.a_receive_message)
+        agent.register_hook(hookable_method="a_process_message_before_send", hook=self.a_process_message_before_send)
         agent.load_state(context['path_to_data_dir'])
         return agent
 
