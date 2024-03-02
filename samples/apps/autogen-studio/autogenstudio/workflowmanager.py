@@ -48,7 +48,7 @@ class AutoGenWorkFlowManager:
     async def a_process_message_before_send(self, sender: autogen.ConversableAgent, message: Union[Dict, str], recipient: autogen.ConversableAgent, silent: bool):
         if silent:
             return message
-        message_internal = copy.deepcopy(sender._message_to_dict(message))
+        message_internal = sender._message_to_dict(message).copy()
         if "role" not in message_internal:
             message_internal["role"] = "user"
         sender = sender.name
