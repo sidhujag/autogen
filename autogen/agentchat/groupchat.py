@@ -239,6 +239,8 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
         return f"""Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are:
 
 {self._participant_roles(agents)}
+
+You should refer to each other when speaking in your responses and provide reasoned explanations of the next team member who should speak and why.
 """
 
     def manual_select_speaker(self, agents: Optional[List[Agent]] = None) -> Union[Agent, None]:
