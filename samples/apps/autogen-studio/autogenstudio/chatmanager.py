@@ -1,15 +1,13 @@
 import json
-import asyncio
 import time
 from typing import Any, List, Dict, Optional
-import warnings
+import os
+from dotenv import load_dotenv, find_dotenv
+from fastapi import WebSocket, WebSocketDisconnect
 import websockets
 from .datamodel import AgentWorkFlowConfig, Message, SocketMessage
 from .utils import extract_successful_code_blocks, get_modified_files, summarize_chat_history
 from .workflowmanager import AutoGenWorkFlowManager
-import os
-from dotenv import load_dotenv, find_dotenv
-from fastapi import WebSocket, WebSocketDisconnect
 
 class AutoGenChatManager:
     """
@@ -37,9 +35,13 @@ class AutoGenChatManager:
                 if message["connection_id"] == socket_client_id:
                     await self.websocket_manager.send_message(message, connection)
 
-    async def chat(self, message: Message,
-             flow_config: Optional[AgentWorkFlowConfig] = None,
-             connection_id: Optional[str] = None, **kwargs) -> Message:
+    async def chat(
+        self,
+        message: Message,
+        flow_config: Optional[AgentWorkFlowConfig] = None,
+        connection_id: Optional[str] = None,
+        **kwargs,
+    ) -> Message:
         """
         Processes an incoming message according to the agent's workflow configuration
         and generates a response.
@@ -63,8 +65,10 @@ class AutoGenChatManager:
         if flow_config is None:
             raise ValueError("flow_config must be specified")
         flow = AutoGenWorkFlowManager(
-            config=flow_config, work_dir=scratch_dir, clear_work_dir=False,
-            session_id=message.session_id, send_message_function=self.send, connection_id=connection_id, 
+            config=flow_config,
+            work_dir=scratch_dir,
+            send_message_function=self.send,
+            connection_id=connection_id,
         )
 
         message_text = message.content.strip()
@@ -78,7 +82,7 @@ class AutoGenChatManager:
             "summary_method": flow_config.summary_method,
             "time": end_time - start_time,
             "code": "",  # Assuming that this is intentionally left empty
-            "files": get_modified_files(start_time, end_time, scratch_dir, dest_dir=work_dir)
+            "files": get_modified_files(start_time, end_time, scratch_dir, dest_dir=work_dir),
         }
 
         print("Modified files: ", len(metadata["files"]))
@@ -98,8 +102,9 @@ class AutoGenChatManager:
         return output_message
     
 
-    def _generate_output(self, message_text: str, flow: AutoGenWorkFlowManager, agent_history: list,
-                         flow_config: AgentWorkFlowConfig):
+    def _generate_output(
+        self, message_text: str, flow: AutoGenWorkFlowManager, flow_config: AgentWorkFlowConfig, agent_history: list,
+    ) -> str:
         """
         Generates the output response based on the workflow configuration and agent history.
 
@@ -166,8 +171,7 @@ class WebSocketConnectionManager:
         await websocket.accept()
         self.active_connections.append(websocket)
         self.socket_store[websocket] = client_id
-        print(
-            f"New Connection: {client_id}, Total: {len(self.active_connections)}")
+        print(f"New Connection: {client_id}, Total: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket) -> None:
         """

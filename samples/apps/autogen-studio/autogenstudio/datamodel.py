@@ -114,7 +114,6 @@ class AgentConfig:
     code_execution_config: Optional[Union[bool, str, Dict[str, Any]]] = None
     default_auto_reply: Optional[str] = ""
     description: Optional[str] = None
-    
     def dict(self):
         result = asdict(self)
         if isinstance(result["llm_config"], LLMConfig):
@@ -146,8 +145,8 @@ class AgentFlowSpec:
     
     type: Literal["agent", "groupchat"]
     init_code: str
-    config: AgentConfig
-    groupchat_config: Optional[GroupChatConfig] = None
+    config: AgentConfig = field(default_factory=AgentConfig)
+    groupchat_config: Optional[GroupChatConfig] = field(default_factory=GroupChatConfig)
     id: Optional[str] = None
     timestamp: Optional[str] = None
     user_id: Optional[str] = None

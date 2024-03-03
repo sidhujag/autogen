@@ -26,7 +26,7 @@ class AutoGenWorkFlowManager:
     ) -> None:
         """
         Initializes the AutoGenFlow with agents specified in the config and optional
-        message history. 
+        message history.
 
         Args:
             config: The configuration settings for the sender and receiver agents.

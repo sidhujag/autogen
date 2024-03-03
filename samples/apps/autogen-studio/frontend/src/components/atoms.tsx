@@ -1139,7 +1139,7 @@ export const AgentFlowSpecView = ({
         <ControlRowView
           title="Agent Name"
           className="mt-4"
-          description="Name of the agent"
+          description="Name of the agent. Should be single word, use underscores if needed."
           value={flowSpec?.config?.name}
           control={
             <>
@@ -1163,13 +1163,14 @@ export const AgentFlowSpecView = ({
         <ControlRowView
           title="Agent Description"
           className="mt-4"
-          description="Description of the agent"
+          description="Description of the agent, used by other agents
+          (e.g. the GroupChatManager) to decide when to call upon this agent. (Default: system_message)"
           value={flowSpec.config.description || ""}
           control={
             <Input
               className="mt-2"
               placeholder="Agent Description"
-              value={flowSpec.config.description}
+              value={flowSpec.config.description || ""}
               onChange={(e) => {
                 onControlChange(e.target.value, "description");
               }}
