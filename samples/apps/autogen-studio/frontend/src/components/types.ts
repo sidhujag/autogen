@@ -34,7 +34,6 @@ export interface ILLMConfig {
 
 export interface IAgentConfig {
   name: string;
-  description?: string;
   llm_config?: ILLMConfig | false;
   human_input_mode: string;
   max_consecutive_auto_reply: number;

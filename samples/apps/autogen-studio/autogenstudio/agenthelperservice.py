@@ -228,6 +228,7 @@ class AgentHelperService:
             response["data"] = ""
         return json.dumps(response)
 
+
     @staticmethod
     def upsert_agent(
         agent_id: str,
@@ -241,8 +242,13 @@ class AgentHelperService:
         agents: Optional[List[str]],
         remove_agents: Optional[List[str]],
     ) -> Dict[str, Any]:
+        def is_one_word(s):
+            # Split the string by any whitespace. If the resulting list has more than one element, it's not one word.
+            return len(s.split()) == 1
         # Initialize or fetch existing assistant
         assistant = AgentHelperService.fetch_agent(agent_id)
+        if name and not is_one_word(name):
+               return json.dumps({"error": "Name should be one word (use underscores as needed)"})
         if assistant:
             if system_message:
                 assistant.config.system_message = system_message
