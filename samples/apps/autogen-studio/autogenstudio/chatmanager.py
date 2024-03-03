@@ -4,12 +4,11 @@ import time
 from typing import Any, List, Dict, Optional
 import warnings
 import websockets
-from .datamodel import AgentWorkFlowConfig, Message
-from .utils import extract_successful_code_blocks, get_default_agent_config, get_modified_files
+from .datamodel import AgentWorkFlowConfig, Message, SocketMessage
+from .utils import extract_successful_code_blocks, get_modified_files, summarize_chat_history
 from .workflowmanager import AutoGenWorkFlowManager
 import os
 from dotenv import load_dotenv, find_dotenv
-from openai import BadRequestError
 from fastapi import WebSocket, WebSocketDisconnect
 
 class AutoGenChatManager:
@@ -85,7 +84,7 @@ class AutoGenChatManager:
         print("Modified files: ", len(metadata["files"]))
         agent_history = flow.agent_history.copy()
         metadata["messages"] = agent_history
-        output, summary_method = self._generate_output(flow, agent_history, flow_config)
+        output, summary_method = self._generate_output(message_text, flow, agent_history, flow_config)
         metadata["summary_method"] = summary_method
         output_message = Message(
             user_id=message.user_id,
@@ -99,7 +98,7 @@ class AutoGenChatManager:
         return output_message
     
 
-    def _generate_output(self, flow: AutoGenWorkFlowManager, agent_history: list,
+    def _generate_output(self, message_text: str, flow: AutoGenWorkFlowManager, agent_history: list,
                          flow_config: AgentWorkFlowConfig):
         """
         Generates the output response based on the workflow configuration and agent history.
@@ -109,33 +108,20 @@ class AutoGenChatManager:
         :param flow_config: An instance of `AgentWorkFlowConfig`.
         :return: The output response as a string.
         """
-        def build_flow_msg_list(flow_history):
-            messages = []
-            for flow_msg in flow_history:
-                messages.append({"role": flow_msg["message"]["role"], "content": json.dumps(flow_msg)})
-            return messages
-
         output_msg = ""
         summary_method = flow_config.summary_method
         if summary_method == "llm":
-            prompt = (
-            "You have been given the history between the SENDER (user) and RECEIVER (assistant) as well as an internal workflow history within the RECEIVER (the JSON messages between RECEIVER and other agents). "
-            "The last message from SENDER to the receiver needs to be answered given your understanding using the workflow history as immediate context. The answer needs to be addressed to the SENDER. "
-            "If the last message (not counting single TERMINATE messages) in the internal workflow history already provides a well-structured all-encompassing answer to the SENDER then just return nothing. Disregard TERMINATE messages from your answers, they are there to end the conversation flow only and return to the SENDER.")
-            msg_list: list = flow.sender.chat_messages_for_summary(flow.receiver)
-            flow_msg_list = build_flow_msg_list(agent_history)
-            msg_list.extend(flow_msg_list)
-            output = ""
-            try:
-                output = flow.receiver._reflection_with_llm(prompt, flow_msg_list)
-            except BadRequestError as e:
-                warnings.warn(f"Cannot extract summary using reflection_with_llm: {e}", UserWarning)
-            if output == "" or len(output) <= 10:
-                summary_method = "last"
-            else:
-                successful_code_blocks = extract_successful_code_blocks(agent_history)
-                successful_code_blocks = "\n\n".join(successful_code_blocks)
-                output_msg = (output + "\n" + successful_code_blocks) if successful_code_blocks else output
+            model = flow.config.receiver.config.llm_config.config_list[0]
+            status_message = SocketMessage(
+                type="agent_status",
+                data={"status": "summarizing",
+                      "message": "Generating summary of agent dialogue"},
+                connection_id=flow.connection_id
+            )
+            self.send(status_message.dict())
+            output = summarize_chat_history(
+                task=message_text, messages=agent_history, model=model)
+            print("Output: ", output)
         if summary_method == "last":
             successful_code_blocks = extract_successful_code_blocks(agent_history)
             index:int = -1
