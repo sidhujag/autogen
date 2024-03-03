@@ -88,7 +88,7 @@ class AutoGenChatManager:
         print("Modified files: ", len(metadata["files"]))
         agent_history = flow.agent_history.copy()
         metadata["messages"] = agent_history
-        output, summary_method = self._generate_output(message_text, flow, agent_history, flow_config)
+        output, summary_method = await self._generate_output(message_text, flow, flow_config, agent_history)
         metadata["summary_method"] = summary_method
         output_message = Message(
             user_id=message.user_id,
@@ -102,7 +102,7 @@ class AutoGenChatManager:
         return output_message
     
 
-    def _generate_output(
+    async def _generate_output(
         self, message_text: str, flow: AutoGenWorkFlowManager, flow_config: AgentWorkFlowConfig, agent_history: list,
     ) -> str:
         """
@@ -113,7 +113,7 @@ class AutoGenChatManager:
         :param flow_config: An instance of `AgentWorkFlowConfig`.
         :return: The output response as a string.
         """
-        output_msg = ""
+        output = ""
         summary_method = flow_config.summary_method
         if summary_method == "llm":
             model = flow.config.receiver.config.llm_config.config_list[0]
@@ -123,10 +123,9 @@ class AutoGenChatManager:
                       "message": "Generating summary of agent dialogue"},
                 connection_id=flow.connection_id
             )
-            self.send(status_message.dict())
+            await self.send(status_message.dict())
             output = summarize_chat_history(
                 task=message_text, messages=agent_history, model=model)
-            print("Output: ", output)
         if summary_method == "last":
             successful_code_blocks = extract_successful_code_blocks(agent_history)
             index:int = -1
@@ -138,11 +137,11 @@ class AutoGenChatManager:
                     break  # Break the loop if index is out of range
                 last_message = agent_history[index]["message"]["content"] if agent_history else ""
             successful_code_blocks = "\n\n".join(successful_code_blocks)
-            output_msg = (last_message + "\n" + successful_code_blocks) if successful_code_blocks else last_message
+            output = (last_message + "\n" + successful_code_blocks) if successful_code_blocks else last_message
         elif summary_method == "none":
-            output_msg = ""
+            output = ""
 
-        return output_msg, summary_method
+        return output, summary_method
 
 
 class WebSocketConnectionManager:
