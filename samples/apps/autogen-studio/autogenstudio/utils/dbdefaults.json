@@ -401,7 +401,6 @@
           }
         ],
         "config": {
-          "description": "Default assistant to generate plans and write code to solve tasks.",
           "name": "primary_assistant",
           "description": "Default assistant to generate plans and write code to solve tasks.",
           "llm_config": {
