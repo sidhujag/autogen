@@ -13,7 +13,7 @@
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css" integrity="sha384-Um5gpz1odJg5Z4HAmzPtgZKdTBHZdw8S29IecapCSB31ligYPhHQZMIlWLYQGVoc" crossorigin="anonymous">
 <script src="/autogen/js/custom.js" async defer="defer"></script><link rel="stylesheet" href="/autogen/assets/css/styles.7690a342.css">
-<script src="/autogen/assets/js/runtime~main.1129f90e.js" defer="defer"></script>
+<script src="/autogen/assets/js/runtime~main.47347552.js" defer="defer"></script>
 <script src="/autogen/assets/js/main.69e54fdd.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -120,7 +120,7 @@ I also appreciate the recognition and awards AutoGen has received, such as:</p>
 <li>Selected into <a href="https://www.benchcouncil.org/evaluation/opencs/annual.html" target="_blank" rel="noopener noreferrer">Open100: Top 100 Open Source achievements</a> only 35 days after spinoff</li>
 </ul>
 <p>On March 1, the initial AutoGen multi-agent experiment on the challenging <a href="https://huggingface.co/spaces/gaia-benchmark/leaderboard" target="_blank" rel="noopener noreferrer">GAIA</a> benchmark turned out to achieve the No. 1 accuracy with a big leap, in all the three levels.</p>
-<p><img decoding="async" loading="lazy" alt="gaia" src="/autogen/assets/images/gaia-be5cf1e2098456a9f67814d0b9681777.png" width="3604" height="1585" class="img_ev3q"></p>
+<p><img decoding="async" loading="lazy" alt="gaia" src="data:image/png;base64,dmVyc2lvbiBodHRwczovL2dpdC1sZnMuZ2l0aHViLmNvbS9zcGVjL3YxCm9pZCBzaGEyNTY6NzM0MTYxMzYzODJiZTVmMmI0MDY2MTg1ZTdlOTFlYWU5ZTdiZGNjYjVjODk5YmRmNzRiMGJmNDg3ZDNlY2IxYQpzaXplIDU0NjU4OAo=" class="img_ev3q"></p>
 <p>That shows the big potential of using AutoGen in solving complex tasks.
 And it&#x27;s just the beginning of the community&#x27;s effort to answering a few hard open questions.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="open-questions">Open Questions<a href="#open-questions" class="hash-link" aria-label="Direct link to Open Questions" title="Direct link to Open Questions">​</a></h2>
@@ -159,7 +159,7 @@ And it&#x27;s just the beginning of the community&#x27;s effort to answering a f
 <li><a href="/autogen/blog/2023/12/23/AgentOptimizer">AgentOptimizer</a>. This <a href="https://arxiv.org/abs/2402.11359" target="_blank" rel="noopener noreferrer">research</a> finds an approach of training LLM agents without modifying the model. As a case study, this technique optimizes a set of Python functions for agents to use in solving a set of training tasks. It is planned to be available as an experimental feature.</li>
 <li><a href="/autogen/blog/2023/11/09/EcoAssistant">EcoAssistant</a>. This <a href="https://arxiv.org/abs/2310.03046" target="_blank" rel="noopener noreferrer">research</a> finds a multi-agent teaching approach when using agents with different capacities powered by different LLMs. For example, a GPT-4 agent can teach a GPT-3.5 agent by demonstration. With this approach, one only needs 1/3 or 1/2 of GPT-4&#x27;s cost, while getting 10-20% higher success rate than GPT-4 on coding-based QA. No finetuning is needed. All you need is a GPT-4 endpoint and a GPT-3.5-turbo endpoint. Help is appreciated to offer this technique as a feature in the AutoGen library.</li>
 <li><a href="/autogen/blog/2023/10/26/TeachableAgent">Teachability</a>. Every LLM agent in AutoGen can be made teachable, i.e., remember facts, preferences, skills etc. from interacting with other agents. For example, a user behind a user proxy agent can teach an assistant agent instructions in solving a difficult math problem. After teaching once, the problem solving rate for the assistant agent can have a dramatic improvement (e.g., 37% -&gt; 95% for gpt-4-0613).
-<img decoding="async" loading="lazy" alt="teach" src="/autogen/assets/images/teach-62a59108640435ad2b8bc396a45fe6cf.png" width="3721" height="1502" class="img_ev3q">
+<img decoding="async" loading="lazy" alt="teach" src="data:image/png;base64,dmVyc2lvbiBodHRwczovL2dpdC1sZnMuZ2l0aHViLmNvbS9zcGVjL3YxCm9pZCBzaGEyNTY6N2MyY2IyYjNiZmQ5MTM0NmQ4Zjc2ODg1MDRkNDYzYTEzMTQyNTJjYTFlZjI2NDkwY2I1ZjM1NTUzMzQ5NGUzZQpzaXplIDkyMTM1OQo=" class="img_ev3q">
 This feature works for GPTAssistantAgent (using OpenAI&#x27;s assistant API) and group chat as well. One interesting use case of teachability + FSM group chat: <a href="https://www.linkedin.com/pulse/combatting-ai-naivete-teaching-resilience-emotional-leah-bonser-jdhrc" target="_blank" rel="noopener noreferrer">teaching resilience</a>.</li>
 </ul>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="integration">Integration<a href="#integration" class="hash-link" aria-label="Direct link to Integration" title="Direct link to Integration">​</a></h3>
@@ -169,7 +169,7 @@ This feature works for GPTAssistantAgent (using OpenAI&#x27;s assistant API) and
 <li><a href="/autogen/blog/2023/11/13/OAI-assistants">OpenAI assistant</a> can be used as the backend of an agent (GPTAssistantAgent). It will be nice to reimplement it as a custom client to increase the compatibility with ConversableAgent.</li>
 <li><a href="/autogen/blog/2023/11/06/LMM-Agent">Multimodality</a>. LMM models like GPT-4V can be used to provide vision to an agent, and accomplish interesting multimodal tasks by conversing with other agents, including advanced image analysis, figure generation, and automatic iterative improvement in image generation.</li>
 </ul>
-<p><img decoding="async" loading="lazy" alt="multimodal" src="/autogen/assets/images/dalle_gpt4v-627805c9f25aa886377ac86216900e4a.png" width="3146" height="2014" class="img_ev3q"></p>
+<p><img decoding="async" loading="lazy" alt="multimodal" src="data:image/png;base64,dmVyc2lvbiBodHRwczovL2dpdC1sZnMuZ2l0aHViLmNvbS9zcGVjL3YxCm9pZCBzaGEyNTY6NDUxNmFhZjRkZDhlMTc5ZmU4YzlkNDdkNzgyZGZkNGFhOGVmMjU2ZWFmZTRhODU3YzA3NTUwZDc5YjBiMGUyOQpzaXplIDM3ODU4NzQK" class="img_ev3q"></p>
 <p>The above only covers a subset of new features and roadmap. There are many other interesting new features, integration examples or sample apps:</p>
 <ul>
 <li>new features like stateful code execution, <a href="/autogen/docs/Use-Cases/agent_chat#tool-calling">tool decorators</a>, <a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_capability_long_context_handling.ipynb" target="_blank" rel="noopener noreferrer">long context handling</a>, <a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_surfer.ipynb" target="_blank" rel="noopener noreferrer">web agents</a>.</li>
