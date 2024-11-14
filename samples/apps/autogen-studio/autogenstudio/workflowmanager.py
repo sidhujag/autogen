@@ -115,7 +115,7 @@ class AutoWorkflowManager:
                 self._populate_history(history)
             self.sender.initiate_chat(
                 self.receiver,
-                message=message,
+                message={"content": message, "role": "user", "name": self.sender.name},
                 clear_history=clear_history,
             )
         else:
@@ -145,7 +145,7 @@ class AutoWorkflowManager:
                 self._populate_history(history)
             await self.sender.a_initiate_chat(
                 self.receiver,
-                message=message,
+                message={"content": message, "role": "user", "name": self.sender.name},
                 clear_history=clear_history,
             )
         else:
@@ -211,7 +211,7 @@ class AutoWorkflowManager:
             sender_type: The type of the sender of the message.
         """
 
-        message = message if isinstance(message, dict) else {"content": message, "role": "user"}
+        message = message if isinstance(message, dict) else {"content": message, "role": "assistant", "name": sender.name}
         message_payload = {
             "recipient": receiver.name,
             "sender": sender.name,
@@ -221,12 +221,10 @@ class AutoWorkflowManager:
             "connection_id": self.connection_id,
             "message_type": "agent_message",
         }
-        # if the agent will respond to the message, or the message is sent by a groupchat agent.
-        # This avoids adding groupchat broadcast messages to the history (which are sent with request_reply=False),
-        # or when agent populated from history
-        if request_reply is not False or sender_type == "groupchat":
-            self.agent_history.append(message_payload)  # add to history
-            if self.send_message_function:  # send over the message queue
+        # any non-silent calls push out to stream and store in history
+        if silent is False:
+            self.agent_history.append(message_payload)
+            if self.send_message_function:
                 socket_msg = SocketMessage(
                     type="agent_message",
                     data=message_payload,
@@ -255,8 +253,7 @@ class AutoWorkflowManager:
             silent: determining verbosity.
             sender_type: The type of the sender of the message.
         """
-
-        message = message if isinstance(message, dict) else {"content": message, "role": "user"}
+        message = message if isinstance(message, dict) else {"content": message, "role": "assistant"}
         message_payload = {
             "recipient": receiver.name,
             "sender": sender.name,
@@ -266,11 +263,9 @@ class AutoWorkflowManager:
             "connection_id": self.connection_id,
             "message_type": "agent_message",
         }
-        # if the agent will respond to the message, or the message is sent by a groupchat agent.
-        # This avoids adding groupchat broadcast messages to the history (which are sent with request_reply=False),
-        # or when agent populated from history
-        if request_reply is not False or sender_type == "groupchat":
-            self.agent_history.append(message_payload)  # add to history
+        # any non-silent calls push out to stream and store in history
+        if silent is False:
+            self.agent_history.append(message_payload)
             socket_msg = SocketMessage(
                 type="agent_message",
                 data=message_payload,
@@ -291,20 +286,31 @@ class AutoWorkflowManager:
         for msg in history:
             if isinstance(msg, dict):
                 msg = Message(**msg)
-            if msg.role == "user":
-                self.sender.send(
-                    msg.content,
-                    self.receiver,
-                    request_reply=False,
-                    silent=True,
-                )
-            elif msg.role == "assistant":
-                self.receiver.send(
-                    msg.content,
-                    self.sender,
-                    request_reply=False,
-                    silent=True,
-                )
+            if msg.meta:
+                for meta_msg_obj in msg.meta['messages']:
+                    meta_msg = meta_msg_obj['message']
+                    if 'name' not in meta_msg:
+                        meta_msg['name'] = meta_msg_obj['sender']
+                    if meta_msg['role'] == "user":
+                        self.sender.send(
+                            meta_msg,
+                            self.receiver,
+                            request_reply=False,
+                            silent=True,
+                        )
+                    elif meta_msg['role'] == "assistant":
+                        self.receiver.send(
+                            meta_msg,
+                            self.sender,
+                            request_reply=False,
+                            silent=True,
+                        )
+        if isinstance(self.sender, ExtendedGroupChatManager):
+            agent_history = list(self.sender._oai_messages.values())[0]
+            self.sender.resume(messages=self.sender._oai_messages[self.receiver])
+        if isinstance(self.receiver, ExtendedGroupChatManager):
+            agent_history = list(self.receiver._oai_messages.values())[0]
+            self.receiver.resume(messages=self.receiver._oai_messages[self.sender])
 
     def sanitize_agent(self, agent: Dict) -> Agent:
         """ """
@@ -668,7 +674,6 @@ class SequentialWorkflowManager:
             sequential_history.append(result.content)
             self.model_client = auto_workflow.receiver.client
             print(f"======== end of sequence === {i}============")
-            self.agent_history.extend(result.meta.get("messages", []))
 
     async def _a_run_workflow(
         self, message: str, history: Optional[List[Message]] = None, clear_history: bool = False
@@ -734,7 +739,6 @@ class SequentialWorkflowManager:
             sequential_history.append(result.content)
             self.model_client = auto_workflow.receiver.client
             print(f"======== end of sequence === {i}============")
-            self.agent_history.extend(result.meta.get("messages", []))
 
     def _generate_output(
         self,
@@ -1027,9 +1031,9 @@ class ExtendedGroupChatManager(autogen.GroupChatManager):
         silent: Optional[bool] = False,
     ) -> None:
         if self.a_message_processor:
-            await self.a_message_processor(sender, self, message, request_reply, silent, sender_type="agent")
+            await self.a_message_processor(sender, self, message, request_reply, silent, sender_type="groupchat")
         elif self.message_processor:
-            self.message_processor(sender, self, message, request_reply, silent, sender_type="agent")
+            self.message_processor(sender, self, message, request_reply, silent, sender_type="groupchat")
         await super().a_receive(message, sender, request_reply, silent)
 
     def get_human_input(self, prompt: str) -> str:
