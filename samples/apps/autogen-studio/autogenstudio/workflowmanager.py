@@ -115,6 +115,7 @@ class AutoWorkflowManager:
                 self._populate_history(history)
             self.sender.initiate_chat(
                 self.receiver,
+                # SYSCOIN
                 message={"content": message, "role": "user", "name": self.sender.name},
                 clear_history=clear_history,
             )
@@ -145,6 +146,7 @@ class AutoWorkflowManager:
                 self._populate_history(history)
             await self.sender.a_initiate_chat(
                 self.receiver,
+                # SYSCOIN
                 message={"content": message, "role": "user", "name": self.sender.name},
                 clear_history=clear_history,
             )
@@ -210,7 +212,7 @@ class AutoWorkflowManager:
             silent: determining verbosity.
             sender_type: The type of the sender of the message.
         """
-
+        # SYSCOIN
         message = message if isinstance(message, dict) else {"content": message, "role": "assistant", "name": sender.name}
         message_payload = {
             "recipient": receiver.name,
@@ -221,7 +223,7 @@ class AutoWorkflowManager:
             "connection_id": self.connection_id,
             "message_type": "agent_message",
         }
-        # any non-silent calls push out to stream and store in history
+        # SYSCOIN any non-silent calls push out to stream and store in history
         if silent is False:
             self.agent_history.append(message_payload)
             if self.send_message_function:
@@ -253,6 +255,7 @@ class AutoWorkflowManager:
             silent: determining verbosity.
             sender_type: The type of the sender of the message.
         """
+        # SYSCOIN
         message = message if isinstance(message, dict) else {"content": message, "role": "assistant"}
         message_payload = {
             "recipient": receiver.name,
@@ -263,7 +266,7 @@ class AutoWorkflowManager:
             "connection_id": self.connection_id,
             "message_type": "agent_message",
         }
-        # any non-silent calls push out to stream and store in history
+        # SYSCOIN any non-silent calls push out to stream and store in history
         if silent is False:
             self.agent_history.append(message_payload)
             socket_msg = SocketMessage(
@@ -286,6 +289,7 @@ class AutoWorkflowManager:
         for msg in history:
             if isinstance(msg, dict):
                 msg = Message(**msg)
+            # SYSCOIN
             if msg.meta:
                 for meta_msg_obj in msg.meta['messages']:
                     meta_msg = meta_msg_obj['message']
@@ -674,6 +678,8 @@ class SequentialWorkflowManager:
             sequential_history.append(result.content)
             self.model_client = auto_workflow.receiver.client
             print(f"======== end of sequence === {i}============")
+            # SYSCOIN
+            # self.agent_history.extend(result.meta.get("messages", []))
 
     async def _a_run_workflow(
         self, message: str, history: Optional[List[Message]] = None, clear_history: bool = False
@@ -739,6 +745,8 @@ class SequentialWorkflowManager:
             sequential_history.append(result.content)
             self.model_client = auto_workflow.receiver.client
             print(f"======== end of sequence === {i}============")
+            # SYSCOIN
+            # self.agent_history.extend(result.meta.get("messages", []))
 
     def _generate_output(
         self,
@@ -1030,6 +1038,7 @@ class ExtendedGroupChatManager(autogen.GroupChatManager):
         request_reply: Optional[bool] = None,
         silent: Optional[bool] = False,
     ) -> None:
+        # SYSCOIN
         if self.a_message_processor:
             await self.a_message_processor(sender, self, message, request_reply, silent, sender_type="groupchat")
         elif self.message_processor:

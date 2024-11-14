@@ -447,6 +447,7 @@ async def run_session_workflow(message: Message, session_id: int, workflow_id: i
                 Message,
                 filters={"user_id": message.user_id, "session_id": message.session_id},
                 return_json=True,
+                # SYSCOIN
                 order="asc"
             ).data
             if session_id is not None
