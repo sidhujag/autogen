@@ -42,8 +42,8 @@ exclude = ["*.tests*"]
 "autogenbench" = ["*.*"]
 
 [project.urls]
-"Homepage" = "https://github.com/superdapp/superdappstudio"
-"Bug Tracker" = "https://github.com/superdapp/superdappstudio/issues"
+"Homepage" = "https://github.com/SuperDappAI/superdappstudio"
+"Bug Tracker" = "https://github.com/SuperDappAI/superdappstudio/issues"
 
 [project.scripts]
 autogenbench = "autogenbench.cli:main"

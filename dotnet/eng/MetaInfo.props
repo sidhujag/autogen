@@ -4,7 +4,7 @@
         <VersionPrefix>0.2.1</VersionPrefix>
         <Authors>AutoGen</Authors>
         <PackageProjectUrl>https://microsoft.github.io/autogen-for-net/</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/superdapp/superdappstudio</RepositoryUrl>
+        <RepositoryUrl>https://github.com/SuperDappAI/superdappstudio</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>

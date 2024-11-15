@@ -68,7 +68,7 @@ class GPTAssistantAgent(ConversableAgent):
             log_new_agent(self, locals())
 
         # GPTAssistantAgent's azure_deployment param may cause NotFoundError (404) in client.beta.assistants.list()
-        # See: https://github.com/superdapp/superdappstudio/pull/1721
+        # See: https://github.com/SuperDappAI/superdappstudio/pull/1721
         model_name = self.DEFAULT_MODEL_NAME
         if openai_client_cfg.get("config_list") is not None and len(openai_client_cfg["config_list"]) > 0:
             model_name = openai_client_cfg["config_list"][0].pop("model", self.DEFAULT_MODEL_NAME)

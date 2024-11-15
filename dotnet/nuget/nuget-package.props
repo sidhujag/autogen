@@ -14,7 +14,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
     <PackageProjectUrl>https://microsoft.github.io/autogen-for-net</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/superdapp/superdappstudio</RepositoryUrl>
+    <RepositoryUrl>https://github.com/SuperDappAI/superdappstudio</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
 
     <!-- Use icon and NUGET readme from dotnet/nuget folder -->

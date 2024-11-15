@@ -86,7 +86,7 @@ def _test_gpt_assistant_chat(gpt_config) -> None:
 
     def ask_ossinsight(question: str) -> str:
         ask_ossinsight_mock(question)
-        return "The repository superdapp/superdappstudio has 123,456 stars on GitHub."
+        return "The repository SuperDappAI/superdappstudio has 123,456 stars on GitHub."
 
     name = f"For test_gpt_assistant_chat {uuid.uuid4()}"
     analyst = GPTAssistantAgent(
@@ -103,7 +103,7 @@ def _test_gpt_assistant_chat(gpt_config) -> None:
         )
 
         ok, response = analyst._invoke_assistant(
-            [{"role": "user", "content": "How many stars superdapp/superdappstudio has on GitHub?"}]
+            [{"role": "user", "content": "How many stars SuperDappAI/superdappstudio has on GitHub?"}]
         )
         executable = analyst.can_execute_function("ossinsight_data_api")
         analyst.reset()

@@ -81,7 +81,7 @@ logger = logging.getLogger(__name__)
 class GeminiClient:
     """Client for Google's Gemini API.
 
-    Please visit this [page](https://github.com/superdapp/superdappstudio/issues/2387) for the roadmap of Gemini integration
+    Please visit this [page](https://github.com/SuperDappAI/superdappstudio/issues/2387) for the roadmap of Gemini integration
     of AutoGen.
     """
 

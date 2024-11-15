@@ -58,7 +58,7 @@ ask_ossinsight_mock = MagicMock()
 # Function to test function calling
 def ask_ossinsight(question: str) -> str:
     ask_ossinsight_mock(question)
-    return "The repository superdapp/superdappstudio has 123,456 stars on GitHub."
+    return "The repository SuperDappAI/superdappstudio has 123,456 stars on GitHub."
 
 
 @pytest.mark.skipif(skip_openai, reason=reason)
@@ -103,7 +103,7 @@ def test_build_assistant_with_function_calling():
     builder = AgentBuilder(
         config_file_or_env=OAI_CONFIG_LIST, config_file_location=KEY_LOC, builder_model="gpt-4", agent_model="gpt-4"
     )
-    building_task = "How many stars superdapp/superdappstudio has on GitHub?"
+    building_task = "How many stars SuperDappAI/superdappstudio has on GitHub?"
 
     agent_list, agent_config = builder.build(
         building_task=building_task,
@@ -126,7 +126,7 @@ def test_build_assistant_with_function_calling():
     with patch(f"{__name__}.ask_ossinsight") as mocked_function:
         # Execute 'start_task' which should trigger 'ask_ossinsight' due to the given execution task.
         start_task(
-            execution_task="How many stars superdapp/superdappstudio has on GitHub?",
+            execution_task="How many stars SuperDappAI/superdappstudio has on GitHub?",
             agent_list=agent_list,
         )
 
@@ -175,7 +175,7 @@ def test_build_gpt_assistant_with_function_calling():
     with patch(f"{__name__}.ask_ossinsight") as mocked_function:
         # Execute 'start_task' which should trigger 'ask_ossinsight' due to the given execution task.
         start_task(
-            execution_task="How many stars superdapp/superdappstudio has on GitHub?",
+            execution_task="How many stars SuperDappAI/superdappstudio has on GitHub?",
             agent_list=agent_list,
         )
 

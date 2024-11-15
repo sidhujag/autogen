@@ -7,7 +7,7 @@
 
 Superdapp Studio is an AutoGen-powered AI app (user interface) to help you rapidly prototype AI agents, enhance them with skills, compose them into workflows and interact with them to accomplish tasks. It is built on top of the [AutoGen](https://microsoft.github.io/autogen) framework, which is a toolkit for building AI agents.
 
-Code for Superdapp Studio is on GitHub at [superdapp/superdappstudio](https://github.com/superdapp/superdappstudio/tree/main/samples/apps/autogen-studio)
+Code for Superdapp Studio is on GitHub at [SuperDappAI/superdappstudio](https://github.com/SuperDappAI/superdappstudio/tree/main/samples/apps/autogen-studio)
 
 > **Note**: Superdapp Studio is meant to help you rapidly prototype multi-agent workflows and demonstrate an example of end user interfaces built with AutoGen. It is not meant to be a production-ready app.
 
@@ -106,10 +106,10 @@ npm run start
 
 We welcome contributions to Superdapp Studio. We recommend the following general steps to contribute to the project:
 
-- Review the overall AutoGen project [contribution guide](https://github.com/superdapp/superdappstudio?tab=readme-ov-file#contributing)
-- Please review the Superdapp Studio [roadmap](https://github.com/superdapp/superdappstudio/issues/737) to get a sense of the current priorities for the project. Help is appreciated especially with Studio issues tagged with `help-wanted`
+- Review the overall AutoGen project [contribution guide](https://github.com/SuperDappAI/superdappstudio?tab=readme-ov-file#contributing)
+- Please review the Superdapp Studio [roadmap](https://github.com/SuperDappAI/superdappstudio/issues/737) to get a sense of the current priorities for the project. Help is appreciated especially with Studio issues tagged with `help-wanted`
 - Please initiate a discussion on the roadmap issue or a new issue to discuss your proposed contribution.
-- Please review the superdappstudio dev branch here [dev branch](https://github.com/superdapp/superdappstudio/tree/superdappstudio) and use as a base for your contribution. This way, your contribution will be aligned with the latest changes in the Superdapp Studio project.
+- Please review the superdappstudio dev branch here [dev branch](https://github.com/SuperDappAI/superdappstudio/tree/superdappstudio) and use as a base for your contribution. This way, your contribution will be aligned with the latest changes in the Superdapp Studio project.
 - Submit a pull request with your contribution!
 - If you are modifying Superdapp Studio, it has its own devcontainer. See instructions in `.devcontainer/README.md` to use it
 - Please use the tag `studio` for any issues, questions, and PRs related to Studio
