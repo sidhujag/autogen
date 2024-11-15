@@ -95,7 +95,7 @@ module.exports = {
 
     {
       type: "category",
-      label: "AutoGen Studio",
+      label: "Superdapp Studio",
       collapsed: true,
       items: [
         {
@@ -106,18 +106,18 @@ module.exports = {
         {
           type: "doc",
           id: "autogen-studio/usage",
-          label: "Using AutoGen Studio",
+          label: "Using Superdapp Studio",
         },
         {
           type: "doc",
           id: "autogen-studio/faqs",
-          label: "AutoGen Studio FAQs",
+          label: "Superdapp Studio FAQs",
         },
       ],
       link: {
         type: "generated-index",
-        title: "AutoGen Studio",
-        description: "Learn about AutoGen Studio",
+        title: "Superdapp Studio",
+        description: "Learn about Superdapp Studio",
         slug: "autogen-studio",
       },
     },

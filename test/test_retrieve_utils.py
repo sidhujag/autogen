@@ -87,7 +87,7 @@ class TestRetrieveUtils:
                 pdf_file_path,
                 txt_file_path,
                 os.path.join(test_dir, "..", "..", "website/docs"),
-                "https://raw.githubusercontent.com/microsoft/autogen/main/README.md",
+                "https://raw.githubusercontent.com/superdapp/superdappstudio/main/README.md",
             ],
             recursive=True,
         )
@@ -97,7 +97,7 @@ class TestRetrieveUtils:
                 pdf_file_path,
                 txt_file_path,
                 os.path.join(test_dir, "..", "..", "website/docs"),
-                "https://raw.githubusercontent.com/microsoft/autogen/main/README.md",
+                "https://raw.githubusercontent.com/superdapp/superdappstudio/main/README.md",
             ],
             recursive=True,
             types=["pdf", "txt"],

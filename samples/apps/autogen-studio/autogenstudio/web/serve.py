@@ -9,7 +9,7 @@ from ..datamodel import Response
 from ..workflowmanager import WorkflowManager
 
 app = FastAPI()
-workflow_file_path = os.environ.get("AUTOGENSTUDIO_WORKFLOW_FILE", None)
+workflow_file_path = os.environ.get("SUPERDAPPSTUDIO_WORKFLOW_FILE", None)
 
 
 if workflow_file_path:

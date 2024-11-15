@@ -1,5 +1,5 @@
-recursive-include  autogenstudio/web/ui *
-recursive-include  autogenstudio/web/database.sqlite
+recursive-include  superdappstudio/web/ui *
+recursive-include  superdappstudio/web/database.sqlite
 recursive-exclude  notebooks *
 
 recursive-exclude  frontend *

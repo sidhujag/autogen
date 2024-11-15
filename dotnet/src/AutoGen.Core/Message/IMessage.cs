@@ -8,7 +8,7 @@ namespace AutoGen.Core;
 
 /// <summary>
 /// The universal message interface for all message types in AutoGen.
-/// <para>Related PR: https://github.com/microsoft/autogen/pull/1676</para>
+/// <para>Related PR: https://github.com/superdapp/superdappstudio/pull/1676</para>
 /// <para>Built-in message types</para>
 /// <list type="bullet">
 /// <item>

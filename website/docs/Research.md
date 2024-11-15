@@ -3,11 +3,11 @@
 For technical details, please check our technical report and research publications.
 
 
-* [AutoGen Studio: A No-Code Developer Tool for Building and Debugging Multi-Agent Systems](https://www.microsoft.com/en-us/research/publication/autogen-studio-a-no-code-developer-tool-for-building-and-debugging-multi-agent-systems/)
+* [Superdapp Studio: A No-Code Developer Tool for Building and Debugging Multi-Agent Systems](https://www.microsoft.com/en-us/research/publication/autogen-studio-a-no-code-developer-tool-for-building-and-debugging-multi-agent-systems/)
 
 ```bibtex
 @inproceedings{dibia2024studio,
-      title={AutoGen Studio: A No-Code Developer Tool for Building and Debugging Multi-Agent Systems},
+      title={Superdapp Studio: A No-Code Developer Tool for Building and Debugging Multi-Agent Systems},
       author={Victor Dibia and Jingya Chen and Gagan Bansal and Suff Syed and Adam Fourney and Erkang (Eric) Zhu and Chi Wang and Saleema Amershi},
       year={2024},
       booktitle={Pre-Print}

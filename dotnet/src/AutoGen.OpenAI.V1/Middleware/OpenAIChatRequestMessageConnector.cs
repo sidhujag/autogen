@@ -337,7 +337,7 @@ public class OpenAIChatRequestMessageConnector : IMiddleware, IStreamingMiddlewa
         var textContent = message.GetContent() ?? string.Empty;
 
         // don't include the name field when it's tool call message.
-        // fix https://github.com/microsoft/autogen/issues/3437
+        // fix https://github.com/superdapp/superdappstudio/issues/3437
         var chatRequestMessage = new ChatRequestAssistantMessage(textContent);
         foreach (var tc in toolCall)
         {

@@ -12,7 +12,7 @@ SCRIPT_NAME = os.path.basename(SCRIPT_PATH)
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 
 # Where are the manifests located?
-DEFAULT_REPO = "https://raw.githubusercontent.com/microsoft/autogen/"
+DEFAULT_REPO = "https://raw.githubusercontent.com/superdapp/superdappstudio/"
 DEFAULT_BRANCH = "main"
 DEFAULT_PATH = "/samples/tools/autogenbench/scenarios/"
 # Full url is specified by DEFAULT_REPO + DEFAULT_BRANCH + DEFAULT_PATH

@@ -31,7 +31,7 @@ Then, create a `WeatherReport` function and mark it with @AutoGen.Core.FunctionA
 
 [!code-csharp[](../../sample/AutoGen.BasicSamples/CodeSnippet/TypeSafeFunctionCallCodeSnippet.cs?name=weather_report)]
 
-The source generator will generate the @AutoGen.Core.FunctionContract and function call wrapper for `WeatherReport` in another partial class based on its signature and structural comments. The @AutoGen.Core.FunctionContract is introduced by [#1736](https://github.com/microsoft/autogen/pull/1736) and contains all the necessary metadata such as function name, parameters, and return type. It is LLM independent and can be used to generate openai function definition or semantic kernel function. The function call wrapper is a helper class that provides a type-safe way to call the function.
+The source generator will generate the @AutoGen.Core.FunctionContract and function call wrapper for `WeatherReport` in another partial class based on its signature and structural comments. The @AutoGen.Core.FunctionContract is introduced by [#1736](https://github.com/superdapp/superdappstudio/pull/1736) and contains all the necessary metadata such as function name, parameters, and return type. It is LLM independent and can be used to generate openai function definition or semantic kernel function. The function call wrapper is a helper class that provides a type-safe way to call the function.
 
 > [!NOTE]
 > If you are using VSCode as your editor, you may need to restart the editor to see the generated code.

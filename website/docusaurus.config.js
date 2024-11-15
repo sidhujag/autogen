@@ -83,7 +83,7 @@ module.exports = {
             {
               type: "doc",
               docId: "autogen-studio/getting-started",
-              label: "AutoGen Studio",
+              label: "Superdapp Studio",
             },
             {
               type: "doc",
@@ -141,7 +141,7 @@ module.exports = {
           position: "left",
         },
         {
-          href: "https://github.com/microsoft/autogen",
+          href: "https://github.com/superdapp/superdappstudio",
           label: "GitHub",
           position: "right",
         },
@@ -173,7 +173,7 @@ module.exports = {
             //     // },
             {
               label: "GitHub Discussion",
-              href: "https://github.com/microsoft/autogen/discussions",
+              href: "https://github.com/superdapp/superdappstudio/discussions",
             },
             {
               label: "Twitter",
@@ -209,7 +209,7 @@ module.exports = {
         docs: {
           sidebarPath: require.resolve("./sidebars.js"),
           // Please change this to your repo.
-          editUrl: "https://github.com/microsoft/autogen/edit/main/website/",
+          editUrl: "https://github.com/superdapp/superdappstudio/edit/main/website/",
           remarkPlugins: [math],
           rehypePlugins: [katex],
         },

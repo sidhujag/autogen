@@ -48,10 +48,10 @@ The web api will listen at `http://localhost:5264/v1/chat/completion
 ## Step 4: In another terminal, start autogen-studio
 
 ```bash
-autogenstudio ui
+superdappstudio ui
 ```
 
-## Step 5: Navigate to AutoGen Studio UI and add hello world agent as openai Model
+## Step 5: Navigate to Superdapp Studio UI and add hello world agent as openai Model
 
 ### Step 5.1: Go to model tab
 

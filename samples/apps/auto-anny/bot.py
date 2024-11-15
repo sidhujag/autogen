@@ -139,7 +139,7 @@ async def ghstudio(ctx):
     # TODO: Generalize to feature name
     response = await solve_task(
         f"""
-    Find issues and PRs from `{REPO}` that are related to the AutoGen Studio.
+    Find issues and PRs from `{REPO}` that are related to the Superdapp Studio.
     The title or the body of the issue or PR should give you a hint whether its related.
     Summarize the top 5 common complaints or issues. Cite the issue/PR number and URL.
     Explain why you think this is a common issue in 2 sentences.

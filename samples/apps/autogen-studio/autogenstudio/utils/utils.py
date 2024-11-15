@@ -237,7 +237,7 @@ def get_app_root() -> str:
     default_app_root = os.path.join(os.path.expanduser("~"), app_name)
     if not os.path.exists(default_app_root):
         os.makedirs(default_app_root, exist_ok=True)
-    app_root = os.environ.get("AUTOGENSTUDIO_APPDIR") or default_app_root
+    app_root = os.environ.get("SUPERDAPPSTUDIO_APPDIR") or default_app_root
     return app_root
 
 
@@ -249,7 +249,7 @@ def get_db_uri(app_root: str) -> str:
     :return: The default database URI.
     """
     db_uri = f"sqlite:///{os.path.join(app_root, 'database.sqlite')}"
-    db_uri = os.environ.get("AUTOGENSTUDIO_DATABASE_URI") or db_uri
+    db_uri = os.environ.get("SUPERDAPPSTUDIO_DATABASE_URI") or db_uri
     logger.info(f"Using database URI: {db_uri}")
     return db_uri
 

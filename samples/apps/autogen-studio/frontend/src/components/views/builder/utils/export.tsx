@@ -28,7 +28,7 @@ export const ExportWorkflowModal = ({
   const [workflowDetails, setWorkflowDetails] = React.useState<any>(null);
 
   const getWorkflowCode = (workflow: IWorkflow) => {
-    const workflowCode = `from autogenstudio import WorkflowManager
+    const workflowCode = `from superdappstudio import WorkflowManager
 # load workflow from exported json workflow file.
 workflow_manager = WorkflowManager(workflow="path/to/your/workflow_.json")
 
@@ -39,13 +39,13 @@ workflow_manager.run(message=task_query)`;
   };
 
   const getCliWorkflowCode = (workflow: IWorkflow) => {
-    const workflowCode = `autogenstudio serve --workflow=workflow.json --port=5000
+    const workflowCode = `superdappstudio serve --workflow=workflow.json --port=5000
     `;
     return workflowCode;
   };
 
   const getGunicornWorkflowCode = (workflow: IWorkflow) => {
-    const workflowCode = `gunicorn -w $((2 * $(getconf _NPROCESSORS_ONLN) + 1)) --timeout 12600 -k uvicorn.workers.UvicornWorker autogenstudio.web.app:app --bind `;
+    const workflowCode = `gunicorn -w $((2 * $(getconf _NPROCESSORS_ONLN) + 1)) --timeout 12600 -k uvicorn.workers.UvicornWorker superdappstudio.web.app:app --bind `;
 
     return workflowCode;
   };
@@ -172,7 +172,7 @@ workflow_manager.run(message=task_query)`;
               </div>
               <div className=" mt-2 mb-2 pb-1 text-xs">
                 You can also deploy your workflow as an API endpoint using the
-                autogenstudio python CLI.
+                superdappstudio python CLI.
               </div>
 
               <div className="text-sm mt-2 mb-2 pb-1">

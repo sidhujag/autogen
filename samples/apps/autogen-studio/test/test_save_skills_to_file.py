@@ -1,7 +1,7 @@
 import os
 
-from autogenstudio.datamodel import Agent, Skill
-from autogenstudio.utils import utils
+from superdappstudio.datamodel import Agent, Skill
+from superdappstudio.utils import utils
 
 
 class TestUtilSaveSkillsToFile:

@@ -1,6 +1,6 @@
 ### AutoGen for .NET
 
-[![dotnet-ci](https://github.com/microsoft/autogen/actions/workflows/dotnet-build.yml/badge.svg)](https://github.com/microsoft/autogen/actions/workflows/dotnet-build.yml)
+[![dotnet-ci](https://github.com/superdapp/superdappstudio/actions/workflows/dotnet-build.yml/badge.svg)](https://github.com/superdapp/superdappstudio/actions/workflows/dotnet-build.yml)
 [![NuGet version](https://badge.fury.io/nu/AutoGen.Core.svg)](https://badge.fury.io/nu/AutoGen.Core)
 
 > [!NOTE]
@@ -45,7 +45,7 @@ await userProxyAgent.InitiateChatAsync(
 ```
 
 #### Samples
-You can find more examples under the [sample project](https://github.com/microsoft/autogen/tree/dotnet/dotnet/sample/AutoGen.BasicSamples).
+You can find more examples under the [sample project](https://github.com/superdapp/superdappstudio/tree/dotnet/dotnet/sample/AutoGen.BasicSamples).
 
 #### Functionality
 - ConversableAgent
@@ -70,16 +70,16 @@ You can find more examples under the [sample project](https://github.com/microso
 - Rename `AddInitializeMessage` to `SendIntroduction`
 - Rename `SequentialGroupChat` to `RoundRobinGroupChat`
 ##### Update on 0.0.9 (2024-03-02)
-- Refactor over @AutoGen.Message and introducing `TextMessage`, `ImageMessage`, `MultiModalMessage` and so on. PR [#1676](https://github.com/microsoft/autogen/pull/1676)
+- Refactor over @AutoGen.Message and introducing `TextMessage`, `ImageMessage`, `MultiModalMessage` and so on. PR [#1676](https://github.com/superdapp/superdappstudio/pull/1676)
 - Add `AutoGen.SemanticKernel` to support seamless integration with Semantic Kernel
 - Move the agent contract abstraction to `AutoGen.Core` package. The `AutoGen.Core` package provides the abstraction for message type, agent and group chat and doesn't contain dependencies over `Azure.AI.OpenAI` or `Semantic Kernel`. This is useful when you want to leverage AutoGen's abstraction only and want to avoid introducing any other dependencies.
 - Move `GPTAgent`, `OpenAIChatAgent` and all openai-dependencies to `AutoGen.OpenAI`
 ##### Update on 0.0.8 (2024-02-28)
-- Fix [#1804](https://github.com/microsoft/autogen/pull/1804)
-- Streaming support for IAgent [#1656](https://github.com/microsoft/autogen/pull/1656)
-- Streaming support for middleware via `MiddlewareStreamingAgent` [#1656](https://github.com/microsoft/autogen/pull/1656)
-- Graph chat support with conditional transition workflow [#1761](https://github.com/microsoft/autogen/pull/1761)
-- AutoGen.SourceGenerator: Generate `FunctionContract` from `FunctionAttribute` [#1736](https://github.com/microsoft/autogen/pull/1736)
+- Fix [#1804](https://github.com/superdapp/superdappstudio/pull/1804)
+- Streaming support for IAgent [#1656](https://github.com/superdapp/superdappstudio/pull/1656)
+- Streaming support for middleware via `MiddlewareStreamingAgent` [#1656](https://github.com/superdapp/superdappstudio/pull/1656)
+- Graph chat support with conditional transition workflow [#1761](https://github.com/superdapp/superdappstudio/pull/1761)
+- AutoGen.SourceGenerator: Generate `FunctionContract` from `FunctionAttribute` [#1736](https://github.com/superdapp/superdappstudio/pull/1736)
 ##### Update on 0.0.7 (2024-02-11)
 - Add `AutoGen.LMStudio` to support comsume openai-like API from LMStudio local server
 ##### Update on 0.0.6 (2024-01-23)

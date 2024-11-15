@@ -2,7 +2,7 @@
   "name": "AutoGen_Studio",
   "version": "1.0.0",
   "private": true,
-  "description": "AutoGen Studio - Build LLM Enabled Agents",
+  "description": "Superdapp Studio - Build LLM Enabled Agents",
   "author": "SPIRAL Team",
   "keywords": [
     "gatsby"
@@ -11,7 +11,7 @@
     "develop": "gatsby clean && gatsby develop",
     "dev": "npm run develop",
     "start": "gatsby clean && gatsby develop",
-    "build": "gatsby clean && rm -rf ../autogenstudio/web/ui && PREFIX_PATH_VALUE='' gatsby build --prefix-paths && rsync -a --delete public/ ../autogenstudio/web/ui/",
+    "build": "gatsby clean && rm -rf ../superdappstudio/web/ui && PREFIX_PATH_VALUE='' gatsby build --prefix-paths && rsync -a --delete public/ ../superdappstudio/web/ui/",
     "serve": "gatsby serve",
     "clean": "gatsby clean",
     "typecheck": "tsc --noEmit"

@@ -3,11 +3,12 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "autogenstudio"
+name = "superdappstudio"
 authors = [
   { name="AutoGen Team", email="autogen@microsoft.com" },
+  { name="Superdapp Team", email="contact@superdapp.ai" },
 ]
-description = "AutoGen Studio"
+description = "Superdapp Studio"
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = ">=3.9, <3.13"
@@ -42,16 +43,16 @@ include-package-data = true
 
 
 [tool.setuptools.dynamic]
-version = {attr = "autogenstudio.version.VERSION"}
+version = {attr = "superdappstudio.version.VERSION"}
 readme = {file = ["README.md"]}
 
 [tool.setuptools.packages.find]
-include = ["autogenstudio*"]
+include = ["superdappstudio*"]
 exclude = ["*.tests*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-"autogenstudio" = ["*.*"]
+"superdappstudio" = ["*.*"]
 
 [tool.pytest.ini_options]
 filterwarnings = [
@@ -61,8 +62,8 @@ filterwarnings = [
 
 
 [project.urls]
-"Homepage" = "https://github.com/microsoft/autogen"
-"Bug Tracker" = "https://github.com/microsoft/autogen/issues"
+"Homepage" = "https://github.com/superdapp/superdappstudio"
+"Bug Tracker" = "https://github.com/superdapp/superdappstudio/issues"
 
 [project.scripts]
-autogenstudio = "autogenstudio.cli:run"
+superdappstudio = "superdappstudio.cli:run"
