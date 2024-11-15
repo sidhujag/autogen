@@ -7,12 +7,12 @@
 
 Superdapp Studio is an AutoGen-powered AI app (user interface) to help you rapidly prototype AI agents, enhance them with skills, compose them into workflows and interact with them to accomplish tasks. It is built on top of the [AutoGen](https://microsoft.github.io/autogen) framework, which is a toolkit for building AI agents.
 
-Code for Superdapp Studio is on GitHub at [SuperDappAI/superdappstudio](https://github.com/SuperDappAI/superdappstudio/tree/main/samples/apps/superdapp-studio)
+Code for Superdapp Studio is on GitHub at [SuperDappAI/superdappstudio](https://github.com/SuperDappAI/superdappstudio/tree/main/samples/apps/autogen-studio)
 
 > **Note**: Superdapp Studio is meant to help you rapidly prototype multi-agent workflows and demonstrate an example of end user interfaces built with AutoGen. It is not meant to be a production-ready app.
 
 > [!WARNING]
-> Superdapp Studio is currently under active development and we are iterating quickly. Kindly consider that we may introduce breaking changes in the releases during the upcoming weeks, and also the `README` might be outdated. Please see the Superdapp Studio [docs](https://microsoft.github.io/autogen/docs/superdapp-studio/getting-started) page for the most up-to-date information.
+> Superdapp Studio is currently under active development and we are iterating quickly. Kindly consider that we may introduce breaking changes in the releases during the upcoming weeks, and also the `README` might be outdated. Please see the Superdapp Studio [docs](https://microsoft.github.io/autogen/docs/autogen-studio/getting-started) page for the most up-to-date information.
 
 **Updates**
 
@@ -49,7 +49,7 @@ There are two ways to install Superdapp Studio - from PyPi or from source. We **
       pip install -e .
       ```
 
-    - Navigate to the `samples/apps/superdapp-studio/frontend` directory, install dependencies, and build the UI:
+    - Navigate to the `samples/apps/autogen-studio/frontend` directory, install dependencies, and build the UI:
 
       ```bash
       npm install -g gatsby-cli
@@ -116,7 +116,7 @@ We welcome contributions to Superdapp Studio. We recommend the following general
 
 ## FAQ
 
-Please refer to the Superdapp Studio [FAQs](https://microsoft.github.io/autogen/docs/superdapp-studio/faqs) page for more information.
+Please refer to the Superdapp Studio [FAQs](https://microsoft.github.io/autogen/docs/autogen-studio/faqs) page for more information.
 
 ## Acknowledgements
 

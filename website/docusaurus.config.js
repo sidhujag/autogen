@@ -82,7 +82,7 @@ module.exports = {
             },
             {
               type: "doc",
-              docId: "superdapp-studio/getting-started",
+              docId: "autogen-studio/getting-started",
               label: "Superdapp Studio",
             },
             {

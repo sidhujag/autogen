@@ -254,7 +254,7 @@ In addition, you can find:
 
 ## Related Papers
 
-[Superdapp Studio](https://www.microsoft.com/en-us/research/publication/superdapp-studio-a-no-code-developer-tool-for-building-and-debugging-multi-agent-systems/)
+[Superdapp Studio](https://www.microsoft.com/en-us/research/publication/autogen-studio-a-no-code-developer-tool-for-building-and-debugging-multi-agent-systems/)
 
 ```
 @inproceedings{dibia2024studio,

@@ -7,7 +7,7 @@
 
 Superdapp Studio is an low-code interface built to help you rapidly prototype AI agents, enhance them with skills, compose them into workflows and interact with them to accomplish tasks. It is built on top of the [AutoGen](https://microsoft.github.io/autogen) framework, which is a toolkit for building AI agents.
 
-Code for Superdapp Studio is on GitHub at [SuperDappAI/superdappstudio](https://github.com/SuperDappAI/superdappstudio/tree/main/samples/apps/superdapp-studio)
+Code for Superdapp Studio is on GitHub at [SuperDappAI/superdappstudio](https://github.com/SuperDappAI/superdappstudio/tree/main/samples/apps/autogen-studio)
 
 > **Note**: Superdapp Studio is meant to help you rapidly prototype multi-agent workflows and demonstrate an example of end user interfaces built with AutoGen. It is not meant to be a production-ready app. Developers are encouraged to use the AutoGen framework to build their own applications, implementing authentication, security and other features required for deployed applications.
 
@@ -41,7 +41,7 @@ There are two ways to install Superdapp Studio - from PyPi or from source. We **
       pip install -e .
       ```
 
-    - Navigate to the `samples/apps/superdapp-studio/frontend` directory, install dependencies, and build the UI:
+    - Navigate to the `samples/apps/autogen-studio/frontend` directory, install dependencies, and build the UI:
 
       ```bash
       npm install -g gatsby-cli

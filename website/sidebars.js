@@ -100,17 +100,17 @@ module.exports = {
       items: [
         {
           type: "doc",
-          id: "superdapp-studio/getting-started",
+          id: "autogen-studio/getting-started",
           label: "Getting Started",
         },
         {
           type: "doc",
-          id: "superdapp-studio/usage",
+          id: "autogen-studio/usage",
           label: "Using Superdapp Studio",
         },
         {
           type: "doc",
-          id: "superdapp-studio/faqs",
+          id: "autogen-studio/faqs",
           label: "Superdapp Studio FAQs",
         },
       ],
@@ -118,7 +118,7 @@ module.exports = {
         type: "generated-index",
         title: "Superdapp Studio",
         description: "Learn about Superdapp Studio",
-        slug: "superdapp-studio",
+        slug: "autogen-studio",
       },
     },
     {
