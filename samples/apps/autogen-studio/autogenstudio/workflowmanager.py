@@ -310,11 +310,9 @@ class AutoWorkflowManager:
                             silent=True,
                         )
         if isinstance(self.sender, ExtendedGroupChatManager):
-            agent_history = list(self.sender._oai_messages.values())[0]
-            self.sender.resume(messages=self.sender._oai_messages[self.receiver])
+            self.sender.resume(messages=self.sender._oai_messages[self.receiver], remove_termination_string="TERMINATE")
         if isinstance(self.receiver, ExtendedGroupChatManager):
-            agent_history = list(self.receiver._oai_messages.values())[0]
-            self.receiver.resume(messages=self.receiver._oai_messages[self.sender])
+            self.receiver.resume(messages=self.receiver._oai_messages[self.sender], remove_termination_string="TERMINATE")
 
     def sanitize_agent(self, agent: Dict) -> Agent:
         """ """
