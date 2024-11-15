@@ -101,14 +101,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-show_docs = os.environ.get("SUPERDAPPSTUDIO_API_DOCS", "False").lower() == "true"
+show_docs = os.environ.get("AUTOGENSTUDIO_API_DOCS", "False").lower() == "true"
 docs_url = "/docs" if show_docs else None
 api = FastAPI(
     root_path="/api",
-    title="Superdapp Studio API",
+    title="AutoGen Studio API",
     version=VERSION,
     docs_url=docs_url,
-    description="Superdapp Studio is a low-code tool for building and testing multi-agent workflows using AutoGen.",
+    description="AutoGen Studio is a low-code tool for building and testing multi-agent workflows using AutoGen.",
 )
 # mount an api route such that the main route serves the ui and the /api
 app.mount("/api", api)

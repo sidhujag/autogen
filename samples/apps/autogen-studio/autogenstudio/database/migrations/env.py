@@ -5,8 +5,8 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
-from superdappstudio.datamodel import *
-from superdappstudio.utils import get_db_uri
+from autogenstudio.datamodel import *
+from autogenstudio.utils import get_db_uri
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

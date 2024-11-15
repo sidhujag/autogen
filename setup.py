@@ -22,7 +22,7 @@ install_requires = [
     "diskcache",
     "termcolor",
     "flaml",
-    # numpy is installed by flaml, but we want to pin the version to below 2.x (see https://github.com/superdapp/superdappstudio/issues/1960)
+    # numpy is installed by flaml, but we want to pin the version to below 2.x (see https://github.com/microsoft/autogen/issues/1960)
     "numpy>=1.17.0,<2",
     "python-dotenv",
     "tiktoken",
@@ -118,7 +118,7 @@ setuptools.setup(
     description="Enabling Next-Gen LLM Applications via Multi-Agent Conversation Framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/superdapp/superdappstudio",
+    url="https://github.com/microsoft/autogen",
     packages=setuptools.find_packages(include=["autogen*"], exclude=["test"]),
     install_requires=install_requires,
     extras_require=extra_require,

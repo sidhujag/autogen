@@ -177,12 +177,12 @@ class GroupChat:
             )
 
         # If both self.allowed_or_disallowed_speaker_transitions is None and self.allow_repeat_speaker is None, set allow_repeat_speaker to True to ensure backward compatibility
-        # Discussed in https://github.com/superdapp/superdappstudio/pull/857#discussion_r1451541204
+        # Discussed in https://github.com/microsoft/autogen/pull/857#discussion_r1451541204
         if self.allowed_or_disallowed_speaker_transitions is None and self.allow_repeat_speaker is None:
             self.allow_repeat_speaker = True
 
         # self.allowed_or_disallowed_speaker_transitions and self.allow_repeat_speaker are mutually exclusive parameters.
-        # Discussed in https://github.com/superdapp/superdappstudio/pull/857#discussion_r1451266661
+        # Discussed in https://github.com/microsoft/autogen/pull/857#discussion_r1451266661
         if self.allowed_or_disallowed_speaker_transitions is not None and self.allow_repeat_speaker is not None:
             raise ValueError(
                 "Don't provide both allowed_or_disallowed_speaker_transitions and allow_repeat_speaker in group chat. "
@@ -190,7 +190,7 @@ class GroupChat:
             )
 
         # Asks the user to specify whether the speaker_transitions_type is allowed or disallowed if speaker_transitions_type is supplied
-        # Discussed in https://github.com/superdapp/superdappstudio/pull/857#discussion_r1451259524
+        # Discussed in https://github.com/microsoft/autogen/pull/857#discussion_r1451259524
         if self.allowed_or_disallowed_speaker_transitions is not None and self.speaker_transitions_type is None:
             raise ValueError(
                 "GroupChat allowed_or_disallowed_speaker_transitions is not None, but speaker_transitions_type is None. "

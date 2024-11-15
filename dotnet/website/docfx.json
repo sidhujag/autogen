@@ -61,7 +61,7 @@
       "_appFooter": "AutoGen for .NET",
       "_appFaviconPath": "images/ag.ico",
       "_gitContribute": {
-        "repo": "https://github.com/superdapp/superdappstudio.git",
+        "repo": "https://github.com/microsoft/autogen.git",
         "branch": "dotnet"
       }
     },

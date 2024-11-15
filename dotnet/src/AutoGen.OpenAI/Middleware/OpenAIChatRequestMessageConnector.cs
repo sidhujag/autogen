@@ -324,7 +324,7 @@ public class OpenAIChatRequestMessageConnector : IMiddleware, IStreamingMiddlewa
         var textContent = message.GetContent() ?? null;
 
         // Don't set participant name for assistant when it is tool call
-        // fix https://github.com/superdapp/superdappstudio/issues/3437
+        // fix https://github.com/microsoft/autogen/issues/3437
         var chatRequestMessage = new AssistantChatMessage(toolCallParts, textContent);
 
         return [chatRequestMessage];

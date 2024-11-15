@@ -256,7 +256,7 @@ public partial class OpenAIChatAgentTest
     [ApiKeyFact("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_DEPLOY_NAME")]
     public async Task ItProduceValidContentAfterFunctionCall()
     {
-        // https://github.com/superdapp/superdappstudio/issues/3437
+        // https://github.com/microsoft/autogen/issues/3437
         var deployName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOY_NAME") ?? throw new Exception("Please set AZURE_OPENAI_DEPLOY_NAME environment variable.");
         var openaiClient = CreateOpenAIClientFromAzureOpenAI();
         var options = new ChatCompletionOptions()

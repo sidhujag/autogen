@@ -1,7 +1,7 @@
 import os
 
-from superdappstudio.datamodel import Skill
-from superdappstudio.utils import utils
+from autogenstudio.datamodel import Skill
+from autogenstudio.utils import utils
 
 
 class TestUtilGetSkillsPrompt:

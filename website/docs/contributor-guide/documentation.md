@@ -2,7 +2,7 @@
 
 ## How to get a notebook rendered on the website
 
-See [here](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/contributing.md#how-to-get-a-notebook-displayed-on-the-website) for instructions on how to get a notebook in the `notebook` directory rendered on the website.
+See [here](https://github.com/microsoft/autogen/blob/0.2/notebook/contributing.md#how-to-get-a-notebook-displayed-on-the-website) for instructions on how to get a notebook in the `notebook` directory rendered on the website.
 
 ## Build documentation locally
 
@@ -39,7 +39,7 @@ Most changes are reflected live without having to restart the server.
 To build and test documentation within a docker container. Use the Dockerfile in the `dev` folder as described above to build your image:
 
 ```bash
-docker build -f .devcontainer/dev/Dockerfile -t autogen_dev_img https://github.com/superdapp/superdappstudio.git#main
+docker build -f .devcontainer/dev/Dockerfile -t autogen_dev_img https://github.com/microsoft/autogen.git#main
 ```
 
 Then start the container like so, this will log you in and ensure that Docker port 3000 is mapped to port 8081 on your local machine

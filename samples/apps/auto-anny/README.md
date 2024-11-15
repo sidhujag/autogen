@@ -23,7 +23,7 @@ Actually Anny can help with any OSS GitHub project (set `ANNY_GH_REPO` below).
     export OAI_CONFIG_LIST=your-autogen-config-list
     export DISCORD_TOKEN=your-bot-token
     export GH_TOKEN=your-gh-token
-    export ANNY_GH_REPO=superdapp/superdappstudio  # you may choose a different repo name
+    export ANNY_GH_REPO=microsoft/autogen  # you may choose a different repo name
     ```
     To get a Discord token, you will need to set up your Discord bot using these [instructions](https://discordpy.readthedocs.io/en/stable/discord.html).
 4. Start the bot: `python bot.py`

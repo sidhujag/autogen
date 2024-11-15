@@ -21,12 +21,12 @@ AutoGen is an open-source programming framework for building AI agents and facil
 
 
 > [!NOTE]
-> *Note for contributors and users*</b>: [superdapp/superdappstudio](https://aka.ms/autogen-gh) is the original repository of AutoGen project and it is under active development and maintenance under MIT license. We welcome contributions from developers and organizations worldwide. Our goal is to foster a collaborative and inclusive community where diverse perspectives and expertise can drive innovation and enhance the project's capabilities. We acknowledge the invaluable contributions from our existing contributors, as listed in [contributors.md](./CONTRIBUTORS.md). Whether you are an individual contributor or represent an organization, we invite you to join us in shaping the future of this project. For further information please also see [Microsoft open-source contributing guidelines](https://github.com/superdapp/superdappstudio?tab=readme-ov-file#contributing).
+> *Note for contributors and users*</b>: [microsoft/autogen](https://aka.ms/autogen-gh) is the original repository of AutoGen project and it is under active development and maintenance under MIT license. We welcome contributions from developers and organizations worldwide. Our goal is to foster a collaborative and inclusive community where diverse perspectives and expertise can drive innovation and enhance the project's capabilities. We acknowledge the invaluable contributions from our existing contributors, as listed in [contributors.md](./CONTRIBUTORS.md). Whether you are an individual contributor or represent an organization, we invite you to join us in shaping the future of this project. For further information please also see [Microsoft open-source contributing guidelines](https://github.com/microsoft/autogen?tab=readme-ov-file#contributing).
 >
 > -_Maintainers (Sept 6th, 2024)_
 
 
-![AutoGen Overview](https://github.com/superdapp/superdappstudio/blob/0.2/website/static/img/autogen_agentchat.png)
+![AutoGen Overview](https://github.com/microsoft/autogen/blob/0.2/website/static/img/autogen_agentchat.png)
 
 - AutoGen enables building next-gen LLM applications based on [multi-agent conversations](https://microsoft.github.io/autogen/docs/Use-Cases/agent_chat) with minimal effort. It simplifies the orchestration, automation, and optimization of a complex LLM workflow. It maximizes the performance of LLM models and overcomes their weaknesses.
 - It supports [diverse conversation patterns](https://microsoft.github.io/autogen/docs/Use-Cases/agent_chat#supporting-diverse-conversation-patterns) for complex workflows. With customizable and conversable agents, developers can use AutoGen to build a wide range of conversation patterns concerning conversation autonomy,
@@ -73,7 +73,7 @@ AutoGen was created out of collaborative [research](https://microsoft.github.io/
 
 :tada: Dec 31, 2023: [AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation Framework](https://arxiv.org/abs/2308.08155) is selected by [TheSequence: My Five Favorite AI Papers of 2023](https://thesequence.substack.com/p/my-five-favorite-ai-papers-of-2023).
 
-<!-- :fire: Nov 24: pyautogen [v0.2](https://github.com/superdapp/superdappstudio/releases/tag/v0.2.0) is released with many updates and new features compared to v0.1.1. It switches to using openai-python v1. Please read the [migration guide](https://microsoft.github.io/autogen/docs/Installation#python). -->
+<!-- :fire: Nov 24: pyautogen [v0.2](https://github.com/microsoft/autogen/releases/tag/v0.2.0) is released with many updates and new features compared to v0.1.1. It switches to using openai-python v1. Please read the [migration guide](https://microsoft.github.io/autogen/docs/Installation#python). -->
 
 <!-- :fire: Nov 11: OpenAI's Assistants are available in AutoGen and interoperatable with other AutoGen agents! Checkout our [blogpost](https://microsoft.github.io/autogen/blog/2023/11/13/OAI-assistants) for details and examples. -->
 
@@ -113,7 +113,7 @@ To see what we are working on and what we plan to work on, please check our
 The easiest way to start playing is
 1. Click below to use the GitHub Codespace
 
-    [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/superdapp/superdappstudio?quickstart=1)
+    [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/microsoft/autogen?quickstart=1)
 
  2. Copy OAI_CONFIG_LIST_sample to ./notebook folder, name to OAI_CONFIG_LIST, and set the correct configuration.
  3. Start playing with the notebooks!
@@ -148,7 +148,7 @@ pip install "autogen-agentchat[blendsearch]~=0.2"
 
 Find more options in [Installation](https://microsoft.github.io/autogen/docs/Installation#option-2-install-autogen-locally-using-virtual-environment).
 
-<!-- Each of the [`notebook examples`](https://github.com/superdapp/superdappstudio/tree/main/notebook) may require a specific option to be installed. -->
+<!-- Each of the [`notebook examples`](https://github.com/microsoft/autogen/tree/main/notebook) may require a specific option to be installed. -->
 
 Even if you are installing and running AutoGen locally outside of docker, the recommendation and default behavior of agents is to perform [code execution](https://microsoft.github.io/autogen/docs/FAQ/#code-execution) in docker. Find more instructions and how to change the default behaviour [here](https://microsoft.github.io/autogen/docs/Installation#code-execution-with-docker-(default)).
 
@@ -171,7 +171,7 @@ Features of this use case include:
 - **Customization**: AutoGen agents can be customized to meet the specific needs of an application. This includes the ability to choose the LLMs to use, the types of human input to allow, and the tools to employ.
 - **Human participation**: AutoGen seamlessly allows human participation. This means that humans can provide input and feedback to the agents as needed.
 
-For [example](https://github.com/superdapp/superdappstudio/blob/0.2/test/twoagent.py),
+For [example](https://github.com/microsoft/autogen/blob/0.2/test/twoagent.py),
 
 ```python
 from autogen import AssistantAgent, UserProxyAgent, config_list_from_json
@@ -194,9 +194,9 @@ python test/twoagent.py
 
 After the repo is cloned.
 The figure below shows an example conversation flow with AutoGen.
-![Agent Chat Example](https://github.com/superdapp/superdappstudio/blob/0.2/website/static/img/chat_example.png)
+![Agent Chat Example](https://github.com/microsoft/autogen/blob/0.2/website/static/img/chat_example.png)
 
-Alternatively, the [sample code](https://github.com/superdapp/superdappstudio/blob/0.2/samples/simple_chat.py) here allows a user to chat with an AutoGen agent in ChatGPT style.
+Alternatively, the [sample code](https://github.com/microsoft/autogen/blob/0.2/samples/simple_chat.py) here allows a user to chat with an AutoGen agent in ChatGPT style.
 Please find more [code examples](https://microsoft.github.io/autogen/docs/Examples#automated-multi-agent-chat) for this feature.
 
 <p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
@@ -240,7 +240,7 @@ You can find detailed documentation about AutoGen [here](https://microsoft.githu
 
 In addition, you can find:
 
-- [Research](https://microsoft.github.io/autogen/docs/Research), [blogposts](https://microsoft.github.io/autogen/blog) around AutoGen, and [Transparency FAQs](https://github.com/superdapp/superdappstudio/blob/0.2/TRANSPARENCY_FAQS.md)
+- [Research](https://microsoft.github.io/autogen/docs/Research), [blogposts](https://microsoft.github.io/autogen/blog) around AutoGen, and [Transparency FAQs](https://github.com/microsoft/autogen/blob/0.2/TRANSPARENCY_FAQS.md)
 
 - [Contributing guide](https://microsoft.github.io/autogen/docs/Contribute)
 
@@ -254,11 +254,11 @@ In addition, you can find:
 
 ## Related Papers
 
-[Superdapp Studio](https://www.microsoft.com/en-us/research/publication/autogen-studio-a-no-code-developer-tool-for-building-and-debugging-multi-agent-systems/)
+[AutoGen Studio](https://www.microsoft.com/en-us/research/publication/autogen-studio-a-no-code-developer-tool-for-building-and-debugging-multi-agent-systems/)
 
 ```
 @inproceedings{dibia2024studio,
-      title={Superdapp Studio: A No-Code Developer Tool for Building and Debugging Multi-Agent Systems},
+      title={AutoGen Studio: A No-Code Developer Tool for Building and Debugging Multi-Agent Systems},
       author={Victor Dibia and Jingya Chen and Gagan Bansal and Suff Syed and Adam Fourney and Erkang (Eric) Zhu and Chi Wang and Saleema Amershi},
       year={2024},
       booktitle={Pre-Print}
@@ -348,8 +348,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 </p>
 
 ## Contributors Wall
-<a href="https://github.com/superdapp/superdappstudio/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=superdapp/superdappstudio&max=204" />
+<a href="https://github.com/microsoft/autogen/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=microsoft/autogen&max=204" />
 </a>
 
 <p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
