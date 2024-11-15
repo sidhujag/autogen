@@ -56,7 +56,7 @@ ragproxyagent.initiate_chat(
     assistant, message=ragproxyagent.message_generator, problem=code_problem, search_string="spark"
 )  # search_string is used as an extra filter for the embeddings search, in this case, we only want to search documents that contain "spark".
 ```
-*You'll need to install `chromadb<=0.5.0` if you see issue like [#3551](https://github.com/SuperDappAI/superdappstudio/issues/3551).*
+*You'll need to install `chromadb<=0.5.0` if you see issue like [#3551](https://github.com/superdapp/superdappstudio/issues/3551).*
 
 ## Example Setup: RAG with Retrieval Augmented Agents with PGVector
 The following is an example setup demonstrating how to create retrieval augmented agents in AutoGen:
@@ -124,13 +124,13 @@ ragproxyagent.initiate_chat(
 ## More Examples and Notebooks
 For more detailed examples and notebooks showcasing the usage of retrieval augmented agents in AutoGen, refer to the following:
 - Automated Code Generation and Question Answering with Retrieval Augmented Agents - [View Notebook](/docs/notebooks/agentchat_RetrieveChat)
-- Automated Code Generation and Question Answering with [PGVector](https://github.com/pgvector/pgvector) based Retrieval Augmented Agents - [View Notebook](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_pgvector.ipynb)
-- Automated Code Generation and Question Answering with [Qdrant](https://qdrant.tech/) based Retrieval Augmented Agents - [View Notebook](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_qdrant.ipynb)
-- Automated Code Generation and Question Answering with [MongoDB Atlas](https://www.mongodb.com/) based Retrieval Augmented Agents - [View Notebook](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_mongodb.ipynb)
-- Automated Code Generation and Question Answering with [Couchbase](https://www.couchbase.com/) based Retrieval Augmented Agents - [View Notebook](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_couchbase.ipynb)
-- Chat with OpenAI Assistant with Retrieval Augmentation - [View Notebook](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_oai_assistant_retrieval.ipynb)
+- Automated Code Generation and Question Answering with [PGVector](https://github.com/pgvector/pgvector) based Retrieval Augmented Agents - [View Notebook](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_pgvector.ipynb)
+- Automated Code Generation and Question Answering with [Qdrant](https://qdrant.tech/) based Retrieval Augmented Agents - [View Notebook](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_qdrant.ipynb)
+- Automated Code Generation and Question Answering with [MongoDB Atlas](https://www.mongodb.com/) based Retrieval Augmented Agents - [View Notebook](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_mongodb.ipynb)
+- Automated Code Generation and Question Answering with [Couchbase](https://www.couchbase.com/) based Retrieval Augmented Agents - [View Notebook](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_couchbase.ipynb)
+- Chat with OpenAI Assistant with Retrieval Augmentation - [View Notebook](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_oai_assistant_retrieval.ipynb)
 - **RAG**: Group Chat with Retrieval Augmented Generation (with 5 group member agents and 1 manager agent) - [View Notebook](/docs/notebooks/agentchat_groupchat_RAG)
 
 ## Roadmap
 
-Explore our detailed roadmap [here](https://github.com/SuperDappAI/superdappstudio/issues/1657) for further advancements plan around RAG. Your contributions, feedback, and use cases are highly appreciated! We invite you to engage with us and play a pivotal role in the development of this impactful feature.
+Explore our detailed roadmap [here](https://github.com/superdapp/superdappstudio/issues/1657) for further advancements plan around RAG. Your contributions, feedback, and use cases are highly appreciated! We invite you to engage with us and play a pivotal role in the development of this impactful feature.

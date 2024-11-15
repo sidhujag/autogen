@@ -38,9 +38,9 @@ pip install "pyautogen[blendsearch]<0.2"
 
 Example notebooks:
 
-[Optimize for Code Generation](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/oai_completion.ipynb)
+[Optimize for Code Generation](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/oai_completion.ipynb)
 
-[Optimize for Math](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/oai_chatgpt_gpt4.ipynb)
+[Optimize for Math](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/oai_chatgpt_gpt4.ipynb)
 
 ## retrievechat
 
@@ -49,7 +49,7 @@ AutoGen 0.2 supports retrieval-augmented generation tasks such as question answe
 ```bash
 pip install "autogen-agentchat[retrievechat]"
 ```
-*You'll need to install `chromadb<=0.5.0` if you see issue like [#3551](https://github.com/SuperDappAI/superdappstudio/issues/3551).*
+*You'll need to install `chromadb<=0.5.0` if you see issue like [#3551](https://github.com/superdapp/superdappstudio/issues/3551).*
 
 Alternatively AutoGen 0.2 also supports PGVector and Qdrant which can be installed in place of ChromaDB, or alongside it.
 
@@ -72,11 +72,11 @@ You can find a list of all supported document types by using `autogen.retrieve_u
 
 Example notebooks:
 
-[Automated Code Generation and Question Answering with Retrieval Augmented Agents](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat.ipynb)
+[Automated Code Generation and Question Answering with Retrieval Augmented Agents](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat.ipynb)
 
-[Group Chat with Retrieval Augmented Generation (with 5 group member agents and 1 manager agent)](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_groupchat_RAG.ipynb)
+[Group Chat with Retrieval Augmented Generation (with 5 group member agents and 1 manager agent)](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_groupchat_RAG.ipynb)
 
-[Automated Code Generation and Question Answering with Qdrant based Retrieval Augmented Agents](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_qdrant.ipynb)
+[Automated Code Generation and Question Answering with Qdrant based Retrieval Augmented Agents](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_qdrant.ipynb)
 
 ## Teachability
 
@@ -86,7 +86,7 @@ To use Teachability, please install AutoGen with the [teachable] option.
 pip install "autogen-agentchat[teachable]~=0.2"
 ```
 
-Example notebook: [Chatting with a teachable agent](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_teachability.ipynb)
+Example notebook: [Chatting with a teachable agent](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_teachability.ipynb)
 
 ## Large Multimodal Model (LMM) Agents
 
@@ -98,7 +98,7 @@ pip install "autogen-agentchat[lmm]~=0.2"
 
 Example notebooks:
 
-[LLaVA Agent](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_lmm_llava.ipynb)
+[LLaVA Agent](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_lmm_llava.ipynb)
 
 ## mathchat
 
@@ -110,7 +110,7 @@ pip install "pyautogen[mathchat]<0.2"
 
 Example notebooks:
 
-[Using MathChat to Solve Math Problems](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_MathChat.ipynb)
+[Using MathChat to Solve Math Problems](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_MathChat.ipynb)
 
 ## Graph
 

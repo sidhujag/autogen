@@ -57,7 +57,7 @@ Please install autogen-agentchat with the [retrievechat] option before using RAG
 pip install "autogen-agentchat[retrievechat]~=0.2"
 ```
 
-*You'll need to install `chromadb<=0.5.0` if you see issue like [#3551](https://github.com/SuperDappAI/superdappstudio/issues/3551).*
+*You'll need to install `chromadb<=0.5.0` if you see issue like [#3551](https://github.com/superdapp/superdappstudio/issues/3551).*
 
 RetrieveChat can handle various types of documents. By default, it can process
 plain text and PDF files, including formats such as 'txt', 'json', 'csv', 'tsv',
@@ -98,7 +98,7 @@ ragproxyagent = RetrieveUserProxyAgent(
     name="ragproxyagent",
     retrieve_config={
         "task": "qa",
-        "docs_path": "https://raw.githubusercontent.com/SuperDappAI/superdappstudio/main/README.md",
+        "docs_path": "https://raw.githubusercontent.com/superdapp/superdappstudio/main/README.md",
     },
 )
 ```
@@ -162,7 +162,7 @@ ragproxyagent = RetrieveUserProxyAgent(
     name="ragproxyagent",
     retrieve_config={
         "task": "qa",
-        "docs_path": "https://raw.githubusercontent.com/SuperDappAI/superdappstudio/main/README.md",
+        "docs_path": "https://raw.githubusercontent.com/superdapp/superdappstudio/main/README.md",
         "embedding_function": openai_ef,
     },
 )
@@ -194,7 +194,7 @@ ragproxyagent = RetrieveUserProxyAgent(
     name="ragproxyagent",
     retrieve_config={
         "task": "qa",
-        "docs_path": "https://raw.githubusercontent.com/SuperDappAI/superdappstudio/main/README.md",
+        "docs_path": "https://raw.githubusercontent.com/superdapp/superdappstudio/main/README.md",
         "custom_text_split_function": recur_spliter.split_text,
     },
 )
@@ -206,7 +206,7 @@ We are using chromadb as the default vector database, you can also use mongodb, 
 by simply set `vector_db` to `mongodb`, `pgvector`, `qdrant` and `couchbase` in `retrieve_config`, respectively.
 
 To plugin any other dbs, you can also extend class `agentchat.contrib.vectordb.base`,
-check out the code [here](https://github.com/SuperDappAI/superdappstudio/blob/0.2/autogen/agentchat/contrib/vectordb/base.py).
+check out the code [here](https://github.com/superdapp/superdappstudio/blob/0.2/autogen/agentchat/contrib/vectordb/base.py).
 
 
 ## Advanced Usage of RAG Agents
@@ -401,9 +401,9 @@ The online app and the source code are hosted in [HuggingFace](https://huggingfa
 
 ## Read More
 You can check out more example notebooks for RAG use cases:
-- [Automated Code Generation and Question Answering with Retrieval Augmented Agents](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat.ipynb)
-- [Group Chat with Retrieval Augmented Generation (with 5 group member agents and 1 manager agent)](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_groupchat_RAG.ipynb)
-- [Using RetrieveChat with Qdrant for Retrieve Augmented Code Generation and Question Answering](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_qdrant.ipynb)
-- [Using RetrieveChat Powered by PGVector for Retrieve Augmented Code Generation and Question Answering](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_pgvector.ipynb)
-- [Using RetrieveChat Powered by MongoDB Atlas for Retrieve Augmented Code Generation and Question Answering](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_mongodb.ipynb)
-- [Using RetrieveChat Powered by Couchbase for Retrieve Augmented Code Generation and Question Answering](https://github.com/SuperDappAI/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_couchbase.ipynb)
+- [Automated Code Generation and Question Answering with Retrieval Augmented Agents](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat.ipynb)
+- [Group Chat with Retrieval Augmented Generation (with 5 group member agents and 1 manager agent)](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_groupchat_RAG.ipynb)
+- [Using RetrieveChat with Qdrant for Retrieve Augmented Code Generation and Question Answering](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_qdrant.ipynb)
+- [Using RetrieveChat Powered by PGVector for Retrieve Augmented Code Generation and Question Answering](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_pgvector.ipynb)
+- [Using RetrieveChat Powered by MongoDB Atlas for Retrieve Augmented Code Generation and Question Answering](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_mongodb.ipynb)
+- [Using RetrieveChat Powered by Couchbase for Retrieve Augmented Code Generation and Question Answering](https://github.com/superdapp/superdappstudio/blob/0.2/notebook/agentchat_RetrieveChat_couchbase.ipynb)

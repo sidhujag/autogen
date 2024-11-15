@@ -20,7 +20,7 @@ WIKIPEDIA_URL = "https://en.wikipedia.org/wiki/Microsoft"
 WIKIPEDIA_TITLE = "Microsoft"
 WIKIPEDIA_STRING = "Redmond"
 
-PLAIN_TEXT_URL = "https://raw.githubusercontent.com/SuperDappAI/superdappstudio/main/README.md"
+PLAIN_TEXT_URL = "https://raw.githubusercontent.com/superdapp/superdappstudio/main/README.md"
 
 DOWNLOAD_URL = "https://arxiv.org/src/2308.08155"
 

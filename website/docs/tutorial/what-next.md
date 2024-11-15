@@ -32,7 +32,7 @@ topics:
 ## Get Help
 
 If you have any questions, you can ask in our [GitHub
-Discussions](https://github.com/SuperDappAI/superdappstudio/discussions).
+Discussions](https://github.com/superdapp/superdappstudio/discussions).
 
 [![](https://img.shields.io/discord/1153072414184452236?logo=discord&style=flat.png)](https://aka.ms/autogen-dc)
 

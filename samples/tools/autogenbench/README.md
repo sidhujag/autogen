@@ -20,7 +20,7 @@ AutoGenBench also requires Docker (Desktop or Engine). **It will not run in GitH
 pip install autogenbench
 ```
 
-If you would prefer working from source code (e.g., for development, or to utilize an alternate branch), simply clone the [AutoGen](https://github.com/SuperDappAI/superdappstudio) repository, then install `autogenbench` via:
+If you would prefer working from source code (e.g., for development, or to utilize an alternate branch), simply clone the [AutoGen](https://github.com/superdapp/superdappstudio) repository, then install `autogenbench` via:
 
 ```
 pip install -e autogen/samples/tools/autogenbench

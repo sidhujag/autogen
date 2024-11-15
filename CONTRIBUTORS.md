@@ -7,15 +7,15 @@
 |---|---|---|---|---|---|
 | Qingyun Wu | [qingyun-wu](https://github.com/qingyun-wu) | Penn State University | all, alt-models, autobuilder | Yes | Available most of the time (US Eastern Time) |
 | Chi Wang | [sonichi](https://github.com/sonichi) | - | all | Yes | |
-| Li Jiang | [thinkall](https://github.com/thinkall) | Microsoft | rag, autobuilder, group chat | Yes | [Issue #1657](https://github.com/SuperDappAI/superdappstudio/issues/1657) - Beijing, GMT+8 |
+| Li Jiang | [thinkall](https://github.com/thinkall) | Microsoft | rag, autobuilder, group chat | Yes | [Issue #1657](https://github.com/superdapp/superdappstudio/issues/1657) - Beijing, GMT+8 |
 | Mark Sze | [marklysze](https://github.com/marklysze) | - | alt-models, group chat | No | Generally available (Sydney, AU time) - Group Chat "auto" speaker selection |
-| Hrushikesh Dokala | [Hk669](https://github.com/Hk669) | - | alt-models, swebench, logging, rag | No | [Issue #2946](https://github.com/SuperDappAI/superdappstudio/issues/2946), [Pull Request #2933](https://github.com/SuperDappAI/superdappstudio/pull/2933) - Available most of the time (India, GMT+5:30) |
+| Hrushikesh Dokala | [Hk669](https://github.com/Hk669) | - | alt-models, swebench, logging, rag | No | [Issue #2946](https://github.com/superdapp/superdappstudio/issues/2946), [Pull Request #2933](https://github.com/superdapp/superdappstudio/pull/2933) - Available most of the time (India, GMT+5:30) |
 | Jiale Liu | [LeoLjl](https://github.com/LeoLjl) | Penn State University | autobuild, group chat | No | |
-| Shaokun Zhang | [skzhang1](https://github.com/skzhang1) | Penn State University | AgentOptimizer, Teachability            | Yes | [Issue #521](https://github.com/SuperDappAI/superdappstudio/issues/521)                         |
+| Shaokun Zhang | [skzhang1](https://github.com/skzhang1) | Penn State University | AgentOptimizer, Teachability            | Yes | [Issue #521](https://github.com/superdapp/superdappstudio/issues/521)                         |
 | Rajan Chari | [rajan-chari](https://github.com/rajan-chari) | Microsoft Research | CAP, Survey of other frameworks | No | |
-| Victor Dibia | [victordibia](https://github.com/victordibia) | Microsoft Research | superdappstudio | Yes | [Issue #737](https://github.com/SuperDappAI/superdappstudio/issues/737) |
+| Victor Dibia | [victordibia](https://github.com/victordibia) | Microsoft Research | superdappstudio | Yes | [Issue #737](https://github.com/superdapp/superdappstudio/issues/737) |
 | Yixuan Zhai | [randombet](https://github.com/randombet) | Meta | group chat, sequential_chats, rag       | No | |
-| Xiaoyun Zhang | [LittleLittleCloud](https://github.com/LittleLittleCloud) | Microsoft | AutoGen.Net, group chat | Yes | [Backlog - AutoGen.Net](https://github.com/SuperDappAI/superdappstudio/issues) - Available most of the time (PST) |
+| Xiaoyun Zhang | [LittleLittleCloud](https://github.com/LittleLittleCloud) | Microsoft | AutoGen.Net, group chat | Yes | [Backlog - AutoGen.Net](https://github.com/superdapp/superdappstudio/issues) - Available most of the time (PST) |
 | Yiran Wu | [yiranwu0](https://github.com/yiranwu0) | Penn State University | alt-models, group chat, logging | Yes | |
 | Beibin Li | [BeibinLi](https://github.com/BeibinLi) | Microsoft Research | alt-models | Yes | |
 | Gagan Bansal | [gagb](https://github.com/gagb) | Microsoft Research |  All | | |

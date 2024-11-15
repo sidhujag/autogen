@@ -90,8 +90,8 @@ const GalleryPage = (props) => {
     if (!item.source) {
       return null;
     }
-    const colab_href = `https://colab.research.google.com/github/SuperDappAI/superdappstudio/blob/main/${item.source}`;
-    const github_href = `https://github.com/SuperDappAI/superdappstudio/blob/0.2/${item.source}`;
+    const colab_href = `https://colab.research.google.com/github/superdapp/superdappstudio/blob/main/${item.source}`;
+    const github_href = `https://github.com/superdapp/superdappstudio/blob/0.2/${item.source}`;
     return (<span>
       <a style={{marginRight: '5px'}}href={colab_href} target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
       <a href={github_href} target="_parent"><img alt="Static Badge" src="https://img.shields.io/badge/Open%20on%20GitHub-grey?logo=github"/></a>
