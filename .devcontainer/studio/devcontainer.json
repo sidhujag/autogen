@@ -17,5 +17,5 @@
         }
     },
     "dockerFile": "Dockerfile",
-    "updateContentCommand": "cd samples/apps/autogen-studio && pip install -e . && sudo npm install -g gatsby-cli && cd frontend && yarn install && yarn build"
+    "updateContentCommand": "cd samples/apps/superdapp-studio && pip install -e . && sudo npm install -g gatsby-cli && cd frontend && yarn install && yarn build"
 }

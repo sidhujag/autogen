@@ -57,7 +57,7 @@ Similarly, the workflow launch command above can be wrapped into a Dockerfile th
 
 ## Q: Can I run Superdapp Studio in a Docker container?
 
-A: Yes, you can run Superdapp Studio in a Docker container. You can build the Docker image using the provided [Dockerfile](https://github.com/SuperDappAI/superdappstudio/blob/superdappstudio/samples/apps/autogen-studio/Dockerfile) and run the container using the following commands:
+A: Yes, you can run Superdapp Studio in a Docker container. You can build the Docker image using the provided [Dockerfile](https://github.com/SuperDappAI/superdappstudio/blob/superdappstudio/samples/apps/superdapp-studio/Dockerfile) and run the container using the following commands:
 
 ```bash
 FROM python:3.10

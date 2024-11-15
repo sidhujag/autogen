@@ -45,7 +45,7 @@ The web api will listen at `http://localhost:5264/v1/chat/completion
 
 ![terminal](../images/articles/UseAutoGenAsModelinAGStudio/Terminal.png)
 
-## Step 4: In another terminal, start autogen-studio
+## Step 4: In another terminal, start superdapp-studio
 
 ```bash
 superdappstudio ui
