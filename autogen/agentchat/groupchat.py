@@ -1322,6 +1322,8 @@ class GroupChatManager(ConversableAgent):
             self._valid_resume_messages(messages)
         except:
             raise
+        # Termination removal and check
+        self._process_resume_termination(remove_termination_string, messages)
 
         # Load the messages into the group chat
         for i, message in enumerate(messages):
@@ -1361,9 +1363,6 @@ class GroupChatManager(ConversableAgent):
             last_speaker_name == self._groupchat.admin_name or last_speaker_name == self.name
         ):
             previous_last_agent = self
-
-        # Termination removal and check
-        self._process_resume_termination(remove_termination_string, messages)
 
         if not silent:
             iostream = IOStream.get_default()
@@ -1425,6 +1424,8 @@ class GroupChatManager(ConversableAgent):
             self._valid_resume_messages(messages)
         except:
             raise
+        # Termination removal and check
+        self._process_resume_termination(remove_termination_string, messages)
 
         # Load the messages into the group chat
         for i, message in enumerate(messages):
@@ -1466,9 +1467,6 @@ class GroupChatManager(ConversableAgent):
             last_speaker_name == self._groupchat.admin_name or last_speaker_name == self.name
         ):
             previous_last_agent = self
-
-        # Termination removal and check
-        self._process_resume_termination(remove_termination_string, messages)
 
         if not silent:
             iostream = IOStream.get_default()
